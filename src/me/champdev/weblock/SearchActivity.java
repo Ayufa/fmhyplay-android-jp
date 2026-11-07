@@ -196,7 +196,7 @@ public class SearchActivity extends Home {
                     // Cinemeta also returns loose matches (a series named "...Ankara..." for "kantara"): titles with every typed word come first,
                     // then newest to oldest in each group
                     String[] words = q.toLowerCase(Locale.ROOT).split("\\s+");
-                    all.sort(java.util.Comparator.<Catalog.Title, Boolean>comparing(t -> !matches(t.name, words))
+                    all.sort(java.util.Comparator.<Catalog.Title, Boolean>comparing(t -> !matches(t.name, words) && !matches(t.displayName(), words))
                         .thenComparing(t -> -Catalog.startYear(t.year)));
                     boolean failed = movies == null && series == null;
                     runOnUiThread(() -> {

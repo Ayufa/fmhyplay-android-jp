@@ -1149,7 +1149,7 @@ public class Home extends Activity {
         ImageView img = new ImageView(this);
         img.setScaleType(ImageView.ScaleType.CENTER_CROP);
         card.addView(img, new FrameLayout.LayoutParams(-1, -1));
-        TextView letter = text(t.name.substring(0, 1).toUpperCase(), sp(40, 30), 0x55FFFFFF, true);
+        TextView letter = text(t.displayName().substring(0, 1).toUpperCase(), sp(40, 30), 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         card.addView(letter, new FrameLayout.LayoutParams(-1, -1));
         if (!t.poster.isEmpty()) loadImage(img, t.poster, letter);
@@ -1160,7 +1160,7 @@ public class Home extends Activity {
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(u(9, 7), 0, u(9, 7), u(8, 6));
-        TextView name = text(t.name, sp(14, 12), Color.WHITE, true);
+        TextView name = text(t.displayName(), sp(14, 12), Color.WHITE, true);
         name.setMaxLines(2);
         name.setEllipsize(TextUtils.TruncateAt.END);
         info.addView(name);

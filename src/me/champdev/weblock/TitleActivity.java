@@ -51,7 +51,7 @@ public class TitleActivity extends Home {
         FrameLayout poster = new FrameLayout(this);
         poster.setBackground(rounded(colorFor(t.name), dp(12)));
         poster.setClipToOutline(true);
-        TextView letter = text(t.name.substring(0, 1).toUpperCase(), 40, 0x55FFFFFF, true);
+        TextView letter = text(t.displayName().substring(0, 1).toUpperCase(), 40, 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         poster.addView(letter, new FrameLayout.LayoutParams(-1, -1));
         ImageView img = new ImageView(this);
@@ -63,7 +63,7 @@ public class TitleActivity extends Home {
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(u(24, 14), 0, 0, 0);
-        TextView name = text(t.name, sp(30, 21), TEXT, true);
+        TextView name = text(t.displayName(), sp(30, 21), TEXT, true);
         name.setMaxLines(3);
         name.setEllipsize(TextUtils.TruncateAt.END);
         info.addView(name);
@@ -124,7 +124,7 @@ public class TitleActivity extends Home {
         // The sites that carry this kind of title: tap one and its own search box is filled in with the title
         List<Sites.Site> sites = options();
         if (!sites.isEmpty()) {
-            col.addView(heading("視聴する  ·  サイトを選んで「" + t.name + "」を開く"));
+            col.addView(heading("視聴する  ·  サイトを選んで「" + t.displayName() + "」を開く"));
             Grid grid = new Grid(col);
             for (Sites.Site s : sites) grid.add(s);
         }
