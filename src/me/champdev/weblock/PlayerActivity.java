@@ -94,7 +94,7 @@ public class PlayerActivity extends Activity {
     View gestureFill;                    // the filled part of the indicator's vertical bar
     TextView gestureText;
     int zoom = 0;   // Fit at the start of every playback (the choice is not remembered)
-    static final String[] ZOOMS = {"Fit", "Fill", "Stretch", "16:9", "4:3"};
+    static final String[] ZOOMS = {"画面に合わせる", "画面いっぱい", "引き伸ばし", "16:9", "4:3"};
     android.media.audiofx.LoudnessEnhancer booster;   // Volume boost, on the player's audio session
     android.media.audiofx.Equalizer voices;           // Dialog boost, same session
     // Every video starts with the Settings defaults; the Audio button changes them for this video only
@@ -198,7 +198,7 @@ public class PlayerActivity extends Activity {
 
     /** The subtitle panel (size, position, timing), with a sample line on screen when nothing is being said right now. */
     void subtitleStyle() {
-        if (subtitle.getVisibility() != View.VISIBLE) { subtitle.setText("Subtitles show here"); subtitle.setVisibility(View.VISIBLE); }
+        if (subtitle.getVisibility() != View.VISIBLE) { subtitle.setText("字幕はここに表示されます"); subtitle.setVisibility(View.VISIBLE); }
         Subs.panel(this, true, this::placeSubtitle, () -> showCues(player.getCurrentCues()));
     }
 
@@ -356,19 +356,19 @@ public class PlayerActivity extends Activity {
         chipRestart = chip(R.drawable.ic_refresh, () -> {
             player.seekTo(0);
             player.play();
-            say("From the start");
+            say("最初から再生");
         });
         chipServers = chip(R.drawable.ic_p_servers, () -> pickServer());
         chipQuality = chip(R.drawable.ic_p_quality, this::pickQuality);
-        chipAudio = chip(R.drawable.ic_p_audio, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_AUDIO, "Audio", false));
+        chipAudio = chip(R.drawable.ic_p_audio, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_AUDIO, "音声", false));
         chipBoost = chip(R.drawable.ic_p_volume, this::pickBoost);
         chipVoice = chip(R.drawable.ic_p_voice, () -> {
             voice = !voice;
             applyBoost();
             refreshChips();
-            say((voice ? "Dialog boost on" : "Dialog boost off") + " for this video  \u00B7  default in Settings");
+            say((voice ? "ダイアログブースト オン" : "ダイアログブースト オフ") + "（この動画のみ）  \u00B7  デフォルトは設定で変更できます");
         });
-        chipSubs = chip(R.drawable.ic_p_subs, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_TEXT, "Subtitles", true));
+        chipSubs = chip(R.drawable.ic_p_subs, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_TEXT, "字幕", true));
         chipSpeed = chip(R.drawable.ic_p_speed, this::pickSpeed);
         chipZoom = chip(R.drawable.ic_p_zoom, this::cycleZoom);
         chipRotate = chip(R.drawable.ic_p_fullscreen, () -> setRequestedOrientation(landscape()
@@ -594,7 +594,7 @@ public class PlayerActivity extends Activity {
         WebActivity page = WebActivity.active;
         String cur = "";
         if (page != null) for (String[] v : page.servers.values()) if (!v[1].isEmpty()) cur = v[0];
-        show(chipServers, page != null && !page.servers.isEmpty(), "Servers" + (cur.isEmpty() ? "" : " \u00B7 " + cur), false,
+        show(chipServers, page != null && !page.servers.isEmpty(), "サーバー" + (cur.isEmpty() ? "" : " \u00B7 " + cur), false,
             cur.length() > 6 ? cur.substring(0, 6) : cur);
         int video = 0, audio = 0, text = 0;
         String audioNow = "", textNow = "Off", audioCode = "", textCode = "";
@@ -602,8 +602,8 @@ public class PlayerActivity extends Activity {
             for (int i = 0; i < g.length; i++) {
                 if (!g.isTrackSupported(i)) continue;
                 if (g.getType() == C.TRACK_TYPE_VIDEO) video++;
-                else if (g.getType() == C.TRACK_TYPE_AUDIO) { audio++; if (g.isTrackSelected(i)) { audioNow = labelOf(g.getTrackFormat(i), "Audio", audio); audioCode = codeOf(g.getTrackFormat(i)); } }
-                else if (g.getType() == C.TRACK_TYPE_TEXT) { text++; if (g.isTrackSelected(i)) { textNow = labelOf(g.getTrackFormat(i), "Subtitles", text); textCode = codeOf(g.getTrackFormat(i)); } }
+                else if (g.getType() == C.TRACK_TYPE_AUDIO) { audio++; if (g.isTrackSelected(i)) { audioNow = labelOf(g.getTrackFormat(i), "音声", audio); audioCode = codeOf(g.getTrackFormat(i)); } }
+                else if (g.getType() == C.TRACK_TYPE_TEXT) { text++; if (g.isTrackSelected(i)) { textNow = labelOf(g.getTrackFormat(i), "字幕", text); textCode = codeOf(g.getTrackFormat(i)); } }
             }
         }
         boolean manual = false;
@@ -617,19 +617,19 @@ public class PlayerActivity extends Activity {
             // The page's own quality list: its label ("1080p Full HD") shortened to the number
             java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)\\b(\\d{3,4}p|4k|8k)\\b").matcher(pq);
             String shown = m.find() ? m.group(1).toLowerCase(Locale.ROOT).replace("k", "K") : h;
-            show(chipQuality, true, "Quality \u00B7 " + (pq.isEmpty() ? (h.isEmpty() ? "Auto" : h) : pq), !pq.isEmpty(), shown);
-        } else show(chipQuality, video > 1, "Quality \u00B7 " + (manual ? h : "Auto" + (h.isEmpty() ? "" : " " + h)), manual, h.isEmpty() ? "Auto" : h);
-        show(chipAudio, audio > 1, "Audio \u00B7 " + audioNow, false, audioCode);
-        show(chipBoost, audio > 0, "Volume boost \u00B7 " + (boost == 0 ? "Off" : "+" + boost + " dB"), boost > 0, boost > 0 ? "+" + boost : "");
-        show(chipVoice, audio > 0, "Dialog boost \u00B7 " + (voice ? "On" : "Off"), voice, voice ? "On" : "");
+            show(chipQuality, true, "画質 \u00B7 " + (pq.isEmpty() ? (h.isEmpty() ? "自動" : h) : pq), !pq.isEmpty(), shown);
+        } else show(chipQuality, video > 1, "画質 \u00B7 " + (manual ? h : "自動" + (h.isEmpty() ? "" : " " + h)), manual, h.isEmpty() ? "自動" : h);
+        show(chipAudio, audio > 1, "音声 \u00B7 " + audioNow, false, audioCode);
+        show(chipBoost, audio > 0, "音量ブースト \u00B7 " + (boost == 0 ? "オフ" : "+" + boost + " dB"), boost > 0, boost > 0 ? "+" + boost : "");
+        show(chipVoice, audio > 0, "ダイアログブースト \u00B7 " + (voice ? "オン" : "オフ"), voice, voice ? "オン" : "");
         boolean subsOn = !textNow.equals("Off");
-        show(chipSubs, text > 0 || canSearchSubs(), "Subtitles \u00B7 " + textNow, subsOn, subsOn ? (textCode.isEmpty() ? "CC" : textCode) : "Off");
+        show(chipSubs, text > 0 || canSearchSubs(), "字幕 \u00B7 " + textNow, subsOn, subsOn ? (textCode.isEmpty() ? "CC" : textCode) : "オフ");
         float sp = player.getPlaybackParameters().speed;
-        show(chipSpeed, true, "Speed \u00B7 " + speedLabel(sp), sp != 1f, speedLabel(sp));
-        show(chipZoom, true, "Zoom \u00B7 " + ZOOMS[zoom], zoom != 0, ZOOMS[zoom]);
-        show(chipRestart, !player.isCurrentMediaItemLive(), "Restart from the beginning", false, "");
+        show(chipSpeed, true, "再生速度 \u00B7 " + speedLabel(sp), sp != 1f, speedLabel(sp));
+        show(chipZoom, true, "ズーム \u00B7 " + ZOOMS[zoom], zoom != 0, ZOOMS[zoom]);
+        show(chipRestart, !player.isCurrentMediaItemLive(), "最初から再生", false, "");
         ((ImageView) chipRotate.getChildAt(0)).setImageResource(landscape() ? R.drawable.ic_p_fullscreen_exit : R.drawable.ic_p_fullscreen);
-        show(chipRotate, !App.tv, landscape() ? "Portrait" : "Full screen", false, "");
+        show(chipRotate, !App.tv, landscape() ? "縦画面" : "全画面", false, "");
         fitChips();
     }
 
@@ -721,7 +721,7 @@ public class PlayerActivity extends Activity {
             String s = found.get(i);
             subs.add(new MediaItem.SubtitleConfiguration.Builder(Uri.parse(s))
                 .setMimeType(Sniffer.path(s).endsWith(".srt") ? MimeTypes.APPLICATION_SUBRIP : MimeTypes.TEXT_VTT)
-                .setLabel("Subtitles " + (i + 1) + " (" + fileName(s) + ")").build());
+                .setLabel("字幕 " + (i + 1) + " (" + fileName(s) + ")").build());
         }
         item.setSubtitleConfigurations(subs);
 
@@ -786,8 +786,8 @@ public class PlayerActivity extends Activity {
             @Override public void onPlayerError(PlaybackException e) {
                 Log.w(TAG, "playback error", e);
                 if (getIntent().hasExtra("mime")) { Iptv.mark(getIntent().getStringExtra("url"), false); Iptv.saveHealth(); }
-                Toast.makeText(PlayerActivity.this, getIntent().hasExtra("mime") ? "Channel is offline (" + e.getErrorCodeName() + ")"
-                    : "Native player could not play this (" + e.getErrorCodeName() + "), back to the page", Toast.LENGTH_LONG).show();
+                Toast.makeText(PlayerActivity.this, getIntent().hasExtra("mime") ? "チャンネルはオフラインです (" + e.getErrorCodeName() + ")"
+                    : "ネイティブプレイヤーで再生できませんでした (" + e.getErrorCodeName() + ")。ページに戻ります", Toast.LENGTH_LONG).show();
                 setResult(RESULT_CANCELED);
                 finish();
             }
@@ -802,7 +802,7 @@ public class PlayerActivity extends Activity {
         if (at == null) at = resume.get(base);
         if (carryMs > 0 && SystemClock.elapsedRealtime() - carryAt < 45000) at = carryMs;
         carryMs = 0;
-        if (at != null && at > 10000) say("Resumed at " + clock(at));
+        if (at != null && at > 10000) say("前回の続きから再生: " + clock(at));
         if (at != null && at > 10000) player.setMediaItem(item.build(), at); else player.setMediaItem(item.build());
         player.prepare();
         player.play();
@@ -864,7 +864,7 @@ public class PlayerActivity extends Activity {
     void cycleZoom() {
         zoom = (zoom + 1) % ZOOMS.length;
         fit();
-        say("Zoom: " + ZOOMS[zoom]);
+        say("ズーム: " + ZOOMS[zoom]);
         refreshChips();
     }
 
@@ -996,19 +996,19 @@ public class PlayerActivity extends Activity {
     // The page's own server list, read from the page when the stream started
     void pickServer() {
         WebActivity page = WebActivity.active;
-        pickFromPage(page == null ? null : page.servers, "Servers");
+        pickFromPage(page == null ? null : page.servers, "サーバー");
     }
 
     // Quality: the stream's own choices if it has several, else the page's quality list (a page that serves one playlist per quality)
     void pickQuality() {
         WebActivity page = WebActivity.active;
-        if (page != null && !page.qualities.isEmpty() && countVideo(player.getCurrentTracks()) <= 1) pickFromPage(page.qualities, "Quality");
+        if (page != null && !page.qualities.isEmpty() && countVideo(player.getCurrentTracks()) <= 1) pickFromPage(page.qualities, "画質");
         else pickVideo(player.getCurrentTracks());
     }
 
     void pickFromPage(Map<String, String[]> list, String title) {
         WebActivity page = WebActivity.active;
-        if (page == null || list == null || list.isEmpty()) { say("No " + title.toLowerCase() + " list found on this page"); return; }
+        if (page == null || list == null || list.isEmpty()) { say("このページに" + title.toLowerCase() + "のリストが見つかりません"); return; }
         List<String> keys = new ArrayList<>(list.keySet()), labels = new ArrayList<>();
         for (String k : keys) labels.add(list.get(k)[0] + (list.get(k)[1].isEmpty() ? "" : "  \u2713"));
         new AlertDialog.Builder(this).setTitle(title).setItems(labels.toArray(new String[0]), (d, i) -> {
@@ -1028,7 +1028,7 @@ public class PlayerActivity extends Activity {
     void pickSpeed() {
         String[] labels = new String[SPEEDS.length];
         for (int i = 0; i < labels.length; i++) labels[i] = speedLabel(SPEEDS[i]);
-        new AlertDialog.Builder(this).setTitle("Speed").setItems(labels, (d, i) -> player.setPlaybackSpeed(SPEEDS[i])).show();
+        new AlertDialog.Builder(this).setTitle("再生速度").setItems(labels, (d, i) -> player.setPlaybackSpeed(SPEEDS[i])).show();
     }
 
     // Quality: the best track of each height, plus Auto
@@ -1052,13 +1052,13 @@ public class PlayerActivity extends Activity {
         }
         List<String> labels = new ArrayList<>();
         List<TrackSelectionOverride> picks = new ArrayList<>();
-        labels.add("Auto");
+        labels.add("自動");
         picks.add(null);
         for (Map.Entry<Integer, TrackSelectionOverride> en : byKey.entrySet()) {
             labels.add(names.get(en.getKey()));
             picks.add(en.getValue());
         }
-        new AlertDialog.Builder(this).setTitle("Quality").setItems(labels.toArray(new String[0]), (d, i) -> {
+        new AlertDialog.Builder(this).setTitle("画質").setItems(labels.toArray(new String[0]), (d, i) -> {
             androidx.media3.common.TrackSelectionParameters.Builder b = player.getTrackSelectionParameters().buildUpon().clearOverridesOfType(C.TRACK_TYPE_VIDEO);
             if (picks.get(i) != null) b.addOverride(picks.get(i));
             player.setTrackSelectionParameters(b.build());
@@ -1069,7 +1069,7 @@ public class PlayerActivity extends Activity {
     void pickTrack(Tracks tracks, int type, String name, boolean canOff) {
         List<String> labels = new ArrayList<>();
         List<TrackSelectionOverride> picks = new ArrayList<>();
-        if (canOff) { labels.add("Off"); picks.add(null); }
+        if (canOff) { labels.add("オフ"); picks.add(null); }
         int n = 0;
         for (Tracks.Group g : tracks.getGroups()) {
             if (g.getType() != type) continue;
@@ -1083,11 +1083,11 @@ public class PlayerActivity extends Activity {
             }
         }
         boolean search = type == C.TRACK_TYPE_TEXT && canSearchSubs();
-        if (!search && (labels.isEmpty() || (canOff && labels.size() == 1))) { say("No " + name.toLowerCase() + " in this video"); return; }
+        if (!search && (labels.isEmpty() || (canOff && labels.size() == 1))) { say("この動画には" + name.toLowerCase() + "がありません"); return; }
         int searchAt = search ? labels.size() : -1;
-        if (search) labels.add("\uD83D\uDD0D  Search OpenSubtitles\u2026");
+        if (search) labels.add("\uD83D\uDD0D  OpenSubtitlesで検索\u2026");
         int positionAt = type == C.TRACK_TYPE_TEXT ? labels.size() : -1;
-        if (positionAt >= 0) labels.add("Aa  Size, position, color, background, timing  (" + Subs.sizeLabel() + " \u00B7 " + Subs.offsetLabel()
+        if (positionAt >= 0) labels.add("Aa  サイズ、位置、色、背景、タイミング  (" + Subs.sizeLabel() + " \u00B7 " + Subs.offsetLabel()
             + " \u00B7 " + Subs.COLOR_NAMES[Subs.colorIndex()] + " \u00B7 " + Subs.backgroundLabel() + " \u00B7 " + Subs.delayLabel() + ")");
         new AlertDialog.Builder(this).setTitle(name).setItems(labels.toArray(new String[0]), (d, i) -> {
             if (i == searchAt) { searchSubs(); return; }
@@ -1115,7 +1115,7 @@ public class PlayerActivity extends Activity {
     void episodeLine() {
         int[] pe = pageEpisode();
         if (pe == null) { epLine.setVisibility(View.GONE); return; }
-        String label = (pe[0] > 0 ? "Season " + pe[0] + "  \u00B7  " : "") + "Episode " + pe[1];
+        String label = (pe[0] > 0 ? "シーズン " + pe[0] + "  \u00B7  " : "") + "エピソード " + pe[1];
         epLine.setText(label);
         epLine.setVisibility(View.VISIBLE);
     }
@@ -1128,7 +1128,7 @@ public class PlayerActivity extends Activity {
     }
 
     void searchSubs() {
-        say("Searching OpenSubtitles\u2026");
+        say("OpenSubtitlesを検索中\u2026");
         findSubs(found -> pickSubLanguage(Subs.byLanguage(found)), true);
     }
 
@@ -1146,8 +1146,8 @@ public class PlayerActivity extends Activity {
             List<Subs.Sub> found = id.isEmpty() ? null : Subs.find(id, s, e);
             runOnUiThread(() -> {
                 if (isFinishing() || player == null) return;
-                if (found == null) { if (loud) say(needsEpisode ? "Open the episode on the site first" : "Can't find this title on OpenSubtitles"); }
-                else if (found.isEmpty()) { if (loud) say("No subtitles for this title"); }
+                if (found == null) { if (loud) say(needsEpisode ? "先にサイトでエピソードを開いてください" : "OpenSubtitlesでこのタイトルが見つかりません"); }
+                else if (found.isEmpty()) { if (loud) say("このタイトルの字幕がありません"); }
                 else then.accept(found);
             });
         });
@@ -1156,11 +1156,11 @@ public class PlayerActivity extends Activity {
     void pickSubLanguage(Map<String, List<Subs.Sub>> langs) {
         List<String> codes = new ArrayList<>(langs.keySet()), labels = new ArrayList<>();
         for (String c : codes) labels.add(Subs.language(c) + "  \u00B7  " + langs.get(c).size());
-        new AlertDialog.Builder(this).setTitle("Subtitle language").setItems(labels.toArray(new String[0]), (d, i) -> {
+        new AlertDialog.Builder(this).setTitle("字幕の言語").setItems(labels.toArray(new String[0]), (d, i) -> {
             List<Subs.Sub> files = langs.get(codes.get(i)).subList(0, Math.min(40, langs.get(codes.get(i)).size()));
             List<String> names = new ArrayList<>();
             for (Subs.Sub f : files) names.add(f.release);
-            new AlertDialog.Builder(this).setTitle(Subs.language(codes.get(i)) + ": pick a release that matches your video")
+            new AlertDialog.Builder(this).setTitle(Subs.language(codes.get(i)) + ": 動画に合うリリースを選んでください")
                 .setItems(names.toArray(new String[0]), (d2, j) -> {
                     if (subKey() != null) Subs.remember(subKey(), files.get(j));
                     addSubtitle(files.get(j));
@@ -1194,7 +1194,7 @@ public class PlayerActivity extends Activity {
                 if (!g.isTrackSupported(t) || l == null || !androidx.media3.common.util.Util.normalizeLanguageCode(l).equals(want)) continue;
                 player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
                     .addOverride(new TrackSelectionOverride(g.getMediaTrackGroup(), t)).build());
-                say("Subtitles: " + Subs.language(lang));
+                say("字幕: " + Subs.language(lang));
                 return;
             }
         }
@@ -1243,19 +1243,19 @@ public class PlayerActivity extends Activity {
             }
         } catch (RuntimeException e) {
             Log.w(TAG, "audio boost", e);
-            say("Sound boost doesn't work on this device");
+            say("このデバイスではサウンドブーストが使えません");
         }
     }
 
     void pickBoost() {
         int[] dbs = BOOSTS;
         String[] labels = new String[dbs.length];
-        for (int i = 0; i < dbs.length; i++) labels[i] = (dbs[i] == 0 ? "Off" : "+" + dbs[i] + " dB") + (dbs[i] == boost ? "  \u2713" : "");
-        new AlertDialog.Builder(this).setTitle("Volume boost for this video").setItems(labels, (d, i) -> {
+        for (int i = 0; i < dbs.length; i++) labels[i] = (dbs[i] == 0 ? "オフ" : "+" + dbs[i] + " dB") + (dbs[i] == boost ? "  \u2713" : "");
+        new AlertDialog.Builder(this).setTitle("この動画の音量ブースト").setItems(labels, (d, i) -> {
             boost = dbs[i];
             applyBoost();
             refreshChips();
-            say((boost == 0 ? "Volume boost off" : "Volume boost +" + boost + " dB") + " for this video  \u00B7  default in Settings");
+            say((boost == 0 ? "音量ブースト オフ" : "音量ブースト +" + boost + " dB") + "（この動画のみ）  \u00B7  デフォルトは設定で変更できます");
         }).show();
     }
 
@@ -1271,7 +1271,7 @@ public class PlayerActivity extends Activity {
         player.setMediaItem(mediaItem.build(), pos);
         player.prepare();
         player.setPlayWhenReady(playing);
-        say("Subtitles: " + Subs.language(sub.lang));
+        say("字幕: " + Subs.language(sub.lang));
     }
 
     @Override protected void onStop() {

@@ -115,7 +115,7 @@ final class Update {
      */
     static void install(Consumer<String> status) {
         String url = App.prefs.getString("updateUrl", "");
-        if (url.isEmpty()) { status.accept("No download for this build"); return; }
+        if (url.isEmpty()) { status.accept("このビルド用のダウンロードはありません"); return; }
         App.io.execute(() -> {
             Context app = App.app;
             PackageInstaller pi = app.getPackageManager().getPackageInstaller();
@@ -135,11 +135,11 @@ final class Update {
                         out.write(buf, 0, n);
                         done += n;
                         int pct = total > 0 ? (int) (done * 100 / total) : 0;
-                        if (pct != shown) { shown = pct; post(status, "Downloading " + pct + "%"); }
+                        if (pct != shown) { shown = pct; post(status, "ダウンロード中 " + pct + "%"); }
                     }
                     session.fsync(out);
                 }
-                post(status, "Installing");
+                post(status, "インストール中");
                 if (waiting != null) try { app.unregisterReceiver(waiting); } catch (IllegalArgumentException ignored) { }   // an earlier try that was abandoned
                 BroadcastReceiver r = waiting = new BroadcastReceiver() {
                     @Override public void onReceive(Context ctx, Intent i) {
@@ -149,7 +149,7 @@ final class Update {
                             return;
                         }
                         app.unregisterReceiver(this);
-                        if (st != PackageInstaller.STATUS_SUCCESS) post(status, "Update failed: " + i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE));
+                        if (st != PackageInstaller.STATUS_SUCCESS) post(status, "アップデートに失敗しました: " + i.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE));
                     }
                 };
                 IntentFilter f = new IntentFilter("me.champdev.weblock.UPDATE");
@@ -158,7 +158,7 @@ final class Update {
                     PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0)).getIntentSender());
             } catch (Exception e) {
                 if (session != null) session.abandon();
-                post(status, "Update failed: " + e.getMessage());
+                post(status, "アップデートに失敗しました: " + e.getMessage());
             } finally {
                 if (session != null) session.close();
             }

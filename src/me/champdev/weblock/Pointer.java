@@ -186,7 +186,7 @@ final class Pointer {
             dot.setVisibility(View.GONE);
             host.web().evaluateJavascript("window.__fpResume&&__fpResume()", null);
         }
-        badge.setText(on ? "Pointer mode  ·  hold OK 5s for focus mode" : "Focus mode  ·  hold OK 5s for pointer");
+        badge.setText(on ? "ポインターモード  ·  OKを5秒長押しでフォーカスモード" : "フォーカスモード  ·  OKを5秒長押しでポインターモード");
         badge.setAlpha(1);
         badge.setVisibility(View.VISIBLE);
         badge.animate().cancel();
@@ -263,7 +263,7 @@ final class Pointer {
     /** The pointer in the chosen look (no shadow); a quick pulse on tap. */
     // Cursor looks (Settings, Cursor look): drawn ones that help (an arrow clicks at its tip), then emoji with the click point marked by a small dot
     static final String[] LOOKS = {"dot", "arrow", "cross", "ring", "big", "\uD83D\uDC46", "\uD83C\uDF55", "\uD83E\uDD96", "\uD83D\uDC7B", "\uD83D\uDC31", "\uD83D\uDE80", "\uD83C\uDF69", "\uD83E\uDD86", "\uD83E\uDDC0"};
-    static final String[] LOOK_NAMES = {"Dot", "Arrow (clicks at the tip)", "Crosshair (precise)", "Ring (see what's under it)", "Big yellow (easy to spot)", "Finger", "Pizza", "Dino", "Ghost", "Cat", "Rocket", "Donut", "Duck", "Cheese"};
+    static final String[] LOOK_NAMES = {"ドット", "矢印 (先端でクリック)", "十字線 (精密)", "リング (下が見える)", "大きな黄色 (見つけやすい)", "指", "ピザ", "恐竜", "おばけ", "猫", "ロケット", "ドーナツ", "アヒル", "チーズ"};
 
     static String look() {
         return App.prefs.getString("cursorLook", "dot");
@@ -412,7 +412,7 @@ final class Pointer {
 
         void start(long downTime, boolean pointerOn) {
             this.downTime = downTime;
-            text = pointerOn ? "Keep holding for focus mode" : "Keep holding for pointer";
+            text = pointerOn ? "押し続けるとフォーカスモード" : "押し続けるとポインターモード";
             active = true;
             setVisibility(View.VISIBLE);
             postInvalidateOnAnimation();

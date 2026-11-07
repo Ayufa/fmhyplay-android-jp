@@ -52,11 +52,11 @@ public class CatalogTest {
         check("released parsed", Catalog.parseList("{\"metas\":[{\"id\":\"tt1\",\"name\":\"A\",\"released\":\"2026-10-02T00:00:00.000Z\"}]}", "movie").get(0).released.startsWith("2026-10-02"));
         check("popular path", Catalog.path("movie", "genre=Comedy").equals("/catalog/movie/top/genre=Comedy.json") && Catalog.path("movie", "").equals("/catalog/movie/top.json"));
         Catalog.Title k = new Catalog.Title();
-        check("kind movie", k.kind().equals("Movie"));
+        check("kind movie", k.kind().equals("映画"));
         k.type = "series";
-        check("kind series", k.kind().equals("TV Series"));
+        check("kind series", k.kind().equals("TVシリーズ"));
         k.anime = true;
-        check("kind anime", k.kind().equals("Anime"));
+        check("kind anime", k.kind().equals("アニメ"));
         System.out.println(fails == 0 ? "catalog tests passed" : fails + " failed");
         System.exit(fails == 0 ? 0 : 1);
     }

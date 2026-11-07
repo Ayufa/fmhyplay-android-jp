@@ -172,7 +172,7 @@ public class WebActivity extends Activity {
 
         @Override public boolean onJsConfirm(WebView v, String url, String message, JsResult r) {
             new AlertDialog.Builder(WebActivity.this).setMessage(message)
-                .setPositiveButton("OK", (d, w) -> r.confirm()).setNegativeButton("Cancel", (d, w) -> r.cancel())
+                .setPositiveButton("OK", (d, w) -> r.confirm()).setNegativeButton("キャンセル", (d, w) -> r.cancel())
                 .setOnCancelListener(d -> r.cancel()).show();
             return true;
         }
@@ -181,7 +181,7 @@ public class WebActivity extends Activity {
             EditText in = field(WebActivity.this, "", InputType.TYPE_CLASS_TEXT);
             in.setText(def);
             new AlertDialog.Builder(WebActivity.this).setMessage(message).setView(box(WebActivity.this, in))
-                .setPositiveButton("OK", (d, w) -> r.confirm(in.getText().toString())).setNegativeButton("Cancel", (d, w) -> r.cancel())
+                .setPositiveButton("OK", (d, w) -> r.confirm(in.getText().toString())).setNegativeButton("キャンセル", (d, w) -> r.cancel())
                 .setOnCancelListener(d -> r.cancel()).show();
             return true;
         }
@@ -195,7 +195,7 @@ public class WebActivity extends Activity {
         @Override public boolean onCreateWindow(WebView v, boolean dialog, boolean gesture, Message msg) {
             String link = clickedLink();
             if (gesture && link != null && sameSite(link, v.getUrl())) v.loadUrl(link);
-            else toast("Pop-up blocked");
+            else toast("ポップアップをブロックしました");
             return false;
         }
 
@@ -284,7 +284,7 @@ public class WebActivity extends Activity {
         });
         if (pointer != null && pointer.on && !App.prefs.getBoolean("pointerHint", false)) {
             App.prefs.edit().putBoolean("pointerHint", true).apply();
-            Toast.makeText(this, "Cursor mode: arrows move it, OK taps. Hold OK 5 s to switch to focus mode.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "カーソルモード: 矢印キーで移動、OKでタップ。OKを5秒長押しするとフォーカスモードに切り替わります。", Toast.LENGTH_LONG).show();
         }
 
         WebSettings s = web.getSettings();
@@ -313,11 +313,11 @@ public class WebActivity extends Activity {
                 if (scheme.matches("about|data|blob|javascript")) return false;
                 if (scheme.matches("https?")) {
                     if (!r.isForMainFrame() || r.isRedirect() || sameSite(url, v.getUrl()) || sameSite(url, link)) return false;
-                    toast("Blocked " + r.getUrl().getHost());
+                    toast("ブロック: " + r.getUrl().getHost());
                 } else if (url.equals(link)) {
                     openExternal(url);
                 } else {
-                    toast("Blocked " + scheme + ": link");
+                    toast("ブロック: " + scheme + ": リンク");
                 }
                 return true;
             }
@@ -370,10 +370,10 @@ public class WebActivity extends Activity {
 
         // Don't let the first request leak out before the WARP tunnel is in place
         String url = getIntent().getStringExtra("url");
-        if (Warp.state == Warp.State.CONNECTING) status.setText("Connecting WARP…");
+        if (Warp.state == Warp.State.CONNECTING) status.setText("WARPに接続中…");
         Warp.whenSettled(() -> {
             status.setVisibility(View.GONE);
-            if (Warp.state == Warp.State.FAILED) toast("WARP failed, loading directly");
+            if (Warp.state == Warp.State.FAILED) toast("WARPの接続に失敗しました。そのまま読み込みます");
             Warp.route(!Warp.bypassed(siteOf(String.valueOf(Uri.parse(siteUrl).getHost()))));
             web.loadUrl(url);
             web.requestFocus();
@@ -408,7 +408,7 @@ public class WebActivity extends Activity {
 
     void playNative() {
         Sniffer.Hit h = sniffer.best();
-        if (h == null) { toast("No video found on this page yet"); return; }
+        if (h == null) { toast("このページではまだ動画が見つかりません"); return; }
         sniffer.handedOff(h);
         if (fullscreen != null) chrome.onHideCustomView();
         // The CDN trusts the page that embedded the player, so replay what the WebView sent for the stream (Referer, Origin)
@@ -474,7 +474,7 @@ public class WebActivity extends Activity {
         } catch (ActivityNotFoundException e) {
             String fallback = i.getStringExtra("browser_fallback_url");
             if (fallback != null && fallback.matches("(?i)https?://.*")) web.loadUrl(fallback);
-            else toast("No app can open " + url);
+            else toast("開けるアプリがありません: " + url);
         }
     }
 
@@ -482,15 +482,15 @@ public class WebActivity extends Activity {
         WebViewDatabase db = WebViewDatabase.getInstance(this);
         String[] saved = db.getHttpAuthUsernamePassword(host, realm);
         if (saved != null && h.useHttpAuthUsernamePassword()) { h.proceed(saved[0], saved[1]); return; }
-        EditText user = field(this, "Username", InputType.TYPE_CLASS_TEXT);
-        EditText pass = field(this, "Password", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        new AlertDialog.Builder(this).setTitle("Sign in to " + host).setView(box(this, user, pass))
-            .setPositiveButton("Sign in", (d, w) -> {
+        EditText user = field(this, "ユーザー名", InputType.TYPE_CLASS_TEXT);
+        EditText pass = field(this, "パスワード", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        new AlertDialog.Builder(this).setTitle("サインイン先: " + host).setView(box(this, user, pass))
+            .setPositiveButton("サインイン", (d, w) -> {
                 String u = user.getText().toString(), p = pass.getText().toString();
                 db.setHttpAuthUsernamePassword(host, realm, u, p);
                 h.proceed(u, p);
             })
-            .setNegativeButton("Cancel", (d, w) -> h.cancel())
+            .setNegativeButton("キャンセル", (d, w) -> h.cancel())
             .setOnCancelListener(d -> h.cancel())
             .show();
     }
@@ -498,7 +498,7 @@ public class WebActivity extends Activity {
     void download(String url, String ua, String disposition, String mime, long length) {
         if (Build.VERSION.SDK_INT < 29 && !granted(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
             requestPermissions(new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, REQ_STORAGE);
-            toast("Allow storage, then tap download again");
+            toast("ストレージを許可してから、もう一度ダウンロードをタップしてください");
             return;
         }
         String name = URLUtil.guessFileName(url, disposition, mime);
@@ -516,9 +516,9 @@ public class WebActivity extends Activity {
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, name);
             ((DownloadManager) getSystemService(DOWNLOAD_SERVICE)).enqueue(r);
-            toast("Downloading " + name);
+            toast("ダウンロード中: " + name);
         } catch (Exception e) {
-            toast("Download failed: " + e.getMessage());
+            toast("ダウンロードに失敗しました: " + e.getMessage());
         }
     }
 
@@ -578,9 +578,9 @@ public class WebActivity extends Activity {
                 try (OutputStream out = openDownload(safe, mime.isEmpty() ? "application/octet-stream" : mime)) {
                     out.write(bytes);
                 }
-                runOnUiThread(() -> toast("Saved " + safe + " to Downloads"));
+                runOnUiThread(() -> toast("保存しました: " + safe + "（ダウンロード）"));
             } catch (Exception e) {
-                runOnUiThread(() -> toast("Download failed: " + e.getMessage()));
+                runOnUiThread(() -> toast("ダウンロードに失敗しました: " + e.getMessage()));
             }
         }
 
@@ -668,22 +668,22 @@ public class WebActivity extends Activity {
         boolean off = Warp.bypassed(key);
         List<String> items = new ArrayList<>();
         List<Runnable> acts = new ArrayList<>();
-        items.add("Reload");
+        items.add("再読み込み");
         acts.add(web::reload);
-        if (sniffer.has()) { items.add("Play in native player"); acts.add(this::playNative); }
+        if (sniffer.has()) { items.add("ネイティブプレイヤーで再生"); acts.add(this::playNative); }
         boolean nat = App.prefs.getBoolean("native", true);
-        items.add(nat ? "Native player: auto (switches when a video starts)" : "Native player: off");
-        acts.add(() -> { App.prefs.edit().putBoolean("native", !nat).apply(); toast(nat ? "Native player off" : "Native player on"); });
-        items.add(off ? "Use WARP for " + key : "Don't use WARP for " + key);
-        acts.add(() -> { Warp.setBypassed(key, !off); Warp.route(off, web::reload); toast(off ? "WARP on for this site" : "Loading this site direct"); });
+        items.add(nat ? "ネイティブプレイヤー: 自動（動画が始まると切り替えます）" : "ネイティブプレイヤー: オフ");
+        acts.add(() -> { App.prefs.edit().putBoolean("native", !nat).apply(); toast(nat ? "ネイティブプレイヤーをオフにしました" : "ネイティブプレイヤーをオンにしました"); });
+        items.add(off ? "WARPを使う: " + key : "WARPを使わない: " + key);
+        acts.add(() -> { Warp.setBypassed(key, !off); Warp.route(off, web::reload); toast(off ? "このサイトでWARPをオンにしました" : "このサイトは直接読み込みます"); });
         if (pointer != null) {
-            items.add(pointer.on ? "Switch to focus mode" : "Switch to pointer mode");
+            items.add(pointer.on ? "フォーカスモードに切り替え" : "カーソルモードに切り替え");
             acts.add(() -> { pointer.okSwitched = false; pointer.switchMode(); });
         }
         boolean clean = App.prefs.getBoolean("cleanvideo", true);
-        items.add(clean ? "Smooth video: on (hides page layers over the video)" : "Smooth video: off");
-        acts.add(() -> { App.prefs.edit().putBoolean("cleanvideo", !clean).apply(); toast(clean ? "Smooth video off" : "Smooth video on"); });
-        items.add("Back to home");
+        items.add(clean ? "スムーズ再生: オン（動画に重なるページ要素を隠します）" : "スムーズ再生: オフ");
+        acts.add(() -> { App.prefs.edit().putBoolean("cleanvideo", !clean).apply(); toast(clean ? "スムーズ再生をオフにしました" : "スムーズ再生をオンにしました"); });
+        items.add("ホームに戻る");
         acts.add(this::finish);
         new AlertDialog.Builder(this).setTitle(site)
             .setItems(items.toArray(new String[0]), (d, i) -> acts.get(i).run()).show();
@@ -700,10 +700,10 @@ public class WebActivity extends Activity {
         String key = siteKey();
         if (title.startsWith("Attention Required") && !Warp.bypassed(key) && Warp.state == Warp.State.ON) {
             Warp.setBypassed(key, true);
-            toast("Cloudflare blocked WARP, loading " + key + " direct");
+            toast("CloudflareがWARPをブロックしたため、" + key + " を直接読み込みます");
             Warp.route(false, v::reload);
         } else if (title.startsWith("Just a moment")) {
-            toast(App.tv ? "Cloudflare check: hold OK 5 s for pointer mode, then tick the box" : "Cloudflare check: tick the box");
+            toast(App.tv ? "Cloudflareチェック: OKを5秒長押ししてカーソルモードに切り替え、チェックボックスをオンにしてください" : "Cloudflareチェック: チェックボックスをオンにしてください");
         }
     }
 
@@ -789,17 +789,17 @@ public class WebActivity extends Activity {
 
     /** Type an address (or words to search for) and go there. */
     void editAddress() {
-        EditText in = field(this, "Address", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        EditText in = field(this, "アドレス", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         in.setText(web.getUrl());
         in.selectAll();
-        new AlertDialog.Builder(this).setTitle("Go to").setView(box(this, in))
-            .setPositiveButton("Go", (d, w) -> {
+        new AlertDialog.Builder(this).setTitle("移動").setView(box(this, in))
+            .setPositiveButton("移動", (d, w) -> {
                 String s = in.getText().toString().trim();
                 if (s.isEmpty()) return;
                 if (!s.matches("(?i)^[a-z][a-z0-9+.-]*://.*")) s = s.contains(".") && !s.contains(" ") ? "https://" + s : "https://duckduckgo.com/?q=" + Uri.encode(s);
                 web.loadUrl(s);
             })
-            .setNegativeButton("Cancel", null).show();
+            .setNegativeButton("キャンセル", null).show();
         in.requestFocus();
     }
 

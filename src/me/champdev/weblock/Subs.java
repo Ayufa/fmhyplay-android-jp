@@ -24,7 +24,7 @@ final class Subs {
 
     static String offsetLabel() {
         int o = offset();
-        return o == 0 ? "Default" : (o > 0 ? "Up " : "Down ") + Math.abs(o);
+        return o == 0 ? "デフォルト" : (o > 0 ? "上 " : "下 ") + Math.abs(o);
     }
 
     /** Subtitle text size in percent of the default (22 sp). */
@@ -33,11 +33,11 @@ final class Subs {
     }
 
     static String sizeLabel() {
-        return size() == 100 ? "Default" : size() + "%";
+        return size() == 100 ? "デフォルト" : size() + "%";
     }
 
     static final int[] COLORS = {0xFFFFFFFF, 0xFFFFE14D, 0xFF7FE7FF, 0xFF8CFF8C, 0xFFFFB3D1, 0xFFFFA64D};
-    static final String[] COLOR_NAMES = {"White", "Yellow", "Cyan", "Green", "Pink", "Orange"};
+    static final String[] COLOR_NAMES = {"白", "黄色", "シアン", "緑", "ピンク", "オレンジ"};
 
     /** Subtitle text color, an index into COLORS. */
     static int colorIndex() {
@@ -54,7 +54,7 @@ final class Subs {
     }
 
     static String backgroundLabel() {
-        return background() == 0 ? "Off" : background() + "%";
+        return background() == 0 ? "オフ" : background() + "%";
     }
 
     /** Movies and episodes start with subtitles in your language (stream's own, else OpenSubtitles). Off by default. */
@@ -100,7 +100,7 @@ final class Subs {
     static volatile long delayMs;
 
     static String delayLabel() {
-        return delayMs == 0 ? "In sync" : String.format(Locale.ROOT, "%+.1f s", delayMs / 1000f);
+        return delayMs == 0 ? "同期済み" : String.format(Locale.ROOT, "%+.1f s", delayMs / 1000f);
     }
 
     private static void bump(String key, int def, int by, int min, int max) {
@@ -120,7 +120,7 @@ final class Subs {
         box.setPadding(pad, pad, pad, Home.dp(a, 12));
         box.setBackground(Home.rounded(0xF0181320, Home.dp(a, 18)));
         android.widget.TextView title = new android.widget.TextView(a);
-        title.setText("Subtitles");
+        title.setText("字幕");
         title.setTextColor(Home.TEXT);
         title.setTextSize(20);
         title.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
@@ -128,26 +128,26 @@ final class Subs {
         box.addView(title);
         List<Runnable> refresh = new ArrayList<>();
         Runnable after = () -> { for (Runnable r : refresh) r.run(); changed.run(); };
-        row(a, box, refresh, "Size", Subs::sizeLabel, by -> bump("subSize", 100, 10 * by, 50, 250), after);
-        row(a, box, refresh, "Position", Subs::offsetLabel, by -> bump("subOffset", 0, 10 * by, -100, 200), after);
-        row(a, box, refresh, "Color", () -> COLOR_NAMES[colorIndex()], by -> App.prefs.edit().putInt("subColor", Math.floorMod(colorIndex() + by, COLORS.length)).apply(), after);
-        row(a, box, refresh, "Background", Subs::backgroundLabel, by -> bump("subBg", 50, 25 * by, 0, 100), after);
-        if (timing) row(a, box, refresh, "Timing", Subs::delayLabel, by -> delayMs = Math.max(-30000, Math.min(30000, delayMs + 100L * by)), after);
+        row(a, box, refresh, "サイズ", Subs::sizeLabel, by -> bump("subSize", 100, 10 * by, 50, 250), after);
+        row(a, box, refresh, "位置", Subs::offsetLabel, by -> bump("subOffset", 0, 10 * by, -100, 200), after);
+        row(a, box, refresh, "色", () -> COLOR_NAMES[colorIndex()], by -> App.prefs.edit().putInt("subColor", Math.floorMod(colorIndex() + by, COLORS.length)).apply(), after);
+        row(a, box, refresh, "背景", Subs::backgroundLabel, by -> bump("subBg", 50, 25 * by, 0, 100), after);
+        if (timing) row(a, box, refresh, "タイミング", Subs::delayLabel, by -> delayMs = Math.max(-30000, Math.min(30000, delayMs + 100L * by)), after);
         android.widget.TextView help = new android.widget.TextView(a);
-        help.setText(timing ? "Position: + moves them up.  Background: \u2212 down to Off.  Timing: + shows them later, \u2212 earlier."
-            : "Position: + moves them up.  Background: \u2212 down to Off.  Timing is on the player's Subtitles button.");
+        help.setText(timing ? "位置: + で上へ移動。 背景: \u2212 で下げるとオフ。 タイミング: + で遅く表示、\u2212 で早く表示。"
+            : "位置: + で上へ移動。 背景: \u2212 で下げるとオフ。 タイミングはプレイヤーの字幕ボタンで調整。");
         help.setTextColor(Home.MUTED);
         help.setTextSize(13);
         help.setPadding(0, Home.dp(a, 6), 0, Home.dp(a, 4));
         box.addView(help);
         android.widget.LinearLayout foot = new android.widget.LinearLayout(a);
         foot.setGravity(android.view.Gravity.END);
-        foot.addView(button(a, "Reset", 0, v -> {
+        foot.addView(button(a, "リセット", 0, v -> {
             App.prefs.edit().remove("subSize").remove("subOffset").remove("subBg").remove("subColor").apply();
             if (timing) delayMs = 0;
             after.run();
         }));
-        foot.addView(button(a, "Done", 0, v -> d.dismiss()));
+        foot.addView(button(a, "完了", 0, v -> d.dismiss()));
         box.addView(foot);
         d.setContentView(box);
         android.view.Window w = d.getWindow();
@@ -225,7 +225,7 @@ final class Subs {
                 s.url = o.getString("url");
                 s.lang = o.optString("lang", "und");
                 // The file name tells releases apart (the movie name is the same on every row)
-                s.release = o.optString("subtitleFileName", "").isEmpty() ? o.optString("movieReleaseName", "Subtitle " + (i + 1)) : o.optString("subtitleFileName");
+                s.release = o.optString("subtitleFileName", "").isEmpty() ? o.optString("movieReleaseName", "字幕 " + (i + 1)) : o.optString("subtitleFileName");
                 out.add(s);
             }
             return out;

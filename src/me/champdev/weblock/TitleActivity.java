@@ -99,14 +99,14 @@ public class TitleActivity extends Home {
         buttons.setPadding(0, u(18, 12), 0, u(4, 2));
         Sites.Site site = chosen();
         TextView watch = chip(v -> watch(null));
-        watch.setText(site == null ? "No site available" : "▶  Watch on " + site.name);
+        watch.setText(site == null ? "利用できるサイトがありません" : "▶  視聴： " + site.name);
         watch.setTextColor(0xFFFFFFFF);
         watch.setBackground(rounded(ACCENT, dp(22)));
         focusable(watch, dp(22));
         TextView list = chip(null);
         boolean mine = Catalog.isMine(t.id);
-        list.setText(mine ? "✓  In My list" : "+  My list");
-        list.setOnClickListener(v -> { toast(Catalog.toggleMine(t) ? "Added to My list" : "Removed from My list"); build(); });
+        list.setText(mine ? "✓  マイリストに追加済み" : "+  マイリストに追加");
+        list.setOnClickListener(v -> { toast(Catalog.toggleMine(t) ? "マイリストに追加しました" : "マイリストから削除しました"); build(); });
         buttons.addView(watch);
         buttons.addView(list);
         android.widget.HorizontalScrollView scroller = new android.widget.HorizontalScrollView(this);
@@ -124,7 +124,7 @@ public class TitleActivity extends Home {
         // The sites that carry this kind of title: tap one and its own search box is filled in with the title
         List<Sites.Site> sites = options();
         if (!sites.isEmpty()) {
-            col.addView(heading("Watch on  ·  tap a site to open “" + t.name + "”"));
+            col.addView(heading("視聴する  ·  サイトを選んで「" + t.name + "」を開く"));
             Grid grid = new Grid(col);
             for (Sites.Site s : sites) grid.add(s);
         }
@@ -134,13 +134,13 @@ public class TitleActivity extends Home {
     }
 
     void episodes() {
-        col.addView(heading("Episodes"));
+        col.addView(heading("エピソード"));
         LinearLayout seasons = new LinearLayout(this);
         seasons.setClipChildren(false);
         for (int s = 1; s <= Catalog.seasons(t); s++) {
             final int n = s;
             TextView c = chip(v -> { season = n; build(); });
-            c.setText("Season " + s);
+            c.setText("シーズン " + s);
             c.setTextColor(s == season ? 0xFFFFFFFF : TEXT);
             c.setBackground(rounded(s == season ? ACCENT : CARD, dp(22)));
             focusable(c, dp(22));
@@ -170,7 +170,7 @@ public class TitleActivity extends Home {
             LinearLayout text = new LinearLayout(this);
             text.setOrientation(LinearLayout.VERTICAL);
             text.setPadding(u(16, 10), 0, 0, 0);
-            TextView title = text(e.number + "  " + (e.title.isEmpty() ? "Episode " + e.number : e.title), sp(16, 14), TEXT, true);
+            TextView title = text(e.number + "  " + (e.title.isEmpty() ? "エピソード " + e.number : e.title), sp(16, 14), TEXT, true);
             title.setSingleLine();
             title.setEllipsize(TextUtils.TruncateAt.END);
             text.addView(title);
@@ -221,8 +221,8 @@ public class TitleActivity extends Home {
 
     void watch(Catalog.Episode e) {
         Sites.Site s = chosen();
-        if (s == null) { toast("No site to watch on"); return; }
-        if (e != null) toast("Season " + e.season + ", episode " + e.number + ": pick it on the site");
+        if (s == null) { toast("視聴できるサイトがありません"); return; }
+        if (e != null) toast("シーズン " + e.season + "、エピソード " + e.number + "：サイト側で選択してください");
         startActivity(withTitle(titleIntent(s))
             .putExtra("season", e == null ? 0 : e.season).putExtra("episode", e == null ? 0 : e.number));
     }

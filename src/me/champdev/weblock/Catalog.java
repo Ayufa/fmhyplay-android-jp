@@ -38,7 +38,7 @@ final class Catalog {
 
         boolean series() { return type.equals("series"); }
 
-        String kind() { return anime ? "Anime" : series() ? "TV Series" : "Movie"; }
+        String kind() { return anime ? "アニメ" : series() ? "TVシリーズ" : "映画"; }
     }
 
     /** One catalog page. type = movie|series; extra = "" | "genre=Comedy" | "skip=50" | "search=text". Null when offline with nothing cached. */
