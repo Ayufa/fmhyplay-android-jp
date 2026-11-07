@@ -579,7 +579,7 @@ final class Iptv {
 
     static String country(String code) {
         if (code.equals("uk")) code = "gb";
-        String n = new Locale("", code.toUpperCase(Locale.ROOT)).getDisplayCountry(Locale.ENGLISH);
+        String n = new Locale("", code.toUpperCase(Locale.ROOT)).getDisplayCountry(Locale.JAPANESE);
         return n.isEmpty() ? code.toUpperCase(Locale.ROOT) : n;
     }
 
@@ -747,7 +747,7 @@ final class Iptv {
             flags = new java.util.HashMap<>();
             for (String iso : Locale.getISOCountries()) {
                 String f = new String(Character.toChars(0x1F1E6 + iso.charAt(0) - 'A')) + new String(Character.toChars(0x1F1E6 + iso.charAt(1) - 'A'));
-                flags.put(new Locale("", iso).getDisplayCountry(Locale.ENGLISH), f);
+                flags.put(country(iso.toLowerCase(Locale.ROOT)), f);   // keyed by the same names country() hands out
             }
         }
         String f = flags.get(name);

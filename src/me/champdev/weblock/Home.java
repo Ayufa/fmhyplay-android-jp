@@ -190,7 +190,7 @@ public class Home extends Activity {
 
         List<Sites.Site> more = Sites.load().get(Cats.MORE);
         if (more != null) {
-            col.addView(heading(Cats.MORE));
+            col.addView(heading("その他"));
             siteRow(Cats.MORE, more);
         }
 
@@ -450,7 +450,7 @@ public class Home extends Activity {
         if (category.equals(Cats.ANIME)) titleRow("新着アニメ", "series", Catalog.NEW_ANIME, -1);
         String genre = fixedGenre.isEmpty() ? genres.getOrDefault(tab, Catalog.NEW) : fixedGenre;
         col.addView(heading(fixedGenre.isEmpty() ? (genre.isEmpty() ? "人気" : genre.equals(Catalog.NEW) ? "新着"
-            : genre) : "人気の " + fixedGenre.toLowerCase()));
+            : JaLabels.genre(genre)) : "人気の " + fixedGenre.toLowerCase()));
         if (fixedGenre.isEmpty()) col.addView(genreChips());
         LinearLayout holder = new LinearLayout(this);
         holder.setOrientation(LinearLayout.VERTICAL);
@@ -468,7 +468,7 @@ public class Home extends Activity {
         all[1] = "";
         for (String g : all) {
             TextView c = chip(v -> { genres.put(tab, g); focusGenre = g; build(); });
-            c.setText(g.isEmpty() ? "人気" : g);
+            c.setText(g.isEmpty() ? "人気" : g.equals(Catalog.NEW) ? "新着" : JaLabels.genre(g));
             c.setTextColor(g.equals(now) ? Color.WHITE : TEXT);
             c.setBackground(rounded(g.equals(now) ? ACCENT : CARD, dp(22)));
             focusable(c, dp(22));
@@ -620,7 +620,7 @@ public class Home extends Activity {
         // Square tiles: 6 across on a TV, 3 on a phone; an emoji icon (flag for countries) over the name and count
         col.addView(heading("カテゴリ"));
         Grid cats = new Grid(col, cols);
-        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(iptvTile(cats.cell, Iptv.emoji(e.getKey()), e.getKey(), e.getValue().size(), "cat", e.getKey()));
+        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(iptvTile(cats.cell, Iptv.emoji(e.getKey()), JaLabels.iptvCategory(e.getKey()), e.getValue().size(), "cat", e.getKey()));
         col.addView(heading("国・地域"));
         Grid countries = new Grid(col, cols);
         for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("country").entrySet()) countries.add(iptvTile(countries.cell, Iptv.flag(e.getKey()), e.getKey(), e.getValue().size(), "country", e.getKey()));

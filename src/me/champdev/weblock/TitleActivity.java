@@ -75,7 +75,7 @@ public class TitleActivity extends Home {
         line.setPadding(0, dp(6), 0, 0);
         info.addView(line);
         if (!t.genres.isEmpty()) {
-            TextView genres = text(t.genres, sp(14, 12), MUTED, false);
+            TextView genres = text(JaLabels.genres(t.genres), sp(14, 12), MUTED, false);
             genres.setPadding(0, dp(3), 0, 0);
             info.addView(genres);
         }
