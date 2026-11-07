@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 
 /** Looks for a newer release on GitHub and installs its APK over this app (same signing key, so Android takes it as an update). */
 final class Update {
-    static final String API = "https://api.github.com/repos/fmhyplay/android/releases?per_page=15";   // newest first
+    static final String API = "https://api.github.com/repos/Ayufa/fmhyplay-android-jp/releases?per_page=15";   // newest first
     static final long EVERY = 12L * 3600 * 1000;
     private static volatile boolean busy;
     private static BroadcastReceiver waiting;   // listens for the installer's answer; one at a time

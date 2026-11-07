@@ -2,6 +2,14 @@
 
 Each release is a tag `vMAJOR.MINOR.PATCH` that publishes both APKs. The notes for a version are its section here. Earlier releases are on the Releases page.
 
+## 1.0.0
+
+日本語化版の初回リリース（ベースは上流 v2.15.0）。
+
+- アプリのUI文字列を日本語化（ブランド名、設定キー、照合用文字列、内部ログは動作を壊さないため英語のまま）
+- アプリ内アップデートの参照先をこのリポジトリのリリースに変更（上流版の更新が混ざらないようにするため）
+- 署名キーはこのリポジトリ専用のものを新規発行。上流版とは署名が異なるため、上流版の上書きインストールはできません（先にアンインストールが必要です）
+
 ## 2.15.0
 
 - New Home: the name, WARP, Ad block, Search (as wide as the screen allows) and voice across the top; the tabs (Settings is one of them again) below it on a TV, at the bottom on a phone. Then Continue watching, Favorites (once you have some), and Movies, TV and Anime, each with New (newest releases first) and Popular (anime: what is trending on Kitsu).
