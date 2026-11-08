@@ -46,7 +46,7 @@ Streaming sites are built for a desktop browser with a mouse. On a TV remote the
 
 **Series and anime**
 - **Episodes** list in the player (seasons, stills, names), **Previous** and **Next**, and the next episode starts by itself
-- **Skip intro, recap and credits** (times from TheIntroDB and AniSkip), with a Next episode countdown at the credits; *Settings, Skip intros* skips them for you
+- **Skip intro, recap and credits** (times from TheIntroDB and AniSkip), with a Next episode button at the credits; *Settings, Skip intros* skips them for you
 - **Sub / Dub** button for anime, remembered per site
 - Opens the exact episode directly on 34 TV sites and 22 anime sites; elsewhere it presses the episode in the site's own list or menus
 

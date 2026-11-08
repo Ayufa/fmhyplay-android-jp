@@ -109,7 +109,6 @@
     <string name="player_skip_intro">Intro überspringen</string>
     <string name="player_skip_recap">Rückblick überspringen</string>
     <string name="player_skip_credits">Abspann überspringen</string>
-    <string name="player_next_in">Nächste Folge · %1$d</string>
     <string name="player_no_subs_lang">Keine Untertitel auf %1$s dafür</string>
     <string name="player_subs_failed">Untertiteldatei konnte nicht geladen werden</string>
     <string name="player_subs_synced">Untertitel angepasst (%1$s)</string>

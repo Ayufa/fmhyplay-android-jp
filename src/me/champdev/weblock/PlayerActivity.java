@@ -99,7 +99,6 @@ public class PlayerActivity extends Activity {
     List<Skips.Part> skips = new ArrayList<>();
     final java.util.Set<Skips.Part> skipDone = new java.util.HashSet<>();   // skipped, or the next episode was refused by seeking back
     Skips.Part skipShown;
-    long countdownMs;           // the Next episode countdown left, while the credits play
     boolean skipsAsked;
     Skips.Part tail;            // the last 30 s, when no credits are known for this copy
     int cutTop, cutRight;       // the camera cutout's room at the top and right (the Episodes list keeps clear of it)
@@ -1316,7 +1315,7 @@ public class PlayerActivity extends Activity {
 
     /**
      * Every half second: in an intro or recap, offer to skip it; in the credits (or the next-episode preview), offer the next
-     * episode with a 10 s countdown (it plays by itself at 0), or to skip the credits when they don't run to the end.
+     * episode (only a press moves on), or to skip the credits when they don't run to the end.
      */
     void checkSkip() {
         if (player == null || inPip) return;   // the small window is just the picture
@@ -1328,20 +1327,18 @@ public class PlayerActivity extends Activity {
             // No credits known inside this copy (none timed, or the site's cut is shorter): the last 30 s of an episode count
             if (now == null && next != null && dur - pos < 30000) {
                 boolean known = false;
-                for (Skips.Part p : skips) if ((p.kind.equals("credits") || p.kind.equals("preview")) && p.start < dur) known = true;
+                for (Skips.Part p : skips) if (p.closing() && p.usable(dur) && p.start < dur) known = true;
                 if (!known) {
                     if (tail == null || tail.start != dur - 30000) tail = new Skips.Part("credits", dur - 30000, -1);
                     if (!skipDone.contains(tail)) now = tail;
                 }
             }
         }
-        boolean end = now != null && (now.kind.equals("credits") || now.kind.equals("preview"));
+        boolean end = now != null && now.closing();
         if (now == null || (end && next == null && now.end < 0)) { skipShown = null; skipBtn.setVisibility(View.GONE); return; }
-        if (now != skipShown) { skipShown = now; countdownMs = 10000; }
+        skipShown = now;
         if (end && next != null) {
-            if (player.isPlaying()) countdownMs -= 500;
-            if (countdownMs <= 0) { skipDone.add(now); playEpisode(next[0], next[1]); return; }
-            skipBtn.setText(App.t(R.string.player_next_in, (int) Math.ceil(countdownMs / 1000.0)));
+            skipBtn.setText(App.t(R.string.player_next_episode, next[0], next[1]));
         } else {
             // Settings, Skip intros: an intro or recap goes by itself (credits still ask: they may hide a scene)
             if (!end && App.prefs.getBoolean("autoSkip", false) && player.isPlaying()) {
@@ -1364,7 +1361,7 @@ public class PlayerActivity extends Activity {
         skipDone.add(p);
         skipBtn.setVisibility(View.GONE);
         int[] next = episodeStep(1);
-        if ((p.kind.equals("credits") || p.kind.equals("preview")) && next != null) { playEpisode(next[0], next[1]); return; }
+        if (p.closing() && next != null) { playEpisode(next[0], next[1]); return; }
         // land after the intro, never a few seconds back in it (the usual seek snaps to the nearest key frame)
         player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.NEXT_SYNC);
         player.seekTo(p.end < 0 ? player.getDuration() : p.end);

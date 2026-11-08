@@ -235,6 +235,7 @@ final class Catalog {
             if (!full.rating.isEmpty()) t.rating = full.rating;
             t.episodes.clear();
             t.episodes.addAll(full.episodes);
+            if (!t.anime && t.genres.contains("Animation") && isAnime(t.id)) t.anime = true;   // also a title known only by its page's name (Continue watching)
         } catch (JSONException ignored) { }
     }
 

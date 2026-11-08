@@ -24,8 +24,17 @@ final class Skips {
             this.end = end;
         }
 
+        boolean closing() {
+            return kind.equals("credits") || kind.equals("preview");
+        }
+
+        /** Credits come near the end. TheIntroDB also lists opening titles as "credits" (Death Note: 0:00 to 2:03). */
+        boolean usable(long duration) {
+            return !closing() || start >= duration * 2 / 3;
+        }
+
         boolean has(long pos, long duration) {
-            return pos >= start && pos < (end < 0 ? duration : end);
+            return usable(duration) && pos >= start && pos < (end < 0 ? duration : end);
         }
     }
 

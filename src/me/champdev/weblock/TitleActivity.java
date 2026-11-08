@@ -31,7 +31,6 @@ public class TitleActivity extends Home {
         App.io.execute(() -> {
             Catalog.fill(t);
             // An animated title from the movie / TV catalog (or search, My list) that the anime databases know: show anime sites
-            if (!t.anime && t.genres.contains("Animation") && Catalog.isAnime(t.id)) t.anime = true;
             runOnUiThread(() -> {
                 if (t.series() && Catalog.seasons(t) > 0 && season > Catalog.seasons(t)) season = 1;
                 refocus = true;

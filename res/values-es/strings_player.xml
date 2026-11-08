@@ -109,7 +109,6 @@
     <string name="player_skip_intro">Saltar intro</string>
     <string name="player_skip_recap">Saltar resumen</string>
     <string name="player_skip_credits">Saltar créditos</string>
-    <string name="player_next_in">Siguiente episodio · %1$d</string>
     <string name="player_no_subs_lang">No hay subtítulos en %1$s para esto</string>
     <string name="player_subs_failed">No se pudo cargar el archivo de subtítulos</string>
     <string name="player_subs_synced">Subtítulos sincronizados (%1$s)</string>

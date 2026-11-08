@@ -109,7 +109,6 @@
     <string name="player_skip_intro">Pular abertura</string>
     <string name="player_skip_recap">Pular resumo</string>
     <string name="player_skip_credits">Pular créditos</string>
-    <string name="player_next_in">Próximo episódio · %1$d</string>
     <string name="player_no_subs_lang">Sem legendas em %1$s para este</string>
     <string name="player_subs_failed">Não foi possível carregar o arquivo de legenda</string>
     <string name="player_subs_synced">Legendas sincronizadas (%1$s)</string>
