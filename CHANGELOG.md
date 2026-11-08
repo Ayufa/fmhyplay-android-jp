@@ -2,6 +2,12 @@
 
 Each `vX.Y.Z` tag publishes the TV and Android APKs; its section below becomes the release notes.
 
+## 1.3.0
+
+- 上流 v2.16.0〜v2.17.1 を取り込みました。主な新機能: TV へのキャスト（FMHYPlay 同士／Chromecast／DLNA）、Stalker ポータル（MAC ログイン）、PunchPlay 視聴トラッキング、IPTV のカテゴリ/言語フィルタとピン留め、音声言語の記憶、ダイアログブーストの修正など
+- 日本語化の方式を変更しました。上流が UI 文字列を文字列リソースに移行したのに合わせ、日本語訳も res/values-ja（450件）に移行。端末の言語設定が日本語なら自動で日本語表示になります（従来の日本語訳の文言は引き継いでいます）
+- 邦題表示（Wikidata）、ジャンル名・IPTV カテゴリ名・国名・字幕言語名の日本語表示は従来どおり維持しています
+
 ## 2.17.1
 
 ### 🐞 Fixed

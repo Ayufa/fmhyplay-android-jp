@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stalker_button">Stalker ポータル (MAC)</string>
+    <string name="stalker_title">Stalker ポータル</string>
+    <string name="stalker_msg">IPTV プロバイダから提供されたポータルのアドレスと MAC アドレスです（MAG ボックスのログイン情報）</string>
+    <string name="stalker_portal_hint">ポータル（例: http://example.com:8080/c/）</string>
+    <string name="stalker_mac_hint">MAC アドレス（例: 00:1A:79:12:34:56）</string>
+    <string name="stalker_bad_mac">MAC アドレスは6組のペアです（例: 00:1A:79:12:34:56）</string>
+    <string name="stalker_cant_sign_in">サインインできません: ポータルのアドレスと MAC アドレスを確認してください</string>
+    <string name="stalker_no_link">ポータルからこのチャンネルのリンクが返されませんでした。少し待ってからもう一度お試しください。</string>
+</resources>
