@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.Set;
  */
 final class Iptv {
     static final String MAIN = "https://iptv-org.github.io/iptv/index.m3u";
+    static final String LANGUAGES = "https://iptv-org.github.io/iptv/index.language.m3u";   // the same streams grouped by language
     /** Where the source list comes from until you change it in Settings. */
     static final String DEFAULT_EXTRAS = "https://raw.githubusercontent.com/fmhyplay/sources/main/sources.txt";
     private static List<String[]> adultSources;
@@ -103,6 +105,7 @@ final class Iptv {
         String name = "", logo = "", url = "", ua = "", ref = "", country = "", group = "", source = "";
         String playlist = "";   // which of your playlists it came from (its address), "" for the rest
         String[] cats = {"Other"};
+        String[] langs = {};    // languages it broadcasts in (iptv-org channels only), e.g. "Hindi", "English"
         boolean adult;
     }
 
@@ -116,7 +119,7 @@ final class Iptv {
     static boolean stale() {
         // Also when a newly added extra source has never been downloaded
         int n = adultSources().size();
-        return System.currentTimeMillis() - file("iptv.m3u").lastModified() > REFRESH || (n > 0 && !file("iptv-adult" + (n - 1) + ".m3u").exists()) || (!extrasUrl().isEmpty() && !file("iptv-extras.txt").exists()) || missingMine();
+        return System.currentTimeMillis() - file("iptv.m3u").lastModified() > REFRESH || !file("iptv-lang.m3u").exists() || (n > 0 && !file("iptv-adult" + (n - 1) + ".m3u").exists()) || (!extrasUrl().isEmpty() && !file("iptv-extras.txt").exists()) || missingMine();
     }
 
     private static Boolean adultThere;
@@ -139,6 +142,8 @@ final class Iptv {
     static synchronized List<Channel> all() {
         if (cache == null) {
             List<Channel> out = new ArrayList<>(parse(read("iptv.m3u"), false));
+            Map<String, List<String>> langs = languages(read("iptv-lang.m3u"));
+            for (Channel c : out) { List<String> l = langs.get(c.url); if (l != null) c.langs = l.toArray(new String[0]); }
             // The playlists you added: one category ("My playlists"), every entry kept as it is
             for (String url : mine()) {
                 for (Channel c : parse(read(mineFile(url)), false)) {
@@ -164,6 +169,23 @@ final class Iptv {
         List<Channel> out = new ArrayList<>();
         boolean hide = hideDead();
         for (Channel c : cache) if ((adultOn() || !c.adult) && !(hide && isDead(c.url))) out.add(c);
+        return out;
+    }
+
+    /** Stream address to its languages, from iptv-org's by-language playlist (a stream is listed once per language). */
+    static Map<String, List<String>> languages(String m3u) {
+        Map<String, List<String>> out = new HashMap<>();
+        String group = null;
+        for (String line : m3u.split("\n")) {
+            line = line.trim();
+            if (line.startsWith("#EXTINF")) {
+                java.util.regex.Matcher m = java.util.regex.Pattern.compile("group-title=\"([^\"]*)\"").matcher(line);
+                group = m.find() ? m.group(1) : null;
+            } else if (!line.isEmpty() && !line.startsWith("#") && group != null) {
+                for (String g : group.split(";")) if (!g.isEmpty() && !g.equals("Undefined")) out.computeIfAbsent(line, k -> new ArrayList<>(2)).add(g);
+                group = null;
+            }
+        }
         return out;
     }
 
@@ -251,9 +273,9 @@ final class Iptv {
 
     /** One line for the top of the IPTV tab, "" when there is nothing to say. */
     static String statusLine() {
-        if (sweeping) return "チャンネルを確認中\u2026 " + sweepDone + " / " + sweepTotal + " 件を確認済み、オフラインのチャンネルは非表示です";
+        if (sweeping) return App.t(R.string.iptv_checking, sweepDone, sweepTotal);
         int dead = deadCount();
-        return dead > 0 && hideDead() ? dead + " 件のオフラインのチャンネルを非表示にしています" : "";
+        return dead > 0 && hideDead() ? App.t(R.string.iptv_offline_hidden, dead) : "";
     }
 
     /** Is the stream reachable: the playlist or first bytes come back and are not a web page. */
@@ -294,9 +316,9 @@ final class Iptv {
                 Set<String> first = new HashSet<>();
                 for (Channel c : favorites()) first.add(c.url);
                 for (Channel c : history()) first.add(c.url);
-                // Never your own per-account streams (user/pass/id, as Xtream providers serve): an account allows one or two connections
-                // at a time, and 16 checks at once could get it locked
-                raw.removeIf(c -> c.cats[0].equals(MINE) && ACCOUNT.matcher(String.valueOf(Uri.parse(c.url).getPath())).matches());
+                // Never your own per-account streams (user/pass/id, as Xtream providers serve, or a Stalker portal's): an account allows one or
+                // two connections at a time, and 16 checks at once could get it locked
+                raw.removeIf(c -> c.url.startsWith(Stalker.SCHEME) || c.cats[0].equals(MINE) && ACCOUNT.matcher(String.valueOf(Uri.parse(c.url).getPath())).matches());
                 for (Channel c : raw) if (first.contains(c.url) && !known(c.url)) todo.add(c);
                 for (Channel c : raw) if (!first.contains(c.url) && !known(c.url)) todo.add(c);
                 sweepDone = 0;
@@ -328,6 +350,7 @@ final class Iptv {
         loading = true;
         try {
             boolean ok = save(MAIN, "iptv.m3u");
+            save(LANGUAGES, "iptv-lang.m3u");
             if (!extrasUrl().isEmpty()) saveText(extrasUrl(), "iptv-extras.txt");
             reloadExtras();
             String links = special("deeplinks");
@@ -378,13 +401,14 @@ final class Iptv {
         return Uri.parse(url).getPath() != null && Uri.parse(url).getPath().endsWith("/player_api.php");
     }
 
-    /** The name you gave a playlist; without one its address, or "host · Xtream (user)" so a password never shows. */
+    /** The name you gave a playlist; without one its address, or "host · Xtream (user)" / "host · Stalker" so a password or MAC never shows. */
     static String playlistName(String url) {
         String named = names().optString(url, "");
         if (!named.isEmpty()) return named;
         Uri u = Uri.parse(url);
-        return isXtream(url) ? u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "") + " \u00B7 Xtream (" + u.getQueryParameter("username") + ")"
-            : url.replaceFirst("(?i)^https?://", "");
+        String host = u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "");
+        return isXtream(url) ? host + " \u00B7 Xtream (" + u.getQueryParameter("username") + ")"
+            : Stalker.isAccount(url) ? host + " \u00B7 Stalker" : url.replaceFirst("(?i)^https?://", "");
     }
 
     static org.json.JSONObject names() {
@@ -428,7 +452,7 @@ final class Iptv {
      */
     static boolean fetchMine(String url) {
         try {
-            String text = isXtream(url) ? xtreamPlaylist(url) : download(url);
+            String text = isXtream(url) ? xtreamPlaylist(url) : Stalker.isAccount(url) ? Stalker.playlist(url, Warp.proxyFor(Uri.parse(url).getHost())) : download(url);
             if (text == null || !text.trim().startsWith("#EXTM3U")) return false;
             if (parse(text, false).isEmpty() && text.contains("#EXT-X-"))
                 text = "#EXTM3U\n#EXTINF:-1 group-title=\"" + STREAMS + "\"," + (names().has(url) ? names().optString(url) : streamName(url)) + "\n" + url + "\n";
@@ -457,14 +481,14 @@ final class Iptv {
         String url = raw.trim();
         if (!url.matches("(?i)https?://.+")) url = "https://" + url;
         List<String> now = mine();
-        if (now.contains(url)) return "すでに追加されています";
+        if (now.contains(url)) return App.t(R.string.iptv_already_added);
         name(url, name);   // before the download: a single stream link takes it as its channel name
         if (!fetchMine(url)) {
             name(url, null);
-            return isXtream(url) ? "サインインできません: サーバー、ユーザー名、パスワードを確認してください" : "プレイリストまたはストリームのリンクではないか、接続できません";
+            return App.t(isXtream(url) ? R.string.iptv_cant_sign_in : Stalker.isAccount(url) ? R.string.stalker_cant_sign_in : R.string.iptv_not_playlist);
         }
         int n = parse(read(mineFile(url)), false).size();
-        if (n == 0) { file(mineFile(url)).delete(); name(url, null); return "そのプレイリストにチャンネルがありません"; }
+        if (n == 0) { file(mineFile(url)).delete(); name(url, null); return App.t(R.string.iptv_no_channels); }
         now.add(url);
         saveMine(now);
         return null;
@@ -532,7 +556,7 @@ final class Iptv {
                 boolean skip = adult && (CAM.matcher(c.name).find() || PANEL.matcher(line).find() || VOD.matcher(line).find() || ACCOUNT.matcher(String.valueOf(Uri.parse(line).getPath())).matches());
                 // A name with no letter in it ("", "#", "#00054", "1234") is not a channel anyone can pick
                 boolean named = c.name.codePoints().anyMatch(Character::isLetter) && !OLERO.matcher(c.name).find();
-                if (line.startsWith("http") && named && !skip) { c.url = clean(line); out.add(c); }
+                if ((line.startsWith("http") || line.startsWith(Stalker.SCHEME)) && named && !skip) { c.url = clean(line); out.add(c); }
                 c = null;
             }
         }
@@ -583,7 +607,89 @@ final class Iptv {
         return n.isEmpty() ? code.toUpperCase(Locale.ROOT) : n;
     }
 
-    /** Group name to channels. by = "cat" (A to Z, Mature among them) or "country" (biggest first, your own country on top). */
+    // ---- pins: a channel list with its chips (India · Hindi · News) kept as its own row on the IPTV tab ----
+
+    static final class Pin {
+        String type = "", key = "", title = "", cat = "", lang = "";
+
+        boolean same(String t, String k, String c, String l) { return type.equals(t) && key.equals(k) && cat.equals(c) && lang.equals(l); }
+    }
+
+    static List<Pin> pins() {
+        List<Pin> out = new ArrayList<>();
+        try {
+            org.json.JSONArray a = new org.json.JSONArray(App.prefs.getString("iptvPins", "[]"));
+            for (int i = 0; i < a.length(); i++) {
+                org.json.JSONObject o = a.getJSONObject(i);
+                Pin p = new Pin();
+                p.type = o.optString("type"); p.key = o.optString("key"); p.title = o.optString("title");
+                p.cat = o.optString("cat"); p.lang = o.optString("lang");
+                out.add(p);
+            }
+        } catch (org.json.JSONException ignored) { }
+        return out;
+    }
+
+    static boolean isPinned(String type, String key, String cat, String lang) {
+        for (Pin p : pins()) if (p.same(type, key, cat, lang)) return true;
+        return false;
+    }
+
+    /** Pins the list with these chips, or unpins it; true when it is pinned now. */
+    static boolean togglePin(String type, String key, String title, String cat, String lang) {
+        List<Pin> list = pins();
+        boolean had = list.removeIf(p -> p.same(type, key, cat, lang));
+        if (!had) {
+            Pin p = new Pin();
+            p.type = type; p.key = key; p.title = title; p.cat = cat; p.lang = lang;
+            list.add(p);
+        }
+        org.json.JSONArray a = new org.json.JSONArray();
+        try {
+            for (Pin p : list) a.put(new org.json.JSONObject().put("type", p.type).put("key", p.key).put("title", p.title).put("cat", p.cat).put("lang", p.lang));
+        } catch (org.json.JSONException ignored) { }
+        App.prefs.edit().putString("iptvPins", a.toString()).apply();
+        return !had;
+    }
+
+    /** The list's channels that match its chips: category by key, language by name; "" means any. */
+    static List<Channel> filter(List<Channel> in, String cat, String lang) {
+        List<Channel> out = new ArrayList<>();
+        for (Channel c : in) if ((cat.isEmpty() || java.util.Arrays.asList(c.cats).contains(cat)) && (lang.isEmpty() || java.util.Arrays.asList(c.langs).contains(lang))) out.add(c);
+        return out;
+    }
+
+    /** What people look for first: movies, TV, kids, then information; the rest after these by size. */
+    static final List<String> CATEGORY_ORDER = java.util.Arrays.asList("Movies", "Series", "Entertainment", "General", "Kids", "Animation", "Family",
+        "News", "Documentary", "Education", "Science", "Sports", "Music", "Comedy", "Lifestyle", "Cooking", "Travel", "Culture", "Classic");
+
+    /** Sorts category keys: CATEGORY_ORDER first, then the rest by how many channels (`size`) they have. */
+    static java.util.Comparator<String> categoryRank(java.util.function.ToIntFunction<String> size) {
+        return (a, b) -> {
+            int ia = CATEGORY_ORDER.indexOf(a), ib = CATEGORY_ORDER.indexOf(b);
+            if (ia >= 0 || ib >= 0) return ia < 0 ? 1 : ib < 0 ? -1 : ia - ib;
+            int d = size.applyAsInt(b) - size.applyAsInt(a);
+            return d != 0 ? d : a.compareToIgnoreCase(b);
+        };
+    }
+
+    /**
+     * Sorts languages: the one picked on the player's Audio button, then the list's biggest language, then English, then the rest
+     * by size (India: Hindi, English, Tamil, ...; the US: English, Spanish, ...).
+     */
+    static List<String> rankLanguages(Map<String, Integer> count) {
+        List<String> bySize = new ArrayList<>(count.keySet());
+        bySize.sort((a, b) -> count.get(b) - count.get(a) != 0 ? count.get(b) - count.get(a) : a.compareToIgnoreCase(b));
+        java.util.LinkedHashSet<String> out = new java.util.LinkedHashSet<>();
+        String picked = App.prefs.getString("audioLang", "");
+        if (!picked.isEmpty() && count.containsKey(new Locale(picked).getDisplayLanguage(Locale.ENGLISH))) out.add(new Locale(picked).getDisplayLanguage(Locale.ENGLISH));
+        if (!bySize.isEmpty()) out.add(bySize.get(0));
+        if (count.containsKey("English")) out.add("English");
+        out.addAll(bySize);
+        return new ArrayList<>(out);
+    }
+
+    /** Group name to channels. by = "cat" (movies, TV, kids, news first: categoryRank) or "country" (biggest first, your own country on top). */
     static Map<String, List<Channel>> groups(String by) {
         Map<String, List<Channel>> m = new LinkedHashMap<>();
         for (Channel c : all()) {
@@ -591,7 +697,10 @@ final class Iptv {
             for (String k : keys) if (!k.isEmpty() && !(by.equals("cat") && k.equals(MINE))) m.computeIfAbsent(k, x -> new ArrayList<>()).add(c);
         }
         List<Map.Entry<String, List<Channel>>> es = new ArrayList<>(m.entrySet());
-        if (by.equals("cat")) es.sort((a, b) -> a.getKey().compareToIgnoreCase(b.getKey()));
+        if (by.equals("cat")) {
+            java.util.Comparator<String> rank = categoryRank(k -> m.get(k).size());
+            es.sort((a, b) -> rank.compare(a.getKey(), b.getKey()));
+        }
         else es.sort((a, b) -> b.getValue().size() - a.getValue().size());
         Map<String, List<Channel>> out = new LinkedHashMap<>();
         String mine = country(Locale.getDefault().getCountry().isEmpty() ? "us" : Locale.getDefault().getCountry().toLowerCase(Locale.ROOT));
@@ -678,7 +787,22 @@ final class Iptv {
         Map<String, String> hd = new java.util.HashMap<>();
         if (!c.ua.isEmpty()) hd.put("User-Agent", c.ua);
         if (!c.ref.isEmpty()) hd.put("Referer", c.ref);
-        ctx.startActivity(PlayerActivity.open(ctx, c.url, false, hd, new ArrayList<>(), c.name).putExtra("mime", mime(c.url)));
+        if (!c.url.startsWith(Stalker.SCHEME)) {
+            ctx.startActivity(PlayerActivity.open(ctx, c.url, false, hd, new ArrayList<>(), c.name).putExtra("mime", mime(c.url)));
+            return;
+        }
+        // A Stalker channel: the portal makes a link for this play (it carries a token that runs out)
+        App.io.execute(() -> {
+            String url;
+            try { url = Stalker.link(c.url, Warp.proxyFor(Uri.parse(c.url.substring(Stalker.SCHEME.length())).getHost())); } catch (IOException e) { url = null; }
+            String link = url;
+            App.main.post(() -> {
+                if (link == null) { android.widget.Toast.makeText(ctx, App.t(R.string.stalker_no_link), android.widget.Toast.LENGTH_LONG).show(); return; }
+                // MAG portals mostly send MPEG-TS from a .php address, which mime() would take for HLS
+                String type = link.toLowerCase(Locale.ROOT).contains("m3u8") ? "application/x-mpegURL" : mime(link).contains("dash") ? mime(link) : "";
+                ctx.startActivity(PlayerActivity.open(ctx, link, false, hd, new ArrayList<>(), c.name).putExtra("mime", type).putExtra("channel", c.url));
+            });
+        });
     }
 
     static List<Channel> favorites() {

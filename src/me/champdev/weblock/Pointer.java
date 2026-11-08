@@ -186,7 +186,7 @@ final class Pointer {
             dot.setVisibility(View.GONE);
             host.web().evaluateJavascript("window.__fpResume&&__fpResume()", null);
         }
-        badge.setText(on ? "ポインターモード  ·  OKを5秒長押しでフォーカスモード" : "フォーカスモード  ·  OKを5秒長押しでポインターモード");
+        badge.setText(App.t(on ? R.string.pointer_mode_on : R.string.pointer_mode_off));
         badge.setAlpha(1);
         badge.setVisibility(View.VISIBLE);
         badge.animate().cancel();
@@ -263,7 +263,15 @@ final class Pointer {
     /** The pointer in the chosen look (no shadow); a quick pulse on tap. */
     // Cursor looks (Settings, Cursor look): drawn ones that help (an arrow clicks at its tip), then emoji with the click point marked by a small dot
     static final String[] LOOKS = {"dot", "arrow", "cross", "ring", "big", "\uD83D\uDC46", "\uD83C\uDF55", "\uD83E\uDD96", "\uD83D\uDC7B", "\uD83D\uDC31", "\uD83D\uDE80", "\uD83C\uDF69", "\uD83E\uDD86", "\uD83E\uDDC0"};
-    static final String[] LOOK_NAMES = {"ドット", "矢印 (先端でクリック)", "十字線 (精密)", "リング (下が見える)", "大きな黄色 (見つけやすい)", "指", "ピザ", "恐竜", "おばけ", "猫", "ロケット", "ドーナツ", "アヒル", "チーズ"};
+    // Their names, in the same order (a label may end in " (hint)", which lookName() leaves out)
+    static final int[] LOOK_LABELS = {R.string.pointer_look_dot, R.string.pointer_look_arrow, R.string.pointer_look_cross, R.string.pointer_look_ring,
+        R.string.pointer_look_big, R.string.pointer_look_finger, R.string.pointer_look_pizza, R.string.pointer_look_dino, R.string.pointer_look_ghost,
+        R.string.pointer_look_cat, R.string.pointer_look_rocket, R.string.pointer_look_donut, R.string.pointer_look_duck, R.string.pointer_look_cheese};
+
+    /** A look's name for the picker, in the phone's or TV's language. */
+    static String lookLabel(int i) {
+        return App.t(LOOK_LABELS[i]);
+    }
 
     static String look() {
         return App.prefs.getString("cursorLook", "dot");
@@ -277,8 +285,8 @@ final class Pointer {
     }
 
     static String lookName() {
-        for (int i = 0; i < LOOKS.length; i++) if (LOOKS[i].equals(look())) return lookIcon(i) + "  " + LOOK_NAMES[i].replaceFirst(" \\(.*", "");
-        return LOOK_NAMES[0];
+        for (int i = 0; i < LOOKS.length; i++) if (LOOKS[i].equals(look())) return lookIcon(i) + "  " + lookLabel(i).replaceFirst(" \\(.*", "");
+        return lookLabel(0);
     }
 
     static final class Dot extends View {
@@ -412,7 +420,7 @@ final class Pointer {
 
         void start(long downTime, boolean pointerOn) {
             this.downTime = downTime;
-            text = pointerOn ? "押し続けるとフォーカスモード" : "押し続けるとポインターモード";
+            text = App.t(pointerOn ? R.string.pointer_hold_focus : R.string.pointer_hold_pointer);
             active = true;
             setVisibility(View.VISIBLE);
             postInvalidateOnAnimation();

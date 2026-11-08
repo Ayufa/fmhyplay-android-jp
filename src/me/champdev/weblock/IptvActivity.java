@@ -16,6 +16,7 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.AbsListView;
 import android.widget.GridView;
+import android.graphics.Color;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -29,6 +30,9 @@ public class IptvActivity extends Home {
     GridView list;
     int cell;   // tile edge in px
     String query = "";
+    String category = "", language = "";   // category key and language name; "" = all
+    android.widget.ImageView pin;
+    LinearLayout filters;
     TextView count;
     BaseAdapter adapter;
 
@@ -51,7 +55,7 @@ public class IptvActivity extends Home {
         root.addView(count);
 
         EditText filter = new EditText(this);
-        filter.setHint("名前で絞り込み");
+        filter.setHint(App.t(R.string.iptv_filter));
         filter.setHintTextColor(MUTED);
         filter.setTextColor(TEXT);
         filter.setTextSize(sp(16, 15));
@@ -69,11 +73,23 @@ public class IptvActivity extends Home {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.addView(filter, new LinearLayout.LayoutParams(0, -2, 1));
-        android.widget.ImageView mic = iconButton(R.drawable.ic_mic, "音声検索", v -> listen(filter::setText));
+        android.widget.ImageView mic = iconButton(R.drawable.ic_mic, App.t(R.string.search_voice), v -> listen(filter::setText));
         ((LinearLayout.LayoutParams) mic.getLayoutParams()).setMargins(dp(10), 0, 0, 0);
         mic.setColorFilter(TEXT);
         bar.addView(mic);
+        // Pin: this list with the chips that are on becomes a row of its own on the IPTV tab
+        pin = iconButton(R.drawable.ic_pin, App.t(R.string.iptv_pin), v -> {
+            boolean on = Iptv.togglePin(type, key, getIntent().getStringExtra("title"), category, language);
+            toast(App.t(on ? R.string.iptv_pinned : R.string.iptv_unpinned, pinTitle()));
+            pinState();
+        });
+        ((LinearLayout.LayoutParams) pin.getLayoutParams()).setMargins(dp(10), 0, 0, 0);
+        bar.addView(pin);
         root.addView(bar, new LinearLayout.LayoutParams(-1, -2));
+        // Category and language chips (each row only when the list has more than one to choose from)
+        filters = new LinearLayout(this);
+        filters.setOrientation(LinearLayout.VERTICAL);
+        root.addView(filters, new LinearLayout.LayoutParams(-1, -2));
 
         // Square tiles, 6 across on a TV and 3 on a phone
         int cols = App.tv ? 6 : 3, gap = dp(gapDp);
@@ -103,6 +119,9 @@ public class IptvActivity extends Home {
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
         setContentView(root);
 
+        if (getIntent().hasExtra("cat")) category = getIntent().getStringExtra("cat");   // opened from a pinned row
+        if (getIntent().hasExtra("lang")) language = getIntent().getStringExtra("lang");
+        chips();
         String q = getIntent().getStringExtra("q");   // from Search's Channels row: the same words, every match
         if (q != null) filter.setText(q); else filter("");
         if (getIntent().getBooleanExtra("voice", false)) {
@@ -121,6 +140,74 @@ public class IptvActivity extends Home {
         filter(query);
     }
 
+    String pinTitle() {
+        return getIntent().getStringExtra("title") + (category.isEmpty() ? "" : " \u00B7 " + groupName(category)) + (language.isEmpty() ? "" : " \u00B7 " + language);
+    }
+
+    void pinState() {
+        boolean on = Iptv.isPinned(type, key, category, language);
+        pin.setColorFilter(on ? ACCENT : TEXT);
+        pin.setContentDescription(App.t(on ? R.string.iptv_unpin : R.string.iptv_pin));
+        if (android.os.Build.VERSION.SDK_INT >= 26) pin.setTooltipText(pin.getContentDescription());
+    }
+
+    /** The chip rows: the categories and languages in this list, the most common first. */
+    void chips() {
+        pinState();
+        filters.removeAllViews();
+        chipRow(App.t(R.string.iptv_all_categories), counts(true), category, true, v -> { category = v; chips(); filter(query); });
+        chipRow(App.t(R.string.iptv_all_languages), counts(false), language, false, v -> { language = v; chips(); filter(query); });
+    }
+
+    /** The categories (as shown) or languages in this list, ranked like the IPTV tab: Iptv.categoryRank / Iptv.rankLanguages. */
+    java.util.List<String> counts(boolean cats) {
+        java.util.Map<String, Integer> n = new java.util.HashMap<>();
+        java.util.Map<String, String> shownToKey = new java.util.HashMap<>();
+        for (Iptv.Channel c : all) for (String v : cats ? c.cats : c.langs) {
+            String label = cats ? groupName(v) : v;
+            n.merge(label, 1, Integer::sum);
+            shownToKey.put(label, v);
+        }
+        if (!cats) return Iptv.rankLanguages(n);
+        java.util.Comparator<String> rank = Iptv.categoryRank(k -> n.get(groupName(k)));
+        java.util.List<String> keys = new ArrayList<>(shownToKey.values());
+        keys.sort(rank);
+        return keys;
+    }
+
+    void chipRow(String allLabel, java.util.List<String> values, String now, boolean cats, java.util.function.Consumer<String> pick) {
+        if (values.size() < 2) return;
+        LinearLayout row = row(filters);
+        values.add(0, "");
+        TextView picked = null;
+        for (String v : values) {
+            TextView c = chip(x -> pick.accept(v));
+            c.setText(v.isEmpty() ? allLabel : cats ? groupName(v) : v);
+            boolean on = v.equals(now);
+            c.setTextColor(on ? Color.WHITE : TEXT);
+            c.setBackground(rounded(on ? ACCENT : CARD, dp(22)));
+            row.addView(c);
+            if (on && !v.isEmpty()) picked = c;
+        }
+        // Keep the chosen chip in view (the row is rebuilt after each pick)
+        TextView keep = picked;
+        if (keep != null) row.post(() -> ((android.widget.HorizontalScrollView) row.getParent()).scrollTo(Math.max(0, keep.getLeft() - dp(40)), 0));
+    }
+
+    boolean matches(Iptv.Channel c) {
+        if (!category.isEmpty()) {
+            boolean in = false;
+            for (String v : c.cats) if (v.equals(category)) in = true;
+            if (!in) return false;
+        }
+        if (!language.isEmpty()) {
+            boolean in = false;
+            for (String v : c.langs) if (v.equals(language)) in = true;
+            if (!in) return false;
+        }
+        return true;
+    }
+
     @Override public boolean onKeyUp(int k, KeyEvent e) {
         int i = list == null ? -1 : list.getSelectedItemPosition();
         if (k == KeyEvent.KEYCODE_MENU && list.hasFocus() && i >= 0 && i < shown.size()) { star(shown.get(i)); return true; }
@@ -131,14 +218,15 @@ public class IptvActivity extends Home {
         query = q;
         String f = q.trim().toLowerCase(Locale.ROOT);
         shown.clear();
-        for (Iptv.Channel c : all) if (f.isEmpty() || c.name.toLowerCase(Locale.ROOT).contains(f) || c.source.toLowerCase(Locale.ROOT).contains(f) || c.group.toLowerCase(Locale.ROOT).contains(f)) shown.add(c);
+        for (Iptv.Channel c : all) if (matches(c) && (f.isEmpty() || c.name.toLowerCase(Locale.ROOT).contains(f) || c.source.toLowerCase(Locale.ROOT).contains(f) || c.group.toLowerCase(Locale.ROOT).contains(f))) shown.add(c);
         adapter.notifyDataSetChanged();
-        count.setText(shown.size() + (shown.size() == 1 ? " チャンネル" : " チャンネル") + (App.tv ? "  ·  OKで再生、OK長押しでお気に入り" : "  ·  タップで再生、長押しでお気に入り"));
+        count.setText((shown.size() == 1 ? App.t(R.string.iptv_one_channel) : App.t(R.string.iptv_channels, shown.size()))
+            + "  ·  " + App.t(App.tv ? R.string.iptv_hint_tv : R.string.iptv_hint_touch));
     }
 
     void star(Iptv.Channel c) {
         Iptv.toggleFavorite(c);
-        toast(Iptv.isFavorite(c) ? "お気に入りに追加: " + c.name : "お気に入りから削除: " + c.name);
+        toast(App.t(Iptv.isFavorite(c) ? R.string.iptv_starred : R.string.iptv_unstarred, c.name));
         if (type.equals("fav")) { all.remove(c); filter(""); } else adapter.notifyDataSetChanged();
     }
 }

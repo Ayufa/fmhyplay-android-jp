@@ -154,7 +154,7 @@ public class Home extends Activity {
 
         List<History.Entry> history = History.list();
         if (!history.isEmpty()) {
-            col.addView(heading("続きから見る"));
+            col.addView(heading(App.t(R.string.home_continue_watching)));
             LinearLayout row = row();
             for (History.Entry e : history) row.addView(historyCard(e));
         }
@@ -163,8 +163,8 @@ public class Home extends Activity {
         if (!favs.isEmpty()) {   // only once something is marked (Add a site is also in Settings, Sites)
             LinearLayout favHead = new LinearLayout(this);
             favHead.setGravity(Gravity.BOTTOM);
-            favHead.addView(heading("\u2665  お気に入り"), new LinearLayout.LayoutParams(0, -2, 1));
-            favHead.addView(iconButton(R.drawable.ic_delete, "お気に入りをすべて消去", v -> confirmClearFavorites(favs.size())));
+            favHead.addView(heading(App.t(R.string.home_favorites_heart)), new LinearLayout.LayoutParams(0, -2, 1));
+            favHead.addView(iconButton(R.drawable.ic_delete, App.t(R.string.home_clear_all_favorites), v -> confirmClearFavorites(favs.size())));
             col.addView(favHead);
             LinearLayout favRow = row();
             for (Sites.Site s : favs) favRow.addView(siteCard(s, false));
@@ -173,30 +173,31 @@ public class Home extends Activity {
 
         List<Catalog.Title> mine = Catalog.mine();
         if (!mine.isEmpty()) {
-            col.addView(heading("マイリスト"));
+            col.addView(heading(App.t(R.string.home_my_list)));
             LinearLayout row = row();
             for (Catalog.Title t : mine) row.addView(posterCard(t, posterW()));
         }
         // Each kind: what just came out, then what everyone watches (anime: Kitsu's trending)
-        col.addView(section("映画"));
-        titleRow("新着", "movie", "genre=" + Catalog.NEW, 1);
-        titleRow("人気", "movie", "", 1);
-        col.addView(section("シリーズ"));
-        titleRow("新着", "series", "genre=" + Catalog.NEW, 2);
-        titleRow("人気", "series", "", 2);
-        col.addView(section("アニメ"));
-        titleRow("新着", "series", Catalog.NEW_ANIME, 4);
-        titleRow("人気", "series", Catalog.TRENDING_ANIME, 4);
+        String fresh = App.t(R.string.home_new), popular = App.t(R.string.home_popular);
+        col.addView(section(App.t(R.string.home_tab_movies)));
+        titleRow(fresh, "movie", "genre=" + Catalog.NEW, 1);
+        titleRow(popular, "movie", "", 1);
+        col.addView(section(App.t(R.string.home_tab_tv)));
+        titleRow(fresh, "series", "genre=" + Catalog.NEW, 2);
+        titleRow(popular, "series", "", 2);
+        col.addView(section(App.t(R.string.home_tab_anime)));
+        titleRow(fresh, "series", Catalog.NEW_ANIME, 4);
+        titleRow(popular, "series", Catalog.TRENDING_ANIME, 4);
 
         List<Sites.Site> more = Sites.load().get(Cats.MORE);
         if (more != null) {
-            col.addView(heading("その他"));
+            col.addView(heading(App.t(R.string.home_more)));
             siteRow(Cats.MORE, more);
         }
 
         Map<String, List<Sites.Site>> langs = Sites.languages();
         if (!langs.isEmpty()) {
-            col.addView(heading("その他の言語"));
+            col.addView(heading(App.t(R.string.home_other_languages)));
             LinearLayout row = row();
             for (Map.Entry<String, List<Sites.Site>> l : langs.entrySet()) row.addView(languageCard(l.getKey(), l.getValue().size()));
         }
@@ -211,8 +212,8 @@ public class Home extends Activity {
     }
 
     void confirmClearFavorites(int n) {
-        confirm("お気に入りをすべて消去しますか？", "お気に入りから " + n + " 件のサイトを削除します（自分で追加したサイトを含みます）。FMHY自体のリストは残ります。",
-            "すべて消去", () -> { Sites.clearFavorites(); build(); toast("お気に入りを消去しました"); });
+        confirm(App.t(R.string.home_clear_favorites_title), App.t(n == 1 ? R.string.home_clear_favorites_msg_one : R.string.home_clear_favorites_msg_many, n),
+            App.t(R.string.home_clear_all), () -> { Sites.clearFavorites(); build(); toast(App.t(R.string.home_favorites_cleared)); });
     }
 
     // ---- voice input: the device's own speech recognizer (Google TV voice on a TV, the Google app on a phone) ----
@@ -223,13 +224,13 @@ public class Home extends Activity {
     void listen(java.util.function.Consumer<String> then) {
         Intent i = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, "タイトル、サイト、チャンネル名を話してください")
+            .putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, App.t(R.string.home_voice_prompt))
             .putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 1);
         voiceDone = then;
         try {
             startActivityForResult(i, REQ_VOICE);
         } catch (android.content.ActivityNotFoundException e) {
-            toast("このデバイスでは音声入力を利用できません");
+            toast(App.t(R.string.home_no_voice));
         }
     }
 
@@ -245,20 +246,21 @@ public class Home extends Activity {
         TextView t = chip(click);
         iconize(t, R.drawable.ic_mic, TEXT);
         t.setCompoundDrawablePadding(0);
-        t.setContentDescription("音声検索");
+        t.setContentDescription(App.t(R.string.home_voice_search));
         return t;
     }
 
     void confirm(String title, String message, String yes, Runnable then) {
         new AlertDialog.Builder(this).setTitle(title).setMessage(message)
             .setPositiveButton(yes, (d, w) -> then.run())
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show();
     }
 
     // ---- tabs ----
 
-    static final String[] TABS = {"ホーム", "映画", "シリーズ", "スポーツ", "アニメ", "IPTV", "設定"};
+    static final int[] TABS = {R.string.home_tab_home, R.string.home_tab_movies, R.string.home_tab_tv, R.string.home_tab_sports, R.string.home_tab_anime,
+        R.string.home_tab_iptv, R.string.home_tab_settings};
     static final int SETTINGS = 6;
     final List<TextView> tabViews = new ArrayList<>();
     static final int[] TAB_ICONS = {R.drawable.ic_home, R.drawable.ic_movie, R.drawable.ic_tv, R.drawable.ic_trophy, R.drawable.ic_sparkle, R.drawable.ic_live, R.drawable.ic_settings};
@@ -282,8 +284,8 @@ public class Home extends Activity {
         else bar.setBackgroundColor(CARD);
         for (int i = 0; i < TABS.length; i++) {
             final int n = i;
-            TextView t = text(TABS[i], App.tv ? 16 : 11, MUTED, true);
-            t.setContentDescription(TABS[i]);
+            TextView t = text(App.t(TABS[i]), App.tv ? 16 : 11, MUTED, true);
+            t.setContentDescription(t.getText());
             tabViews.add(t);
             t.setGravity(Gravity.CENTER);
             if (App.tv) {
@@ -298,6 +300,13 @@ public class Home extends Activity {
             } else {
                 t.setPadding(0, dp(8), 0, dp(7));
                 t.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+                // One line: a long name ("Einstellungen", "Configuración") gets a smaller font instead of wrapping
+                t.setSingleLine(true);
+                t.addOnLayoutChangeListener((v, l, top, r, b, ol, ot, or, ob) -> {
+                    float room = r - l - dp(14);   // clear of the neighbours and of a rounded screen corner
+                    if (room > 0 && t.getPaint().measureText(t.getText().toString()) > room && t.getTextSize() > dp(8))
+                        t.post(() -> t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, t.getTextSize() * room / t.getPaint().measureText(t.getText().toString())));
+                });
                 t.setBackground(rounded(CARD, dp(12)));
                 focusable(t, dp(12));
             }
@@ -322,7 +331,14 @@ public class Home extends Activity {
             if (App.tv) {
                 t.setCompoundDrawablesRelative(d, null, null, null);
                 t.setCompoundDrawablePadding(dp(8));
-                ((GradientDrawable) t.getBackground()).setColor(on ? ACCENT : CARD);
+                // Focus shows as a ring in the background itself (the shared foreground ring did not draw on these tabs):
+                // red on a quiet tab, white on the selected red one
+                GradientDrawable idle = rounded(on ? ACCENT : CARD, dp(22)), focused = rounded(on ? ACCENT : 0xFF2A2236, dp(22));
+                focused.setStroke(dp(3), on ? Color.WHITE : ACCENT);
+                StateListDrawable bg = new StateListDrawable();
+                bg.addState(new int[]{android.R.attr.state_focused}, focused);
+                bg.addState(new int[0], idle);
+                t.setBackground(bg);
             } else {
                 t.setCompoundDrawablesRelative(null, d, null, null);
                 t.setCompoundDrawablePadding(dp(3));
@@ -394,7 +410,7 @@ public class Home extends Activity {
         updateChips();
         // One search for everything, from every tab: movies, series, IPTV channels and sites
         TextView search = chip(v -> startActivity(new Intent(this, SearchActivity.class)));
-        search.setText(App.tv ? "映画、シリーズ、チャンネル、サイトを検索" : "検索");
+        search.setText(App.t(App.tv ? R.string.home_search_hint : R.string.home_search));
         search.setTextColor(MUTED);
         search.setSingleLine(true);
         search.setEllipsize(TextUtils.TruncateAt.END);
@@ -414,13 +430,13 @@ public class Home extends Activity {
         final int id = built;
         List<Catalog.Title> hit = Catalog.cached(type, extra);
         if (hit != null) { fillPosters(row, hit, extra, moreTab); return; }
-        row.addView(note("読み込み中…"));
+        row.addView(note(App.t(R.string.home_loading)));
         Warp.whenSettled(() -> App.io.execute(() -> {
             List<Catalog.Title> list = Catalog.list(type, extra);
             runOnUiThread(() -> {
                 if (id != built) return;
                 row.removeAllViews();
-                if (list == null || list.isEmpty()) row.addView(note("カタログに接続できません。WARPを確認してください。"));
+                if (list == null || list.isEmpty()) row.addView(note(App.t(R.string.home_catalog_offline)));
                 else fillPosters(row, list, extra, moreTab);
             });
         }));
@@ -430,7 +446,7 @@ public class Home extends Activity {
     void fillPosters(LinearLayout row, List<Catalog.Title> list, String extra, int moreTab) {
         for (Catalog.Title t : list.subList(0, Math.min(14, list.size()))) row.addView(posterCard(t, posterW()));
         if (moreTab < 0) return;
-        TextView more = text("もっと見る  ›", sp(17, 15), TEXT, true);
+        TextView more = text(App.t(R.string.home_more_arrow), sp(17, 15), TEXT, true);
         more.setGravity(Gravity.CENTER);
         more.setLayoutParams(cardParams(posterW(), posterW() * 3 / 2));
         more.setBackground(rounded(0xFF2A2236, dp(12)));
@@ -441,16 +457,17 @@ public class Home extends Activity {
 
     /** Movies, TV and Anime: the sites that carry them, then the native catalog (genre chips, posters, load more). */
     void catalogTab(String type, String category, String fixedGenre) {
-        col.addView(tabHeader(TABS[tab]));
+        col.addView(tabHeader(App.t(TABS[tab])));
         List<Sites.Site> sites = Sites.load().get(category);
         if (sites != null) {
-            col.addView(heading("サイト"));
+            col.addView(heading(App.t(R.string.home_sites)));
             siteRow(category, sites);
         }
-        if (category.equals(Cats.ANIME)) titleRow("新着アニメ", "series", Catalog.NEW_ANIME, -1);
+        if (category.equals(Cats.ANIME)) titleRow(App.t(R.string.home_new_anime), "series", Catalog.NEW_ANIME, -1);
         String genre = fixedGenre.isEmpty() ? genres.getOrDefault(tab, Catalog.NEW) : fixedGenre;
-        col.addView(heading(fixedGenre.isEmpty() ? (genre.isEmpty() ? "人気" : genre.equals(Catalog.NEW) ? "新着"
-            : JaLabels.genre(genre)) : "人気の " + fixedGenre.toLowerCase()));
+        // Genre names are Cinemeta's own keys and stay as they are; only the Anime tab fixes one (Animation)
+        col.addView(heading(fixedGenre.isEmpty() ? (genre.isEmpty() ? App.t(R.string.home_popular) : genre.equals(Catalog.NEW) ? App.t(R.string.home_newly_released)
+            : JaLabels.genre(genre)) : App.t(R.string.home_popular_animation)));
         if (fixedGenre.isEmpty()) col.addView(genreChips());
         LinearLayout holder = new LinearLayout(this);
         holder.setOrientation(LinearLayout.VERTICAL);
@@ -468,7 +485,7 @@ public class Home extends Activity {
         all[1] = "";
         for (String g : all) {
             TextView c = chip(v -> { genres.put(tab, g); focusGenre = g; build(); });
-            c.setText(g.isEmpty() ? "人気" : g.equals(Catalog.NEW) ? "新着" : JaLabels.genre(g));
+            c.setText(g.isEmpty() ? App.t(R.string.home_popular) : g.equals(Catalog.NEW) ? App.t(R.string.home_new) : JaLabels.genre(g));
             c.setTextColor(g.equals(now) ? Color.WHITE : TEXT);
             c.setBackground(rounded(g.equals(now) ? ACCENT : CARD, dp(22)));
             focusable(c, dp(22));
@@ -491,7 +508,7 @@ public class Home extends Activity {
         String extra = (genre.isEmpty() ? "" : "genre=" + genre) + (genre.isEmpty() || skip == 0 ? "" : "&") + (skip == 0 ? "" : "skip=" + skip);
         List<Catalog.Title> hit = Catalog.cached(type, extra);
         if (hit != null) { showPage(type, genre, skip, holder, grid, id, hit); return; }
-        View loading = note("読み込み中…");
+        View loading = note(App.t(R.string.home_loading));
         holder.addView(loading);
         Warp.whenSettled(() -> App.io.execute(() -> {
             List<Catalog.Title> list = Catalog.list(type, extra);
@@ -499,7 +516,7 @@ public class Home extends Activity {
                 if (id != built) return;
                 holder.removeView(loading);
                 if (list == null || list.isEmpty()) {
-                    TextView retry = text(list == null ? "カタログに接続できません。タップして再試行" : "何もありません", sp(15, 13), TEXT, true);
+                    TextView retry = text(App.t(list == null ? R.string.home_catalog_retry : R.string.home_nothing_here), sp(15, 13), TEXT, true);
                     retry.setPadding(dp(14), dp(12), dp(14), dp(12));
                     retry.setBackground(rounded(CARD, dp(14)));
                     focusable(retry, dp(14));
@@ -513,7 +530,7 @@ public class Home extends Activity {
     void showPage(String type, String genre, int skip, LinearLayout holder, Grid grid, int id, List<Catalog.Title> list) {
         for (Catalog.Title t : list) grid.add(posterCard(t, grid.cell));
         if (list.size() < 20 || genre.equals(Catalog.NEW)) return;   // New is one list
-        TextView more = text("もっと読み込む", sp(16, 14), TEXT, true);
+        TextView more = text(App.t(R.string.home_load_more), sp(16, 14), TEXT, true);
         more.setGravity(Gravity.CENTER);
         more.setPadding(0, dp(14), 0, dp(14));
         more.setBackground(rounded(0xFF2A2236, dp(14)));
@@ -523,11 +540,11 @@ public class Home extends Activity {
     }
 
     void sportsTab() {
-        col.addView(tabHeader("スポーツ"));
+        col.addView(tabHeader(App.t(R.string.home_tab_sports)));
         for (String cat : new String[]{Cats.SPORTS, Cats.LIVE}) {
             List<Sites.Site> sites = Sites.load().get(cat);
             if (sites == null) continue;
-            col.addView(heading(cat.equals(Cats.LIVE) ? "ライブTV  ·  " + sites.size() : "スポーツサイト  ·  " + sites.size()));
+            col.addView(heading(App.t(cat.equals(Cats.LIVE) ? R.string.home_live_tv_count : R.string.home_sports_sites_count, sites.size())));
             Grid grid = new Grid(col);
             for (Sites.Site s : sites) grid.add(s);
         }
@@ -538,13 +555,13 @@ public class Home extends Activity {
         h.setGravity(Gravity.CENTER_VERTICAL);
         h.addView(text("IPTV", sp(26, 20), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
         TextView add = chip(v -> addPlaylistDialog());   // channels are in the top bar's Search, with movies and sites
-        add.setText("+  プレイリスト");
+        add.setText(App.t(R.string.home_add_playlist_chip));
         h.addView(add);
         col.addView(h);
 
         List<Iptv.Channel> all = Iptv.all();
         if (all.isEmpty()) {
-            col.addView(note(Iptv.loading ? "チャンネルを読み込み中…" : "チャンネルがまだありません。WARPを確認してから、設定で「IPTVチャンネルを更新」を実行してください。"));
+            col.addView(note(App.t(Iptv.loading ? R.string.home_loading_channels : R.string.home_no_channels)));
             if (!Iptv.loading) Warp.whenSettled(() -> App.io.execute(() -> {
                 boolean ok = Iptv.refresh();
                 runOnUiThread(() -> { if (ok && tab == 5) build(); });
@@ -553,13 +570,13 @@ public class Home extends Activity {
         }
         String status = Iptv.statusLine();
         if (!status.isEmpty()) col.addView(note(status));
-        else if (App.tv && !Iptv.history().isEmpty()) col.addView(note("チャンネルでOKを長押しすると、削除やお気に入りへの追加ができます"));
+        else if (App.tv && !Iptv.history().isEmpty()) col.addView(note(App.t(R.string.home_hint_hold_channel)));
         int cols = App.tv ? 6 : 3;
         // What you added yourself comes first: a row per playlist under the name you gave it, single stream links together
         List<String> keys = new ArrayList<>(), titles = new ArrayList<>();
         for (String url : Iptv.mine()) { keys.add(url); titles.add(Iptv.playlistName(url)); }
         keys.add(Iptv.STREAMS);
-        titles.add(Iptv.STREAMS);
+        titles.add(groupName(Iptv.STREAMS));
         for (int k = 0; k < keys.size(); k++) {
             String key = keys.get(k), title = titles.get(k);
             List<Iptv.Channel> own = Iptv.list("mine", key);
@@ -569,7 +586,7 @@ public class Home extends Activity {
             LinearLayout mr = row();
             for (Iptv.Channel c : own.subList(0, Math.min(14, own.size()))) mr.addView(channelCard(c, cols, "mine"));
             if (own.size() > 14) {
-                TextView more = text("すべて  " + own.size() + "  \u203A", sp(17, 15), TEXT, true);
+                TextView more = text(App.t(R.string.home_all_count, own.size()), sp(17, 15), TEXT, true);
                 more.setGravity(Gravity.CENTER);
                 more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
                 more.setBackground(rounded(0xFF2A2236, dp(14)));
@@ -578,17 +595,34 @@ public class Home extends Activity {
                 mr.addView(more);
             }
         }
+        // Pinned lists (a country or category with its chips), each a row with an All tile that opens it filtered
+        for (Iptv.Pin p : Iptv.pins()) {
+            List<Iptv.Channel> in = Iptv.filter(Iptv.list(p.type, p.key), p.cat, p.lang);
+            if (in.isEmpty()) continue;
+            String title = p.title + (p.cat.isEmpty() ? "" : "  \u00B7  " + JaLabels.iptvCategory(groupName(p.cat))) + (p.lang.isEmpty() ? "" : "  \u00B7  " + p.lang);
+            col.addView(heading("\uD83D\uDCCC  " + title + "  \u00B7  " + in.size()));
+            LinearLayout pr = row();
+            for (Iptv.Channel c : in.subList(0, Math.min(14, in.size()))) pr.addView(channelCard(c, cols, "pin"));
+            TextView allTile = text(App.t(R.string.home_all_count, in.size()), sp(17, 15), TEXT, true);
+            allTile.setGravity(Gravity.CENTER);
+            allTile.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
+            allTile.setBackground(rounded(0xFF2A2236, dp(14)));
+            focusable(allTile, dp(14));
+            allTile.setOnClickListener(v -> startActivity(new Intent(this, IptvActivity.class).putExtra("type", p.type).putExtra("key", p.key)
+                .putExtra("title", p.title).putExtra("cat", p.cat).putExtra("lang", p.lang)));
+            pr.addView(allTile);
+        }
         // Recently watched channels and stars, as rows like Continue watching on Home (movies stay on Home, channels stay here)
         List<Iptv.Channel> recent = Iptv.history();
         if (!recent.isEmpty()) {
-            col.addView(heading("続きから見る"));
+            col.addView(heading(App.t(R.string.home_continue_watching)));
             LinearLayout rr = row();
             for (Iptv.Channel c : recent) rr.addView(channelCard(c, cols, "history"));
         }
         // Channels that worked: what played fine for you, then what passed the background check
         List<Iptv.Channel> works = Iptv.working();
         if (!works.isEmpty()) {
-            col.addView(heading("視聴可能  \u00B7  " + works.size()));
+            col.addView(heading(App.t(R.string.home_working_count, works.size())));
             LinearLayout wr = row();
             int shown = 0;
             for (Iptv.Channel c : works) {   // the first 14 in a row (ones that played for you lead), the rest behind All
@@ -596,32 +630,32 @@ public class Home extends Activity {
                 wr.addView(channelCard(c, cols, "working"));
                 shown++;
             }
-            TextView more = text("すべて  " + works.size() + "  \u203A", sp(17, 15), TEXT, true);
+            TextView more = text(App.t(R.string.home_all_count, works.size()), sp(17, 15), TEXT, true);
             more.setGravity(Gravity.CENTER);
             more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
             more.setBackground(rounded(0xFF2A2236, dp(14)));
             focusable(more, dp(14));
-            more.setOnClickListener(v -> openIptv("working", "", "視聴可能なチャンネル", false));
+            more.setOnClickListener(v -> openIptv("working", "", App.t(R.string.home_working_channels), false));
             wr.addView(more);
         }
         List<Iptv.Channel> stars = Iptv.favorites();
         if (!stars.isEmpty()) {
-            col.addView(heading("お気に入り"));
+            col.addView(heading(App.t(R.string.home_favorites)));
             LinearLayout fr = row();
             for (Iptv.Channel c : stars.subList(0, Math.min(14, stars.size()))) fr.addView(channelCard(c, cols, "fav"));
-            TextView more = text("もっと見る  \u203A", sp(17, 15), TEXT, true);
+            TextView more = text(App.t(R.string.home_more_arrow), sp(17, 15), TEXT, true);
             more.setGravity(Gravity.CENTER);
             more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
             more.setBackground(rounded(0xFF2A2236, dp(14)));
             focusable(more, dp(14));
-            more.setOnClickListener(v -> openIptv("fav", "", "お気に入り", false));
+            more.setOnClickListener(v -> openIptv("fav", "", App.t(R.string.home_favorites), false));
             fr.addView(more);
         }
         // Square tiles: 6 across on a TV, 3 on a phone; an emoji icon (flag for countries) over the name and count
-        col.addView(heading("カテゴリ"));
+        col.addView(heading(App.t(R.string.home_categories)));
         Grid cats = new Grid(col, cols);
-        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(iptvTile(cats.cell, Iptv.emoji(e.getKey()), JaLabels.iptvCategory(e.getKey()), e.getValue().size(), "cat", e.getKey()));
-        col.addView(heading("国・地域"));
+        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(iptvTile(cats.cell, Iptv.emoji(e.getKey()), JaLabels.iptvCategory(groupName(e.getKey())), e.getValue().size(), "cat", e.getKey()));
+        col.addView(heading(App.t(R.string.home_countries)));
         Grid countries = new Grid(col, cols);
         for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("country").entrySet()) countries.add(iptvTile(countries.cell, Iptv.flag(e.getKey()), e.getKey(), e.getValue().size(), "country", e.getKey()));
     }
@@ -644,9 +678,9 @@ public class Home extends Activity {
         t.setOnLongClickListener(v -> {
             List<String> items = new ArrayList<>();
             List<Runnable> actions = new ArrayList<>();
-            if (row.equals("history")) { items.add("「続きから見る」から削除"); actions.add(() -> Iptv.removeFromHistory(c.url)); }
-            if (row.equals("working")) { items.add("視聴可能リストから削除"); actions.add(() -> Iptv.forgetWorking(c.url)); }
-            items.add(Iptv.isFavorite(c) ? "\u2661  お気に入りから削除" : "\u2665  お気に入りに追加");
+            if (row.equals("history")) { items.add(App.t(R.string.home_remove_continue)); actions.add(() -> Iptv.removeFromHistory(c.url)); }
+            if (row.equals("working")) { items.add(App.t(R.string.home_remove_working)); actions.add(() -> Iptv.forgetWorking(c.url)); }
+            items.add(App.t(Iptv.isFavorite(c) ? R.string.home_remove_favorite : R.string.home_add_favorite));
             actions.add(() -> Iptv.toggleFavorite(c));
             new AlertDialog.Builder(this).setTitle(c.name).setItems(items.toArray(new String[0]), (d, i) -> { actions.get(i).run(); build(); }).show();
             return true;
@@ -702,12 +736,26 @@ public class Home extends Activity {
         logo.setTag(null);
         if (c.logo.startsWith("http")) loadImage(logo, c.logo, letter);
         name.setText((Iptv.isFavorite(c) ? "\u2665 " : "") + c.name);
-        StringBuilder s = new StringBuilder(TextUtils.join(", ", c.cats));
+        List<String> cats = new ArrayList<>();
+        for (String k : c.cats) cats.add(groupName(k));
+        StringBuilder s = new StringBuilder(TextUtils.join(", ", cats));
         if (c.adult && !c.source.isEmpty()) s = new StringBuilder(c.source);   // adult channels: which list they came from
-        else if (c.cats[0].equals(Iptv.MINE) && !c.group.isEmpty()) s = new StringBuilder(c.group);   // your own playlists: their own group names
+        else if (c.cats[0].equals(Iptv.MINE) && !c.group.isEmpty()) s = new StringBuilder(groupName(c.group));   // your own playlists: their own group names
         else if (!c.country.isEmpty()) s.append("  \u00B7  ").append(c.country);
         sub.setText(s);
         return t;
+    }
+
+    /** IPTV group keys the app makes up itself, in the viewer's language (the key stays English); playlist group names pass through. */
+    static String groupName(String key) {
+        switch (key) {
+            case Iptv.ADULT_NAME: return App.t(R.string.home_group_mature);
+            case Iptv.MINE: return App.t(R.string.home_group_my_playlists);
+            case Iptv.STREAMS: return App.t(R.string.home_my_streams);
+            case "Other": return App.t(R.string.home_group_other);
+            case "Live": return App.t(R.string.home_group_live);
+            default: return key;
+        }
     }
 
     View iptvTile(int size, String icon, String label, int n, String type, String key) {
@@ -725,7 +773,7 @@ public class Home extends Activity {
         name.setGravity(Gravity.CENTER);
         name.setPadding(0, dp(6), 0, 0);
         card.addView(name);
-        TextView sub = text(n + " チャンネル", sp(12, 11), MUTED, false);
+        TextView sub = text(App.t(n == 1 ? R.string.home_channels_one : R.string.home_channels_many, n), sp(12, 11), MUTED, false);
         sub.setGravity(Gravity.CENTER);
         card.addView(sub);
         card.setBackground(rounded(CARD, dp(14)));
@@ -738,70 +786,101 @@ public class Home extends Activity {
     void extrasDialog() {
         EditText in = WebActivity.field(this, "https://example.com/sources.txt", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         in.setText(Iptv.extrasUrl());
-        new AlertDialog.Builder(this).setTitle("追加ソースリスト").setMessage("プレイリストを1行に1つ、\"label|url\"形式で書いたテキストファイルへのリンク。空欄にすると無効になります。").setView(WebActivity.box(this, in))
-            .setPositiveButton("保存", (d, w) -> {
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.home_extras_title)).setMessage(App.t(R.string.home_extras_msg)).setView(WebActivity.box(this, in))
+            .setPositiveButton(App.t(R.string.home_save), (d, w) -> {
                 App.prefs.edit().putString("extrasUrl", in.getText().toString().trim()).apply();
-                toast("取得中\u2026");
+                toast(App.t(R.string.home_fetching));
                 Warp.whenSettled(() -> App.io.execute(() -> {
                     boolean ok = Iptv.refresh();
-                    runOnUiThread(() -> { toast(ok ? "ソースリストを更新しました" : "リストに接続できません"); build(); });
+                    runOnUiThread(() -> { toast(App.t(ok ? R.string.home_source_updated : R.string.home_list_offline)); build(); });
                 }));
             })
-            .setNeutralButton("デフォルト", (d, w) -> {
+            .setNeutralButton(App.t(R.string.home_default), (d, w) -> {
                 App.prefs.edit().remove("extrasUrl").apply();
                 Warp.whenSettled(() -> App.io.execute(() -> {
                     Iptv.refresh();
                     runOnUiThread(this::build);
                 }));
             })
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show();
     }
 
     /** Ask for an M3U link and a name, download it, and give its channels their own row on the IPTV tab. */
     void addPlaylistDialog() {
         EditText in = WebActivity.field(this, "https://example.com/playlist.m3u", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        EditText name = WebActivity.field(this, "名前（例: スポーツ）。行の見出しとして表示されます", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
-        new AlertDialog.Builder(this).setTitle("プレイリストまたはストリームを追加").setMessage("プレイリスト（M3U）または単一のストリームリンク（.m3u8）").setView(WebActivity.box(this, in, name))
-            .setPositiveButton("追加", (d, w) -> {
+        EditText name = WebActivity.field(this, App.t(R.string.home_playlist_name_hint), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        TextView stalker = chip(null);   // the dialog's three buttons are taken: Stalker sits under the fields
+        stalker.setText(App.t(R.string.stalker_button));
+        AlertDialog dlg = new AlertDialog.Builder(this).setTitle(App.t(R.string.home_add_playlist_title)).setMessage(App.t(R.string.home_add_playlist_msg)).setView(WebActivity.box(this, in, name, stalker))
+            .setPositiveButton(App.t(R.string.home_add), (d, w) -> {
                 String url = in.getText().toString().trim(), label = name.getText().toString();
                 if (url.isEmpty()) return;
-                toast("プレイリストをダウンロード中\u2026");
+                toast(App.t(R.string.home_downloading_playlist));
                 Warp.whenSettled(() -> App.io.execute(() -> {
                     String err = Iptv.addPlaylist(url, label);
                     runOnUiThread(() -> {
-                        toast(err == null ? "IPTVタブに追加しました" : err);
+                        toast(err == null ? App.t(R.string.home_added_iptv) : err);
                         build();
                     });
                     if (err == null) Iptv.sweep();
                 }));
             })
-            .setNeutralButton("Xtreamログイン", (d, w) -> xtreamDialog())
-            .setNegativeButton("キャンセル", null)
+            .setNeutralButton(App.t(R.string.home_xtream_login), (d, w) -> xtreamDialog())
+            .setNegativeButton(android.R.string.cancel, null)
             .show();
+        stalker.setOnClickListener(v -> { dlg.dismiss(); stalkerDialog(); });
+    }
+
+    /** A Stalker (Ministra) portal: its address and the MAC address the provider registered. Its live channels get their own row. */
+    void stalkerDialog() {
+        EditText name = WebActivity.field(this, App.t(R.string.home_xtream_name_hint), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        EditText portal = WebActivity.field(this, App.t(R.string.stalker_portal_hint), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        EditText mac = WebActivity.field(this, App.t(R.string.stalker_mac_hint), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        mac.setText("00:1A:79:");   // MAG boxes' prefix, which most providers register
+        AlertDialog dlg = new AlertDialog.Builder(this).setTitle(App.t(R.string.stalker_title)).setMessage(App.t(R.string.stalker_msg))
+            .setView(WebActivity.box(this, name, portal, mac))
+            .setPositiveButton(App.t(R.string.home_add), null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+        // Set here so a wrong MAC keeps the dialog (and what was typed) open
+        dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            if (portal.getText().toString().trim().isEmpty()) { portal.requestFocus(); return; }
+            String url = Stalker.account(portal.getText().toString(), mac.getText().toString());
+            if (url == null) { mac.setError(App.t(R.string.stalker_bad_mac)); mac.requestFocus(); return; }
+            dlg.dismiss();
+            toast(App.t(R.string.home_signing_in));
+            Warp.whenSettled(() -> App.io.execute(() -> {
+                String err = Iptv.addPlaylist(url, name.getText().toString());
+                runOnUiThread(() -> {
+                    toast(err == null ? App.t(R.string.home_channels_added) : err);
+                    build();
+                });
+            }));
+        });
     }
 
     /** An IPTV provider's Xtream Codes login (server, username, password): its live channels get their own row. */
     void xtreamDialog() {
-        EditText name = WebActivity.field(this, "名前（例: マイプロバイダー）。行の見出しとして表示されます", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
-        EditText server = WebActivity.field(this, "サーバー（例: http://example.com:8080）", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        EditText user = WebActivity.field(this, "ユーザー名", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        EditText pass = WebActivity.field(this, "パスワード", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        new AlertDialog.Builder(this).setTitle("Xtreamログイン").setMessage("IPTVプロバイダーから提供されたサーバー、ユーザー名、パスワード")
+        EditText name = WebActivity.field(this, App.t(R.string.home_xtream_name_hint), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        EditText server = WebActivity.field(this, App.t(R.string.home_xtream_server_hint), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        EditText user = WebActivity.field(this, App.t(R.string.home_username), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        EditText pass = WebActivity.field(this, App.t(R.string.home_password), InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.home_xtream_login)).setMessage(App.t(R.string.home_xtream_msg))
             .setView(WebActivity.box(this, name, server, user, pass))
-            .setPositiveButton("追加", (d, w) -> {
+            .setPositiveButton(App.t(R.string.home_add), (d, w) -> {
                 if (server.getText().toString().trim().isEmpty() || user.getText().toString().trim().isEmpty()) return;
                 String url = Iptv.xtreamUrl(server.getText().toString(), user.getText().toString(), pass.getText().toString());
-                toast("サインイン中\u2026");
+                toast(App.t(R.string.home_signing_in));
                 Warp.whenSettled(() -> App.io.execute(() -> {
                     String err = Iptv.addPlaylist(url, name.getText().toString());
                     runOnUiThread(() -> {
-                        toast(err == null ? "チャンネルをIPTVタブに追加しました" : err);
+                        toast(err == null ? App.t(R.string.home_channels_added) : err);
                         build();
                     });
                 }));
             })
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show();
     }
 
@@ -822,23 +901,23 @@ public class Home extends Activity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.topMargin = dp(8);
         line.setLayoutParams(lp);
-        line.addView(text("アップデート " + version + " が利用可能です", sp(15, 13), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
+        line.addView(text(App.t(R.string.home_update_available, version), sp(15, 13), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
         TextView install = chip(null);
         TextView news = chip(v -> whatsNew(version, () -> { if (install.isEnabled()) install.performClick(); }));
-        news.setText("変更内容");
-        install.setText("インストール");
+        news.setText(App.t(R.string.home_whats_new));
+        install.setText(App.t(R.string.home_install));
         install.setBackground(rounded(ACCENT, dp(22)));
         install.setOnClickListener(v -> {
             install.setEnabled(false);
             Update.install(status -> {
-                boolean failed = status.startsWith("アップデートに失敗しました");
-                install.setText(failed ? "インストール" : status);
+                boolean failed = status.startsWith(App.t(R.string.update_failed, ""));
+                install.setText(failed ? App.t(R.string.home_install) : status);
                 install.setEnabled(failed);
                 if (failed) toast(status);
             });
         });
         TextView later = chip(v -> { Update.skip(version); build(); });
-        later.setText("後で");
+        later.setText(App.t(R.string.home_later));
         later.setTextColor(MUTED);
         if (!Update.notes().isEmpty()) line.addView(news);
         line.addView(install);
@@ -848,41 +927,55 @@ public class Home extends Activity {
     }
 
     void settingsTab() {
-        col.addView(tabHeader("設定"));
-        col.addView(heading("接続"));
+        col.addView(tabHeader(App.t(R.string.home_tab_settings)));
+        col.addView(heading(App.t(R.string.home_connection)));
         warpValue = new TextView(this);
-        col.addView(settingRow("WARP", "このアプリ内だけで使うCloudflareトンネル。ISPやDNSによるブロックを回避できます。", warpValue, v -> {
+        col.addView(settingRow("WARP", App.t(R.string.home_warp_help), warpValue, v -> {
             boolean on = Warp.state == Warp.State.ON || Warp.state == Warp.State.CONNECTING;
             App.prefs.edit().putBoolean("warp", !on).apply();
             if (on) Warp.stop(); else Warp.start();
         }));
         adValue = new TextView(this);
-        col.addView(settingRow("広告ブロック", "すべてのサイトで広告ドメイン、ポップアップ、リダイレクトをブロックします。", adValue, v -> {
+        col.addView(settingRow(App.t(R.string.home_ad_block), App.t(R.string.home_ad_block_help), adValue, v -> {
             App.prefs.edit().putBoolean("adblock", !AdBlock.enabled()).apply();
             updateChips();
         }));
+        if (App.tv) {
+            // Casts from phones open the player by themselves only with "Display over other apps" (Android blocks a closed app otherwise)
+            TextView castValue = new TextView(this);
+            boolean ready = Cast.canOpen(this);
+            col.addView(settingRow(App.t(R.string.home_cast_title), App.t(ready ? R.string.home_cast_help_ready : R.string.home_cast_help_allow, Cast.tvName(this)), castValue, v -> {
+                try {
+                    startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
+                } catch (Exception e) {
+                    startActivity(new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
+                }
+            }));
+            castValue.setText(App.t(ready ? R.string.home_ready : R.string.home_allow));
+            castValue.setTextColor(ready ? GREEN : ACCENT);
+        }
         TextView urlValue = new TextView(this);
-        col.addView(settingRow("アドレスバー", "サイトの上にページのアドレスを表示します。" + (App.tv ? "カーソルでクリック" : "タップ") + "すると、別のアドレスや検索語句を入力できます。", urlValue, v -> {
+        col.addView(settingRow(App.t(R.string.home_address_bar), App.t(App.tv ? R.string.home_address_bar_help_tv : R.string.home_address_bar_help_phone), urlValue, v -> {
             App.prefs.edit().putBoolean("urlbar", !App.prefs.getBoolean("urlbar", false)).apply();
             build();
         }));
-        urlValue.setText(App.prefs.getBoolean("urlbar", false) ? "オン" : "オフ");
+        urlValue.setText(App.t(App.prefs.getBoolean("urlbar", false) ? R.string.home_on : R.string.home_off));
         urlValue.setTextColor(App.prefs.getBoolean("urlbar", false) ? GREEN : MUTED);
         if (App.tv) {
             TextView cursor = new TextView(this);
-            col.addView(settingRow("サイト上のカーソル", "方向キーで丸いカーソルを移動します。サイト上でOKを5秒長押しすると切り替わります。", cursor, v -> {
+            col.addView(settingRow(App.t(R.string.home_cursor_on_sites), App.t(R.string.home_cursor_help), cursor, v -> {
                 App.prefs.edit().putBoolean("pointer", !App.prefs.getBoolean("pointer", true)).apply();
                 build();
             }));
             boolean on = App.prefs.getBoolean("pointer", true);
-            cursor.setText(on ? "オン" : "オフ");
+            cursor.setText(App.t(on ? R.string.home_on : R.string.home_off));
             cursor.setTextColor(on ? GREEN : MUTED);
             TextView lookValue = new TextView(this);
-            col.addView(settingRow("カーソルの見た目", "サイト上のカーソルの外観。中央の小さな点の位置がクリック位置になります。", lookValue, v -> {
+            col.addView(settingRow(App.t(R.string.home_cursor_look), App.t(R.string.home_cursor_look_help), lookValue, v -> {
                 String[] items = new String[Pointer.LOOKS.length];
                 for (int i = 0; i < items.length; i++)
-                    items[i] = Pointer.lookIcon(i) + "   " + Pointer.LOOK_NAMES[i] + (Pointer.LOOKS[i].equals(Pointer.look()) ? "  \u2713" : "");
-                new AlertDialog.Builder(this).setTitle("カーソルの見た目").setItems(items, (d, i) -> {
+                    items[i] = Pointer.lookIcon(i) + "   " + Pointer.lookLabel(i) + (Pointer.LOOKS[i].equals(Pointer.look()) ? "  \u2713" : "");
+                new AlertDialog.Builder(this).setTitle(App.t(R.string.home_cursor_look)).setItems(items, (d, i) -> {
                     App.prefs.edit().putString("cursorLook", Pointer.LOOKS[i]).apply();
                     build();
                 }).show();
@@ -890,7 +983,7 @@ public class Home extends Activity {
             lookValue.setText(Pointer.lookName());
             lookValue.setTextColor(TEXT);
             TextView sizeValue = new TextView(this);
-            col.addView(settingRow("カーソルのサイズ", "押すたびにサイト上のカーソルが大きくなり、次に小さく戻ります。動画再生中は自動で隠れます。", sizeValue, v -> {
+            col.addView(settingRow(App.t(R.string.home_cursor_size), App.t(R.string.home_cursor_size_help), sizeValue, v -> {
                 int next = Pointer.SIZES[0];
                 for (int i = 0; i < Pointer.SIZES.length - 1; i++) if (Pointer.SIZES[i] == Pointer.size()) next = Pointer.SIZES[i + 1];
                 App.prefs.edit().putInt("cursorSize", next).apply();
@@ -899,129 +992,135 @@ public class Home extends Activity {
             sizeValue.setText(Pointer.size() + "%");
             sizeValue.setTextColor(TEXT);
         }
-        col.addView(settingRow("WARPログ", "WARPが試したことと失敗の理由。不具合報告の際に共有してください。", null, v -> warpLog()));
+        col.addView(settingRow(App.t(R.string.home_warp_log), App.t(R.string.home_warp_log_help), null, v -> warpLog()));
 
-        col.addView(heading("データ"));
+        col.addView(heading(App.t(R.string.home_your_data)));
         List<Sites.Site> favs = Sites.favorites();
-        col.addView(settingRow("お気に入りを消去", favs.size() + " サイト", null, v -> confirmClearFavorites(favs.size())));
+        col.addView(settingRow(App.t(R.string.home_clear_favorites), App.t(favs.size() == 1 ? R.string.home_sites_one : R.string.home_sites_many, favs.size()), null, v -> confirmClearFavorites(favs.size())));
         int seen = History.list().size();
-        col.addView(settingRow("視聴履歴を消去", seen + " 件（続きから見る）", null, v ->
-            confirm("視聴履歴を消去しますか？", "「続きから見る」を空にします。", "消去", () -> { History.save(new ArrayList<>()); build(); toast("履歴を消去しました"); })));
+        col.addView(settingRow(App.t(R.string.home_clear_history), App.t(seen == 1 ? R.string.home_history_count_one : R.string.home_history_count_many, seen), null, v ->
+            confirm(App.t(R.string.home_clear_history_title), App.t(R.string.home_clear_history_msg), App.t(R.string.home_clear), () -> { History.save(new ArrayList<>()); build(); toast(App.t(R.string.home_history_cleared)); })));
         int watched = Iptv.history().size();
-        col.addView(settingRow("IPTV履歴を消去", watched + " チャンネル（IPTVの続きから見る）", null, v ->
-            confirm("IPTV履歴を消去しますか？", "IPTVタブの「続きから見る」を空にします。", "消去", () -> { App.prefs.edit().remove("iptvhist").apply(); build(); toast("IPTV履歴を消去しました"); })));
+        col.addView(settingRow(App.t(R.string.home_clear_iptv_history), App.t(watched == 1 ? R.string.home_iptv_history_count_one : R.string.home_iptv_history_count_many, watched), null, v ->
+            confirm(App.t(R.string.home_clear_iptv_history_title), App.t(R.string.home_clear_iptv_history_msg), App.t(R.string.home_clear), () -> { App.prefs.edit().remove("iptvhist").apply(); build(); toast(App.t(R.string.home_iptv_history_cleared)); })));
         int listed = Catalog.mine().size();
-        col.addView(settingRow("マイリストを消去", listed + " 件のタイトル", null, v ->
-            confirm("マイリストを消去しますか？", "保存した " + listed + " 件のタイトルをすべて削除します。", "消去", () -> { App.prefs.edit().remove("mylist").apply(); build(); toast("マイリストを消去しました"); })));
+        col.addView(settingRow(App.t(R.string.home_clear_mylist), App.t(listed == 1 ? R.string.home_titles_one : R.string.home_titles_many, listed), null, v ->
+            confirm(App.t(R.string.home_clear_mylist_title), App.t(R.string.home_clear_mylist_msg, listed), App.t(R.string.home_clear), () -> { App.prefs.edit().remove("mylist").apply(); build(); toast(App.t(R.string.home_mylist_cleared)); })));
 
         col.addView(heading("IPTV"));
         if (Iptv.adultAvailable()) {
             TextView adultValue = new TextView(this);
-            col.addView(settingRow("アダルトチャンネル", "IPTVタブにアダルトカテゴリを表示します。初期設定はオフです。", adultValue, v -> {
+            col.addView(settingRow(App.t(R.string.home_adult), App.t(R.string.home_adult_help), adultValue, v -> {
                 App.prefs.edit().putBoolean("adult", !Iptv.adultOn()).apply();
                 build();
             }));
-            adultValue.setText(Iptv.adultOn() ? "オン" : "オフ");
+            adultValue.setText(App.t(Iptv.adultOn() ? R.string.home_on : R.string.home_off));
             adultValue.setTextColor(Iptv.adultOn() ? GREEN : MUTED);
         }
         TextView extrasValue = new TextView(this);
-        col.addView(settingRow("追加ソースリスト", "あなたが選んだテキストファイルから、プレイリストとタイトルへのリンクを追加します（初期設定はプロジェクトのリストです）。", extrasValue, v -> extrasDialog()));
-        extrasValue.setText(Iptv.extrasUrl().isEmpty() ? "なし" : Iptv.extrasUrl().equals(Iptv.DEFAULT_EXTRAS) ? "デフォルト" : "カスタム");
+        col.addView(settingRow(App.t(R.string.home_extras_title), App.t(R.string.home_extras_help), extrasValue, v -> extrasDialog()));
+        extrasValue.setText(App.t(Iptv.extrasUrl().isEmpty() ? R.string.home_none : Iptv.extrasUrl().equals(Iptv.DEFAULT_EXTRAS) ? R.string.home_default : R.string.home_custom));
         extrasValue.setTextColor(Iptv.extrasUrl().isEmpty() ? MUTED : GREEN);
-        col.addView(settingRow("プレイリストまたはストリームを追加", "プレイリストまたは単一のストリームリンク（.m3u8）を貼り付けるか、Xtreamでサインインします。各プレイリストはIPTVタブに独自の行として表示されます。", null, v -> addPlaylistDialog()));
+        col.addView(settingRow(App.t(R.string.home_add_playlist_title), App.t(R.string.home_add_playlist_help), null, v -> addPlaylistDialog()));
         for (String url : Iptv.mine()) {
             int n = Iptv.parse(Iptv.read(Iptv.mineFile(url)), false).size();
             String name = Iptv.playlistName(url);
-            col.addView(settingRow(name, n + " チャンネル。押すと削除します。", null, v ->
-                confirm("このプレイリストを削除しますか？", name, "削除", () -> { Iptv.removePlaylist(url); build(); toast("プレイリストを削除しました"); })));
+            col.addView(settingRow(name, App.t(n == 1 ? R.string.home_playlist_channels_one : R.string.home_playlist_channels_many, n), null, v ->
+                confirm(App.t(R.string.home_remove_playlist_title), name, App.t(R.string.home_remove), () -> { Iptv.removePlaylist(url); build(); toast(App.t(R.string.home_playlist_removed)); })));
         }
         TextView deadValue = new TextView(this);
-        col.addView(settingRow("オフラインチャンネルを隠す", "チェックに失敗した、または再生できなかったチャンネルをリストに表示しません。", deadValue, v -> {
+        col.addView(settingRow(App.t(R.string.home_hide_offline), App.t(R.string.home_hide_offline_help), deadValue, v -> {
             App.prefs.edit().putBoolean("hideDead", !Iptv.hideDead()).apply();
             build();
         }));
-        deadValue.setText(Iptv.hideDead() ? "オン" : "オフ");
+        deadValue.setText(App.t(Iptv.hideDead() ? R.string.home_on : R.string.home_off));
         deadValue.setTextColor(Iptv.hideDead() ? GREEN : MUTED);
-        col.addView(settingRow("今すぐチャンネルをチェック", Iptv.sweeping ? "チェック中: " + Iptv.sweepDone + " / " + Iptv.sweepTotal : Iptv.deadCount() + " チャンネルが現在オフラインです。全チャンネルを最初から再チェックします。", null, v -> {
-            if (Iptv.sweeping) { toast("すでにチェック中です"); return; }
+        col.addView(settingRow(App.t(R.string.home_check_channels), Iptv.sweeping ? App.t(R.string.home_checking_progress, Iptv.sweepDone, Iptv.sweepTotal) : App.t(R.string.home_offline_now, Iptv.deadCount()), null, v -> {
+            if (Iptv.sweeping) { toast(App.t(R.string.home_already_checking)); return; }
             Iptv.health.clear();
-            toast("バックグラウンドでチャンネルをチェックしています\u2026");
+            toast(App.t(R.string.home_checking_background));
             Iptv.sweep();
         }));
-        col.addView(settingRow("IPTVチャンネルを更新", "GitHubから最新のプレイリストをダウンロードします（アプリ起動時にも、12時間ごとに実行されます）。", null, v -> {
-            toast("チャンネルをダウンロード中…");
+        col.addView(settingRow(App.t(R.string.home_refresh_iptv), App.t(R.string.home_refresh_iptv_help), null, v -> {
+            toast(App.t(R.string.home_downloading_channels));
             App.io.execute(() -> {
                 boolean ok = Iptv.refresh();
-                runOnUiThread(() -> toast(ok ? "チャンネルを更新しました" : "GitHubに接続できません。WARPを確認してください。"));
+                runOnUiThread(() -> toast(App.t(ok ? R.string.home_channels_updated : R.string.home_github_offline_warp)));
             });
         }));
 
-        col.addView(heading("プレイヤー"));
+        col.addView(heading(App.t(R.string.home_player)));
         TextView subValue = new TextView(this);
-        col.addView(settingRow("字幕", "プレイヤー内の字幕のサイズ、位置、色、背景。タイミングはプレイヤーの字幕ボタンで調整します。", subValue, v ->
+        col.addView(settingRow(App.t(R.string.home_subtitles), App.t(R.string.home_subtitles_help), subValue, v ->
             Subs.panel(this, false, () -> subValue.setText(Subs.sizeLabel() + " \u00B7 " + Subs.offsetLabel()), this::build)));
         subValue.setText(Subs.sizeLabel() + " \u00B7 " + Subs.offsetLabel());
         subValue.setTextColor(Subs.size() == 100 && Subs.offset() == 0 && Subs.background() == 50 && Subs.colorIndex() == 0 ? MUTED : GREEN);
         TextView boostValue = new TextView(this);
-        col.addView(settingRow("音量ブースト", "音量の小さいストリーム向けに、デバイスの最大音量を超えて大きくします。すべての動画で有効になり、プレイヤーの音量ブーストボタンで動画ごとに変更できます。", boostValue, v -> {
+        col.addView(settingRow(App.t(R.string.home_volume_boost), App.t(R.string.home_volume_boost_help), boostValue, v -> {
             int next = PlayerActivity.BOOSTS[0];
             for (int i = 0; i < PlayerActivity.BOOSTS.length - 1; i++) if (PlayerActivity.BOOSTS[i] == PlayerActivity.boostDb()) next = PlayerActivity.BOOSTS[i + 1];
             App.prefs.edit().putInt("boost", next).apply();
             build();
         }));
-        boostValue.setText(PlayerActivity.boostDb() == 0 ? "オフ" : "+" + PlayerActivity.boostDb() + " dB");
+        boostValue.setText(PlayerActivity.boostDb() == 0 ? App.t(R.string.home_off) : "+" + PlayerActivity.boostDb() + " dB");
         boostValue.setTextColor(PlayerActivity.boostDb() == 0 ? MUTED : GREEN);
         TextView voiceValue = new TextView(this);
-        col.addView(settingRow("ダイアログブースト", "声を大きくし、低音の響きを抑えます。すべての動画で有効になり、プレイヤーのダイアログブーストボタンで動画ごとに変更できます。", voiceValue, v -> {
+        col.addView(settingRow(App.t(R.string.home_dialog_boost), App.t(R.string.home_dialog_boost_help), voiceValue, v -> {
             App.prefs.edit().putBoolean("dialogBoost", !PlayerActivity.dialogBoost()).apply();
             build();
         }));
-        voiceValue.setText(PlayerActivity.dialogBoost() ? "オン" : "オフ");
+        voiceValue.setText(App.t(PlayerActivity.dialogBoost() ? R.string.home_on : R.string.home_off));
         voiceValue.setTextColor(PlayerActivity.dialogBoost() ? GREEN : MUTED);
         TextView autoSub = new TextView(this);
-        col.addView(settingRow("字幕の自動表示", "映画とエピソードは、最後に選んだ言語（" + Subs.language(Subs.preferred())
-            + "）の字幕で開始します。ストリーム自体の字幕を優先し、なければOpenSubtitlesを使います。動画用に選んだ字幕ファイルは常に戻ります。", autoSub, v -> {
+        col.addView(settingRow(App.t(R.string.home_auto_subs), App.t(R.string.home_auto_subs_help, Subs.language(Subs.preferred())), autoSub, v -> {
             App.prefs.edit().putBoolean("subAuto", !Subs.auto()).apply();
             build();
         }));
-        autoSub.setText(Subs.auto() ? "オン" : "オフ");
+        autoSub.setText(App.t(Subs.auto() ? R.string.home_on : R.string.home_off));
         autoSub.setTextColor(Subs.auto() ? GREEN : MUTED);
         TextView simklValue = new TextView(this);
-        col.addView(settingRow("Simkl", "プレイヤーで観た映画やエピソードを、無料の視聴記録サービスSimklに視聴済みとして記録します。対象は映画、シリーズ、アニメから開いたタイトルです。", simklValue, v -> {
-            if (Simkl.signedIn()) confirm("Simklの接続を解除しますか？", "FMHYPlayからSimklへの視聴内容の送信を停止します。Simklの履歴は残ります。", "接続を解除", () -> { Simkl.signOut(); build(); });
+        col.addView(settingRow("Simkl", App.t(R.string.home_simkl_help), simklValue, v -> {
+            if (Simkl.signedIn()) confirm(App.t(R.string.home_simkl_disconnect_title), App.t(R.string.home_simkl_disconnect_msg), App.t(R.string.home_disconnect), () -> { Simkl.signOut(); build(); });
             else simklDialog();
         }));
-        simklValue.setText(Simkl.signedIn() ? "接続済み" : "接続");
+        simklValue.setText(App.t(Simkl.signedIn() ? R.string.home_connected : R.string.home_connect));
         simklValue.setTextColor(Simkl.signedIn() ? GREEN : ACCENT);
+        TextView ppValue = new TextView(this);
+        col.addView(settingRow("PunchPlay", App.t(R.string.punchplay_help), ppValue, v -> {
+            if (PunchPlay.signedIn()) confirm(App.t(R.string.punchplay_disconnect_title), App.t(R.string.punchplay_disconnect_msg), App.t(R.string.home_disconnect), () -> { PunchPlay.signOut(); build(); });
+            else punchPlayDialog();
+        }));
+        ppValue.setText(App.t(PunchPlay.signedIn() ? R.string.home_connected : R.string.home_connect));
+        ppValue.setTextColor(PunchPlay.signedIn() ? GREEN : ACCENT);
 
-        col.addView(heading("アップデート"));
+        col.addView(heading(App.t(R.string.home_updates)));
         String newer = Update.latest();
         TextView updValue = new TextView(this);
-        col.addView(settingRow("アップデートを確認", "FMHYPlay " + Update.installed() + "。GitHubで新しいリリースを確認し、あなたの指示でインストールします。", updValue, v -> checkUpdate(updValue)));
-        updValue.setText(newer.isEmpty() ? "最新です" : newer + " が利用可能");
+        col.addView(settingRow(App.t(R.string.home_check_updates), App.t(R.string.home_check_updates_help, Update.installed()), updValue, v -> checkUpdate(updValue)));
+        updValue.setText(newer.isEmpty() ? App.t(R.string.home_up_to_date) : App.t(R.string.home_version_available, newer));
         updValue.setTextColor(newer.isEmpty() ? MUTED : GREEN);
         TextView autoValue = new TextView(this);
-        col.addView(settingRow("起動時に確認", "12時間に1回、アップデートを確認します。", autoValue, v -> {
+        col.addView(settingRow(App.t(R.string.home_check_at_start), App.t(R.string.home_check_at_start_help), autoValue, v -> {
             App.prefs.edit().putBoolean("updateCheck", !Update.auto()).apply();
             build();
         }));
-        autoValue.setText(Update.auto() ? "オン" : "オフ");
+        autoValue.setText(App.t(Update.auto() ? R.string.home_on : R.string.home_off));
         autoValue.setTextColor(Update.auto() ? GREEN : MUTED);
 
-        col.addView(heading("サイト"));
-        col.addView(settingRow("サイトを追加", "アドレスを指定してストリーミングサイトを追加します。ホームのお気に入りに追加されます。", null, v -> addSiteDialog()));
-        col.addView(settingRow("FMHYリストを更新", "FMHYでサイトの追加・削除を確認します（12時間ごとにも自動で確認します）。", null, v -> {
-            toast("FMHYを確認中…");
+        col.addView(heading(App.t(R.string.home_sites)));
+        col.addView(settingRow(App.t(R.string.home_add_site), App.t(R.string.home_add_site_help), null, v -> addSiteDialog()));
+        col.addView(settingRow(App.t(R.string.home_refresh_fmhy), App.t(R.string.home_refresh_fmhy_help), null, v -> {
+            toast(App.t(R.string.home_checking_fmhy));
             App.io.execute(() -> {
                 boolean changed = Sites.refresh();
-                runOnUiThread(() -> toast(changed ? "サイトリストを更新しました" : "サイトリストは最新です"));
+                runOnUiThread(() -> toast(App.t(changed ? R.string.home_site_list_updated : R.string.home_site_list_current)));
             });
         }));
 
         // Which build is this? (the TV and phone APKs share a package, so say it on screen)
         String ver = "";
         try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) { }
-        TextView about = text("FMHYPlay " + ver + "  ·  " + (App.tv ? "TV版" : "スマートフォン版") + "\nサイトリストはFMHYから、タイトルとポスターはCinemetaから取得しています。", sp(12, 11), MUTED, false);
+        TextView about = text(App.t(App.tv ? R.string.home_about_tv : R.string.home_about_phone, ver), sp(12, 11), MUTED, false);
         about.setPadding(0, u(28, 14), 0, 0);
         col.addView(about);
         updateChips();
@@ -1029,10 +1128,10 @@ public class Home extends Activity {
 
     /** Shows a code to enter at simkl.com/pin (where you can also make the free account) and waits for it. */
     void simklDialog() {
-        TextView steps = text("コードを取得中\u2026", sp(17, 15), TEXT, false), code = text("", sp(40, 32), TEXT, true);
+        TextView steps = text(App.t(R.string.home_getting_code), sp(17, 15), TEXT, false), code = text("", sp(40, 32), TEXT, true);
         code.setLetterSpacing(0.15f);
         code.setPadding(0, dp(14), 0, dp(6));
-        AlertDialog d = new AlertDialog.Builder(this).setTitle("Simklに接続").setView(WebActivity.box(this, steps, code)).setNegativeButton("キャンセル", null).create();
+        AlertDialog d = new AlertDialog.Builder(this).setTitle(App.t(R.string.home_connect_simkl)).setView(WebActivity.box(this, steps, code)).setNegativeButton(android.R.string.cancel, null).create();
         boolean[] open = {true};
         d.setOnDismissListener(x -> open[0] = false);
         d.show();
@@ -1040,8 +1139,8 @@ public class Home extends Activity {
             Simkl.Code c = Simkl.newCode();
             runOnUiThread(() -> {
                 if (!open[0]) return;
-                if (c == null) { steps.setText("Simklに接続できません。WARPを確認してもう一度お試しください。"); return; }
-                steps.setText("1. スマートフォンまたはパソコンで " + c.page.replaceFirst("^https?://", "") + " を開きます\n2. サインインするか、無料アカウントを作成します\n3. このコードを入力してください:");
+                if (c == null) { steps.setText(App.t(R.string.home_simkl_offline)); return; }
+                steps.setText(App.t(R.string.home_simkl_steps, c.page.replaceFirst("^https?://", "")));
                 code.setText(c.user);
                 waitForSimkl(c, c.interval, d, open, steps);
             });
@@ -1056,9 +1155,9 @@ public class Home extends Activity {
                 runOnUiThread(() -> {
                     if (!open[0]) return;
                     switch (r) {
-                        case "ok": d.dismiss(); toast("Simklに接続しました"); build(); break;
-                        case "expired": steps.setText("コードの有効期限が切れました。これを閉じて、Simklをもう一度押して新しいコードを取得してください。"); break;
-                        case "error": steps.setText("Simklに拒否されました。これを閉じてもう一度お試しください。"); break;
+                        case "ok": d.dismiss(); toast(App.t(R.string.home_simkl_connected)); build(); break;
+                        case "expired": steps.setText(App.t(R.string.home_simkl_expired)); break;
+                        case "error": steps.setText(App.t(R.string.home_simkl_refused)); break;
                         default: waitForSimkl(c, r.equals("slow") ? every + 5 : every, d, open, steps);
                     }
                 });
@@ -1066,13 +1165,47 @@ public class Home extends Activity {
         }, every * 1000L);
     }
 
+    /** Shows a code to enter at punchplay.tv/link (where you can also make the free account) and waits for it, as for Simkl. */
+    void punchPlayDialog() {
+        TextView steps = text(App.t(R.string.home_getting_code), sp(17, 15), TEXT, false), code = text("", sp(40, 32), TEXT, true);
+        code.setLetterSpacing(0.15f);
+        code.setPadding(0, dp(14), 0, dp(6));
+        AlertDialog d = new AlertDialog.Builder(this).setTitle(App.t(R.string.punchplay_connect)).setView(WebActivity.box(this, steps, code)).setNegativeButton(android.R.string.cancel, null).create();
+        boolean[] open = {true};
+        d.setOnDismissListener(x -> open[0] = false);
+        d.show();
+        App.io.execute(() -> {
+            PunchPlay.Code c = PunchPlay.newCode();
+            runOnUiThread(() -> {
+                if (!open[0]) return;
+                if (c == null) { steps.setText(App.t(R.string.punchplay_offline)); return; }
+                steps.setText(App.t(R.string.home_simkl_steps, c.page.replaceFirst("^https?://", "")));
+                code.setText(c.user);
+                Runnable[] poll = new Runnable[1];
+                poll[0] = () -> App.io.execute(() -> {
+                    String r = PunchPlay.check(c);
+                    runOnUiThread(() -> {
+                        if (!open[0]) return;
+                        switch (r) {
+                            case "ok": d.dismiss(); toast(App.t(R.string.punchplay_connected)); build(); break;
+                            case "expired": steps.setText(App.t(R.string.punchplay_expired)); break;
+                            case "error": steps.setText(App.t(R.string.punchplay_refused)); break;
+                            default: App.main.postDelayed(poll[0], c.interval * 1000L);
+                        }
+                    });
+                });
+                App.main.postDelayed(poll[0], c.interval * 1000L);
+            });
+        });
+    }
+
     /** Update `version`: what's new since this one, then Install runs `install`. */
     void whatsNew(String version, Runnable install) {
         String notes = Update.notes();
-        new AlertDialog.Builder(this).setTitle("アップデート " + version)
-            .setMessage((notes.isEmpty() ? "" : "変更内容\n\n" + notes + "\n\n") + "ダウンロードして FMHYPlay " + Update.installed() + " に上書きインストールしますか？")
-            .setPositiveButton("インストール", (d, w) -> install.run())
-            .setNegativeButton("後で", null).show();
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.home_update_title, version))
+            .setMessage((notes.isEmpty() ? "" : App.t(R.string.home_whats_new) + "\n\n" + notes + "\n\n") + App.t(R.string.home_update_ask, Update.installed()))
+            .setPositiveButton(App.t(R.string.home_install), (d, w) -> install.run())
+            .setNegativeButton(App.t(R.string.home_later), null).show();
     }
 
     /** The WARP log in a scrolling box, with Share and Copy. */
@@ -1083,31 +1216,31 @@ public class Home extends Activity {
         body.setPadding(dp(20), dp(8), dp(20), dp(8));
         android.widget.ScrollView sc = new android.widget.ScrollView(this);
         sc.addView(body);
-        new AlertDialog.Builder(this).setTitle("WARPログ").setView(sc)
-            .setPositiveButton("共有", (d, w) -> {
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.home_warp_log)).setView(sc)
+            .setPositiveButton(App.t(R.string.home_share), (d, w) -> {
                 try {
-                    startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, log), "WARPログを共有"));
+                    startActivity(Intent.createChooser(new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, log), App.t(R.string.home_share_warp_log)));
                 } catch (android.content.ActivityNotFoundException e) {
-                    toast("共有できるアプリがありません。代わりにログの写真を撮ってください。");
+                    toast(App.t(R.string.home_no_share_app));
                 }
             })
-            .setNeutralButton("コピー", (d, w) -> {
+            .setNeutralButton(android.R.string.copy, (d, w) -> {
                 ((android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE)).setPrimaryClip(android.content.ClipData.newPlainText("WARP log", log));
-                toast("コピーしました");
+                toast(App.t(R.string.home_copied));
             })
-            .setNegativeButton("閉じる", null).show();
+            .setNegativeButton(App.t(R.string.home_close), null).show();
     }
 
     /** Settings: ask GitHub now, then offer the install. */
     void checkUpdate(TextView value) {
-        value.setText("確認中\u2026");
+        value.setText(App.t(R.string.home_checking));
         App.io.execute(() -> {
             boolean ok = Update.check();
             runOnUiThread(() -> {
                 String v = Update.latest();
-                if (!ok) { value.setText("GitHubに接続できません"); toast("GitHubに接続できません。WARPを確認してください。"); return; }
-                if (v.isEmpty()) { value.setText("最新です"); toast("FMHYPlay " + Update.installed() + " は最新です"); return; }
-                value.setText(v + " が利用可能");
+                if (!ok) { value.setText(App.t(R.string.home_github_offline)); toast(App.t(R.string.home_github_offline_warp)); return; }
+                if (v.isEmpty()) { value.setText(App.t(R.string.home_up_to_date)); toast(App.t(R.string.home_is_latest, Update.installed())); return; }
+                value.setText(App.t(R.string.home_version_available, v));
                 whatsNew(v, () -> Update.install(value::setText));
             });
         });
@@ -1168,7 +1301,7 @@ public class Home extends Activity {
         if (!meta.isEmpty()) info.addView(text(meta, sp(12, 10), 0xFFD8D0E2, false));
         card.addView(info, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         if (kindBadges()) {
-            TextView kind = text(t.kind(), sp(11, 10), Color.WHITE, true);
+            TextView kind = text(App.t(t.anime ? R.string.home_tab_anime : t.series() ? R.string.home_kind_series : R.string.home_kind_movie), sp(11, 10), Color.WHITE, true);
             kind.setPadding(u(8, 6), u(3, 2), u(8, 6), u(3, 2));
             kind.setBackground(rounded(t.anime ? ACCENT : t.series() ? 0xE62E8B60 : 0xE63B5BCC, dp(8)));
             FrameLayout.LayoutParams kp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START);
@@ -1182,7 +1315,7 @@ public class Home extends Activity {
         card.setOnClickListener(v -> startActivity(new Intent(this, TitleActivity.class)
             .putExtra("id", t.id).putExtra("type", t.type).putExtra("name", t.name).putExtra("year", t.year).putExtra("poster", t.poster)));
         card.setOnLongClickListener(v -> {
-            toast(Catalog.toggleMine(t) ? "マイリストに追加しました" : "マイリストから削除しました");
+            toast(App.t(Catalog.toggleMine(t) ? R.string.home_added_mylist : R.string.home_removed_mylist));
             if (tab == 0 && tabs()) build();
             return true;
         });
@@ -1193,7 +1326,7 @@ public class Home extends Activity {
     /** Home's first line on a TV: the hold-OK hint (WARP and ad block are in the top bar). */
     View header() {
         if (!App.tv) return new View(this);
-        TextView hint = text("サイトでOKを長押しすると、お気に入りとミラーが表示されます", 13, MUTED, false);
+        TextView hint = text(App.t(R.string.home_hint_hold_site), 13, MUTED, false);
         hint.setPadding(dp(6), dp(2), 0, 0);
         return hint;
     }
@@ -1201,31 +1334,32 @@ public class Home extends Activity {
     /** Refreshes the WARP and ad block state shown on the Home chips and in Settings (whichever is on screen). */
     void updateChips() {
         // Icon and text share one colour: green = working, amber = starting, red = failed, grey = off
-        String word;
+        String label, word;   // the chip's "WARP on" and Settings' "On"
         int color, icon = R.drawable.ic_shield;
         switch (Warp.state) {
-            case ON: word = "オン"; color = GREEN; icon = R.drawable.ic_shield_check; break;
-            case CONNECTING: word = "接続中…"; color = AMBER; break;
-            case FAILED: word = "失敗しました。タップして再試行"; color = ACCENT; break;
-            default: word = "オフ"; color = MUTED;
+            case ON: label = App.t(R.string.home_warp_on); word = App.t(R.string.home_on); color = GREEN; icon = R.drawable.ic_shield_check; break;
+            case CONNECTING: label = App.t(R.string.home_warp_connecting); word = App.t(R.string.home_connecting); color = AMBER; break;
+            case FAILED: label = App.t(R.string.home_warp_failed); word = App.t(R.string.home_failed_retry); color = ACCENT; break;
+            default: label = App.t(R.string.home_warp_off); word = App.t(R.string.home_off); color = MUTED;
         }
         boolean ads = AdBlock.enabled();
+        String adLabel = App.t(ads ? R.string.home_ad_block_on : R.string.home_ad_block_off);
         if (warpChip != null) {
-            warpChip.setText(App.tv ? "WARP " + word : "");
-            warpChip.setTooltipText("WARP " + word);
-            warpChip.setContentDescription("WARP " + word);
+            warpChip.setText(App.tv ? label : "");
+            warpChip.setTooltipText(label);
+            warpChip.setContentDescription(label);
             iconize(warpChip, icon, color);
             if (!App.tv) warpChip.setCompoundDrawablePadding(0);
         }
         if (adChip != null) {
-            adChip.setText(App.tv ? (ads ? "広告ブロック オン" : "広告ブロック オフ") : "");
-            adChip.setTooltipText(ads ? "広告ブロック オン" : "広告ブロック オフ");
-            adChip.setContentDescription(ads ? "広告ブロック オン" : "広告ブロック オフ");
+            adChip.setText(App.tv ? adLabel : "");
+            adChip.setTooltipText(adLabel);
+            adChip.setContentDescription(adLabel);
             iconize(adChip, R.drawable.ic_block, ads ? GREEN : MUTED);
             if (!App.tv) adChip.setCompoundDrawablePadding(0);
         }
-        if (warpValue != null) { warpValue.setText(word.substring(0, 1).toUpperCase() + word.substring(1)); warpValue.setTextColor(color); }
-        if (adValue != null) { adValue.setText(ads ? "オン" : "オフ"); adValue.setTextColor(ads ? GREEN : MUTED); }
+        if (warpValue != null) { warpValue.setText(word); warpValue.setTextColor(color); }
+        if (adValue != null) { adValue.setText(App.t(ads ? R.string.home_on : R.string.home_off)); adValue.setTextColor(ads ? GREEN : MUTED); }
     }
 
     /** Puts a tinted icon in front of a chip's text and colours the text to match. */
@@ -1365,7 +1499,8 @@ public class Home extends Activity {
         title.setMaxLines(2);
         title.setEllipsize(TextUtils.TruncateAt.END);
         info.addView(title);
-        String ago = DateUtils.getRelativeTimeSpanString(e.time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS).toString();
+        long now = System.currentTimeMillis();   // under a minute reads "1 minute ago", not "0 minutes ago"
+        String ago = DateUtils.getRelativeTimeSpanString(Math.min(e.time, now - 60000), now, DateUtils.MINUTE_IN_MILLIS).toString();
         info.addView(text((e.episode.isEmpty() ? "" : e.episode + "  ·  ") + e.site + "  ·  " + ago, 12, 0xFFD8D0E2, false));
         card.addView(info, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         if (e.pos > 0 && e.dur > 0) {   // how much is watched: the player carries on from there
@@ -1386,7 +1521,7 @@ public class Home extends Activity {
         card.setOnClickListener(v -> startActivity(WebActivity.open(this, e.site, e.siteUrl, e.url)));
         card.setOnLongClickListener(v -> {
             new AlertDialog.Builder(this).setTitle(e.title)
-                .setItems(new String[]{e.site + " のホームを開く", "「続きから見る」から削除"}, (d, i) -> {
+                .setItems(new String[]{App.t(R.string.home_open_site_home, e.site), App.t(R.string.home_remove_continue)}, (d, i) -> {
                     if (i == 0) startActivity(WebActivity.open(this, e.site, e.siteUrl, e.siteUrl));
                     else { History.remove(e); build(); }
                 }).show();
@@ -1439,10 +1574,10 @@ public class Home extends Activity {
         card.setOnLongClickListener(v -> {
             List<String> items = new ArrayList<>();
             List<Runnable> actions = new ArrayList<>();
-            items.add(Sites.isFavorite(s.url) ? "\u2661  お気に入りから削除" : "\u2665  お気に入りに追加");
+            items.add(App.t(Sites.isFavorite(s.url) ? R.string.home_remove_favorite : R.string.home_add_favorite));
             actions.add(() -> { Sites.toggleFavorite(s); build(); });
             for (String m : s.mirrors) {
-                items.add("ミラーを開く: " + Uri.parse(m).getHost());
+                items.add(App.t(R.string.home_open_mirror, Uri.parse(m).getHost()));
                 actions.add(() -> startActivity(WebActivity.open(this, s.name, m, m)));
             }
             new AlertDialog.Builder(this).setTitle(s.name)
@@ -1468,7 +1603,7 @@ public class Home extends Activity {
         name.setSingleLine();
         name.setEllipsize(TextUtils.TruncateAt.END);
         card.addView(name);
-        TextView n = text(count + " サイト", sp(12, 11), MUTED, false);
+        TextView n = text(App.t(count == 1 ? R.string.home_sites_one : R.string.home_sites_many, count), sp(12, 11), MUTED, false);
         n.setPadding(0, u(6, 2), 0, 0);
         card.addView(n);
         card.setBackground(rounded(CARD, dp(14)));
@@ -1478,7 +1613,7 @@ public class Home extends Activity {
     }
 
     View allCard(String category, int count) {
-        TextView card = text("すべて " + count + "  ›", sp(17, 15), TEXT, true);
+        TextView card = text(App.t(R.string.home_all_count, count), sp(17, 15), TEXT, true);
         card.setGravity(Gravity.CENTER);
         card.setLayoutParams(cardParams(cardW, cardH));
         card.setBackground(rounded(0xFF2A2236, dp(14)));
@@ -1488,7 +1623,7 @@ public class Home extends Activity {
     }
 
     View addCard() {
-        TextView card = text("+  サイトを追加", sp(17, 15), TEXT, true);
+        TextView card = text(App.t(R.string.home_add_site_card), sp(17, 15), TEXT, true);
         card.setGravity(Gravity.CENTER);
         card.setLayoutParams(cardParams(cardW, cardH));
         card.setBackground(rounded(0xFF2A2236, dp(14)));
@@ -1499,13 +1634,13 @@ public class Home extends Activity {
 
     void addSiteDialog() {
         EditText in = WebActivity.field(this, "https://example.com", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        new AlertDialog.Builder(this).setTitle("サイトを追加").setView(WebActivity.box(this, in))
-            .setPositiveButton("追加", (d, w) -> {
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.home_add_site)).setView(WebActivity.box(this, in))
+            .setPositiveButton(App.t(R.string.home_add), (d, w) -> {
                 if (in.getText().toString().trim().isEmpty()) return;
                 Sites.addCustom(in.getText().toString());
                 build();
             })
-            .setNegativeButton("キャンセル", null)
+            .setNegativeButton(android.R.string.cancel, null)
             .show();
     }
 
