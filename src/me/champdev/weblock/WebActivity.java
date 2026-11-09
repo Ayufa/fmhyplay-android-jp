@@ -137,6 +137,8 @@ public class WebActivity extends Activity {
     View opening;              // the backdrop (poster, title, what the app is doing now) while it drives the page
     TextView openingText;
     GifView openingGif;
+    boolean pageError;         // the page just loaded was an error page
+    boolean okOnScreen;        // an OK press began while the backdrop was up: its release takes the backdrop down
     boolean dismissed;         // you looked at the page (or it gave up, or the player took over): the backdrop stays down until the app starts something new
     Runnable openingGiveUp = () -> { };   // never null: Handler.removeCallbacks(null) would drop every message without a callback
     int[] episodeAfterLoad;    // the episode to press on the page once it has loaded (a site without an episode address)
@@ -451,7 +453,7 @@ public class WebActivity extends Activity {
                 return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
             }
 
-            @Override public void onPageStarted(WebView v, String url, Bitmap f) { mainNavAt = SystemClock.uptimeMillis(); }
+            @Override public void onPageStarted(WebView v, String url, Bitmap f) { mainNavAt = SystemClock.uptimeMillis(); pageError = false; }
 
             @Override public void doUpdateVisitedHistory(WebView v, String url, boolean reload) {
                 mainNavAt = SystemClock.uptimeMillis();
@@ -463,6 +465,7 @@ public class WebActivity extends Activity {
             }
 
             @Override public void onPageFinished(WebView v, String url) {
+                if (pageError) return;
                 cloudflareCheck(v);
                 v.evaluateJavascript(DL_HOOK, null);
                 if (spatnav != null && !WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) v.evaluateJavascript(spatnav, null);
@@ -482,6 +485,13 @@ public class WebActivity extends Activity {
                     App.main.postDelayed(() -> pressEpisode(ep[0], ep[1]), 2500);   // single-page sites draw their episode list after the load
                 }
                 scheduleCapture();
+            }
+
+            // The page the app is driving did not load (no network, timed out, no route): say so now, not after 40 seconds. An abort is not an error (a redirect).
+            @Override public void onReceivedError(WebView v, WebResourceRequest r, android.webkit.WebResourceError e) {
+                if (!r.isForMainFrame() || String.valueOf(e.getDescription()).contains("ERR_ABORTED")) return;
+                pageError = true;   // the error page that follows is "finished" too: it is not the page to press play on
+                if (opening != null && opening.getVisibility() == View.VISIBLE) fail(sorry());
             }
 
             @Override public void onReceivedHttpAuthRequest(WebView v, HttpAuthHandler h, String host, String realm) {
@@ -621,6 +631,7 @@ public class WebActivity extends Activity {
         dismissed = false;   // a new episode: the backdrop again
         step("load", App.t(R.string.web_opening_episode, season, episode), App.t(R.string.web_pick_episode, season, episode));
         Catalog.Title t = show;
+        String here = web.getUrl(), hereTitle = String.valueOf(web.getTitle());   // read here: the lookup below runs off the main thread
         String audio = App.prefs.getString("siteAudio:" + siteKey(), "").toLowerCase(java.util.Locale.ROOT).contains("dub") ? "dub" : "sub";
         App.io.execute(() -> {
             String link = null;
@@ -638,6 +649,8 @@ public class WebActivity extends Activity {
                 }
                 if (link == null) link = Sites.link(siteUrl, "episode", v);
             }
+            // No address from the catalog (a resumed title, or one it does not know as anime): the page's own address with the episode swapped
+            if (link == null) link = History.episodeUrl(here, History.episodeNumber(here, hereTitle), episode);
             String go = link;
             runOnUiThread(() -> {
                 if (isFinishing()) return;
@@ -952,10 +965,18 @@ public class WebActivity extends Activity {
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
         if (Home.holdBack(this, e)) return true;
         int k = e.getKeyCode();
-        // OK on the remote while the "Opening" screen is up shows the page (and is not pressed on the page behind it)
-        if ((k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER) && opening != null && opening.getVisibility() == View.VISIBLE) {
-            if (e.getAction() == KeyEvent.ACTION_UP) hideOpening();
-            return true;
+        // OK on the remote while the "Opening" screen is up shows the page (and is not pressed on the page behind it). Only a press that
+        // started on the screen counts: the release of the OK that pressed Next episode in the player arrives here after the player
+        // closed, and must not take the screen down the moment it goes up
+        if (k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER) {
+            boolean up = e.getAction() == KeyEvent.ACTION_UP;
+            if (opening != null && opening.getVisibility() == View.VISIBLE) {
+                if (!up && e.getRepeatCount() == 0) okOnScreen = true;
+                if (up && okOnScreen) hideOpening();
+                if (up) okOnScreen = false;
+                return true;
+            }
+            if (up && okOnScreen) { okOnScreen = false; return true; }
         }
         if ((k == KeyEvent.KEYCODE_MEDIA_PLAY || k == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) && sniffer.has()) {
             if (e.getAction() == KeyEvent.ACTION_UP) playNative();

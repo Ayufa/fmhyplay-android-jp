@@ -179,6 +179,32 @@ final class History {
         return JUNK_TAIL.matcher(best).replaceFirst("").trim();
     }
 
+    /** The episode number a page says it is (its address, else its title); 0 when it does not say. */
+    static int episodeNumber(String url, String title) {
+        Matcher m = Pattern.compile("E(\\d+)").matcher(episode(String.valueOf(url), String.valueOf(title)));
+        int n = 0;
+        while (m.find()) n = Integer.parseInt(m.group(1));
+        return n;
+    }
+
+    /**
+     * The same address for another episode, for a page whose address spells the episode out: ".../anime-1535-episode-3" with 3 and 4
+     * gives ".../anime-1535-episode-4". The last "episode / ep / e" followed by that number is the one swapped (zero padding kept).
+     * Null when the address does not say it.
+     */
+    static String episodeUrl(String url, int from, int to) {
+        if (url == null || from <= 0 || to <= 0 || from == to) return null;
+        Matcher m = Pattern.compile("(?i)((?:episode|ep|e)[-_/ ]?)(0*)" + from + "(?!\\d)").matcher(url);
+        int s = -1, e = -1;
+        String lead = "";
+        int width = 0;
+        while (m.find()) { s = m.start(); e = m.end(); lead = m.group(1); width = m.group(2).length() + String.valueOf(from).length(); }
+        if (s < 0) return null;
+        String n = String.valueOf(to);
+        while (n.length() < width) n = "0" + n;
+        return url.substring(0, s) + lead + n + url.substring(e);
+    }
+
     static String episode(String url, String title) {
         for (Pattern p : EP_URL) {
             Matcher m = p.matcher(url);
