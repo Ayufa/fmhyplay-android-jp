@@ -169,8 +169,8 @@
     <string name="home_check_updates_help">FMHYPlay %1$s. يسأل GitHub عن إصدار أحدث ويثبّته عندما توافق.</string>
     <string name="home_up_to_date">محدَّث</string>
     <string name="home_version_available">%1$s متاح</string>
-    <string name="home_check_at_start">التحقق عند فتح التطبيق</string>
-    <string name="home_check_at_start_help">يبحث عن تحديث مرة كل 12 ساعة.</string>
+    <string name="home_check_at_start">التحقق تلقائيًا</string>
+    <string name="home_check_at_start_help">يبحث عن تحديث كل ساعة وعند كل تشغيل للجهاز.</string>
     <string name="home_add_site">إضافة موقع</string>
     <string name="home_add_site_help">أي موقع بث عبر عنوانه. يُضاف إلى المفضلة في الرئيسية.</string>
     <string name="home_refresh_fmhy">تحديث قوائم FMHY</string>

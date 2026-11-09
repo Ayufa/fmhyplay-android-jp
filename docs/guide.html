@@ -36,7 +36,7 @@ adb install -r FMHYPlay-TV-vX.Y.Z.apk</code></pre>
 </ol>
 <p>FMHYPlay then updates itself from inside the app. To cast from your phone to the Fire TV, open FMHYPlay on it once; the Fire TV shows up in the phone's Cast list as <i>Name - FMHYPlay</i>.</p>
 <p>Updates install over the old version, because every release is signed with the same key. You can check a file against <code>SHA256SUMS.txt</code> on the release page.</p>
-<p><b>Updates from inside the app</b> (2.14.0 and later): when a newer release is out, Home shows one line with an <i>Install</i> button. FMHYPlay downloads it from GitHub and Android asks you to confirm; the first time, allow FMHYPlay to install unknown apps. <i>Settings, Check for updates</i> looks right away, and <i>Check at app start</i> turns the automatic check (at most every 12 hours) off.</p>
+<p><b>Updates from inside the app</b> (2.14.0 and later): when a newer release is out, Home shows one line with an <i>Install</i> button. FMHYPlay downloads it from GitHub and Android asks you to confirm; the first time, allow FMHYPlay to install unknown apps. <i>Settings, Check for updates</i> looks right away, and <i>Check automatically</i> turns the automatic check off; it looks every hour and at every boot, even with the app closed.</p>
 
 <h2 id="browse">Browse and play</h2>
 <p>The tabs along the top (bottom on a phone) are <b>Home</b>, <b>Movies</b>, <b>TV</b>, <b>Sports</b>, <b>Anime</b>, <b>IPTV</b> and <b>Settings</b>.</p>
@@ -75,7 +75,8 @@ adb install -r FMHYPlay-TV-vX.Y.Z.apk</code></pre>
 <tr><td><kbd>OK</kbd> / Play</td><td>Pause and play; when <i>Skip intro</i> or <i>Next episode</i> shows, it presses that</td></tr>
 <tr><td><kbd>Up</kbd></td><td>Show the controls</td></tr>
 <tr><td><kbd>Down</kbd> / <kbd>Menu</kbd></td><td>Move to the buttons; the one the remote is on shows its name above it</td></tr>
-<tr><td><kbd>Back</kbd></td><td>Close the player and return to the site</td></tr></table>
+<tr><td><kbd>Back</kbd></td><td>Close the player and return to the site</td></tr>
+<tr><td>Anywhere</td><td>Hold <kbd>Back</kbd> 3 s</td><td>Go straight to Home ("Going to Home…"), closing everything open</td></tr></table>
 <p>Seeking waits until you stop pressing, then jumps once, so holding the key does not make the stream reload on every step.</p>
 
 <h2 id="touch">Phone and tablet</h2>
@@ -89,7 +90,7 @@ adb install -r FMHYPlay-TV-vX.Y.Z.apk</code></pre>
 <tr><td>Swipe up or down on the right half</td><td>Volume</td></tr>
 <tr><td>Drag the progress bar</td><td>Seek (it jumps once, when you let go)</td></tr></table>
 <p>The player follows the rotation lock (the Full screen button turns it), and it keeps clear of camera cut-outs. <b>Picture in picture:</b> press Home while a video plays and it keeps playing in a small window, with play and pause; tap it for full screen, close it to stop.</p>
-<p><b>Back to Home in one step:</b> on a phone the player has a house button at the top right, and a small round house floats over a website (drag it anywhere, it remembers where). On a TV open <i>More</i> in the player, or press <kbd>Menu</kbd> on a website, and pick <i>Home</i>. Everything open closes, and your place in the video is saved. While an episode opens, a dark screen with its name covers the site; tap it (or press <kbd>Back</kbd>) to see the page, and it closes by itself if nothing starts.</p>
+<p><b>Back to Home in one step:</b> on a phone the player has a house button at the top right, and the same house sits at the top right of a website. On a TV open <i>More</i> in the player, or press <kbd>Menu</kbd> on a website, and pick <i>Home</i>. Everything open closes, and your place in the video is saved. While the app loads a page, searches for the title, opens the episode or starts the video, a translucent screen with the title, the current step and a cat covers the site; tap it (or press <kbd>Back</kbd>) to see the page, and it closes by itself if a step gets stuck.</p>
 
 <h2 id="player">FMHYPlayer</h2>
 <p>One row of buttons at the bottom; the line under the title says what is playing and what is picked (for example <i>Season 2 · Episode 3 · 1080p · English · Dub</i>). A button only shows when it has something to offer.</p>
@@ -101,7 +102,7 @@ adb install -r FMHYPlay-TV-vX.Y.Z.apk</code></pre>
 <tr><td>Episodes</td><td>The list of episodes: seasons across the top, each episode with its picture and name. The one playing is marked; pick another and it opens.</td></tr>
 <tr><td>Servers</td><td>The site's own servers (see below).</td></tr>
 <tr><td>Subtitles</td><td>The stream's subtitles, <i>Search subtitles</i>, and <i>Settings</i> (size, position, color, background, timing).</td></tr>
-<tr><td>More</td><td>Speed (0.5x to 2x), Volume boost (up to +12 dB), Dialog boost (clearer voices), Zoom (Fit, Fill, Stretch, 16:9, 4:3) and From the start.</td></tr>
+<tr><td>More</td><td>Speed (0.5x to 2x), Volume boost (up to +12 dB), Dialog boost (clearer voices, off until you turn it on), Zoom (Fit, Fill, Stretch, 16:9, 4:3), Debug overlay and From the start. <i>Debug overlay</i> shows live numbers over the picture: size and frame rate, codec and whether the decoder is hardware or software, video and audio bitrate, network speed (last download, estimate, 30-second average, total), buffer, dropped frames, stream type and host, how long the video took to open, and memory. It stays on or off as you leave it.</td></tr>
 <tr><td>Cast, Full screen</td><td>Send the video to a TV (phone), and turn the phone.</td></tr></table>
 <div class="note">For live channels the −10 and +10 buttons and the progress bar are hidden, since there is nothing to seek in.</div>
 

@@ -89,6 +89,12 @@
     <string name="title_no_site_toast">देखने के लिए कोई साइट नहीं</string>
     <string name="web_opening_episode">S%1$d E%2$d खोल रहे हैं…</string>
     <string name="web_opening_hint">पेज देखने के लिए टैप करें या बैक दबाएँ</string>
+    <string name="web_step_loading">पेज लोड हो रहा है…</string>
+    <string name="web_step_search">शीर्षक खोजा जा रहा है…</string>
+    <string name="web_step_play">वीडियो शुरू हो रहा है…</string>
+    <string name="web_step_done">मिल गया! प्लेयर शुरू हो रहा है…</string>
+    <string name="web_step_failed">शुरू नहीं हो सका। अब आप चुनें।</string>
+    <string name="home_going">होम पर जा रहे हैं…</string>
     <string name="web_pick_episode">S%1$d E%2$d: पेज पर चुनें</string>
     <string name="category_hint_tv">पसंदीदा और मिरर के लिए किसी साइट पर OK दबाए रखें</string>
     <string name="category_hint_touch">पसंदीदा और मिरर के लिए किसी साइट को देर तक दबाएँ</string>

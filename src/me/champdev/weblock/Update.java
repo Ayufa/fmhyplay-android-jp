@@ -1,6 +1,11 @@
 package me.champdev.weblock;
 
 import android.app.PendingIntent;
+import android.app.job.JobInfo;
+import android.app.job.JobParameters;
+import android.app.job.JobScheduler;
+import android.app.job.JobService;
+import android.content.ComponentName;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -19,7 +24,8 @@ import java.util.function.Consumer;
 /** Looks for a newer release on GitHub and installs its APK over this app (same signing key, so Android takes it as an update). */
 final class Update {
     static final String API = "https://api.github.com/repos/fmhyplay/android/releases?per_page=15";   // newest first
-    static final long EVERY = 12L * 3600 * 1000;
+    static final long EVERY = 3600L * 1000;   // an hour (and at every boot, below)
+    static final int HOURLY = 7001, AT_BOOT = 7002;
     private static volatile boolean busy;
     private static BroadcastReceiver waiting;   // listens for the installer's answer; one at a time
 
@@ -30,6 +36,30 @@ final class Update {
     /** On unless switched off in Settings. */
     static boolean auto() {
         return App.prefs.getBoolean("updateCheck", true);
+    }
+
+    /**
+     * The background checks, which Android runs with the app closed: every hour (kept across reboots) and, from the boot receiver,
+     * once at every boot as soon as the network is up. No other limit; the Settings switch still turns them off.
+     */
+    static void schedule(Context c, boolean boot) {
+        try {
+            JobScheduler js = c.getSystemService(JobScheduler.class);
+            ComponentName cn = new ComponentName(c, Job.class);
+            if (js.getPendingJob(HOURLY) == null)
+                js.schedule(new JobInfo.Builder(HOURLY, cn).setPeriodic(EVERY).setPersisted(true).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).build());
+            if (boot) js.schedule(new JobInfo.Builder(AT_BOOT, cn).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).build());
+        } catch (RuntimeException ignored) { }   // a ROM that refuses jobs: the check on Home still runs
+    }
+
+    public static class Job extends JobService {
+        @Override public boolean onStartJob(JobParameters p) {
+            if (!auto()) return false;
+            App.io.execute(() -> { check(); jobFinished(p, false); });
+            return true;
+        }
+
+        @Override public boolean onStopJob(JobParameters p) { return false; }
     }
 
     static boolean due() {

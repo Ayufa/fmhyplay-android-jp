@@ -85,8 +85,15 @@ final class Subs {
         return SubFetch.fetch(HTTP, s.url, s.encoding, s.lang, dir);
     }
 
-    /** How far (dp) subtitles sit above the default spot; negative = lower. Kept across videos. */
+    /** How far (dp) subtitles sit above the default spot (20 dp from the bottom); negative = lower. Kept across videos. */
     static int offset() {
+        if (!App.prefs.getBoolean("subBase20", false)) {
+            // Saved when the default spot was 100 dp up: a spot somebody picked stays where it was (20 + old + 80 = 100 + old). Default stays default.
+            int old = App.prefs.getInt("subOffset", 0);
+            android.content.SharedPreferences.Editor e = App.prefs.edit().putBoolean("subBase20", true);
+            if (old != 0) e.putInt("subOffset", old + 80);
+            e.apply();
+        }
         return App.prefs.getInt("subOffset", 0);
     }
 
@@ -157,6 +164,26 @@ final class Subs {
     }
 
     /** Keeps the pick for `key` (null forgets it) and makes its language the preferred one. The newest 300 are kept. */
+    /** The stream's own subtitle track picked for a video (same keys as remember): its language, its name and its place in the list; null when none. */
+    static JSONObject rememberedTrack(String key) {
+        try {
+            return new JSONObject(App.prefs.getString("subTracks", "{}")).optJSONObject(key);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Remembers (lang null: forgets) the stream's own subtitle track picked for a video, so resuming it turns the same one on. */
+    static void rememberTrack(String key, String lang, String label, int index) {
+        try {
+            JSONObject all = new JSONObject(App.prefs.getString("subTracks", "{}"));
+            all.remove(key);
+            if (lang != null) all.put(key, new JSONObject().put("lang", lang).put("label", label).put("index", index));
+            while (all.length() > 300) all.remove(all.keys().next());
+            App.prefs.edit().putString("subTracks", all.toString()).apply();
+        } catch (Exception ignored) { }
+    }
+
     static void remember(String key, Sub s) {
         try {
             JSONObject all = new JSONObject(App.prefs.getString("subPicks", "{}"));
@@ -210,7 +237,7 @@ final class Subs {
         List<Runnable> refresh = new ArrayList<>();
         Runnable after = () -> { for (Runnable r : refresh) r.run(); changed.run(); };
         row(a, body, refresh, App.t(R.string.subs_size), Subs::sizeLabel, by -> bump("subSize", 100, 10 * by, 50, 250), after);
-        row(a, body, refresh, App.t(R.string.subs_position), Subs::offsetLabel, by -> bump("subOffset", 0, 10 * by, -100, 200), after);
+        row(a, body, refresh, App.t(R.string.subs_position), Subs::offsetLabel, by -> bump("subOffset", 0, 10 * by, -20, 280), after);   // 20 dp up is the default spot: down stops at the edge
         row(a, body, refresh, App.t(R.string.subs_color), Subs::colorName, by -> App.prefs.edit().putInt("subColor", Math.floorMod(colorIndex() + by, COLORS.length)).apply(), after);
         row(a, body, refresh, App.t(R.string.subs_background), Subs::backgroundLabel, by -> bump("subBg", 50, 25 * by, 0, 100), after);
         if (timing) row(a, body, refresh, App.t(R.string.subs_timing), Subs::delayLabel, by -> delayMs = Math.max(-600000, Math.min(600000, delayMs + 100L * by)), after);

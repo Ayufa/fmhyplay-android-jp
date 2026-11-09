@@ -169,8 +169,8 @@
     <string name="home_check_updates_help">FMHYPlay %1$s. Mencari rilis baru di GitHub dan memasangnya atas izinmu.</string>
     <string name="home_up_to_date">Terbaru</string>
     <string name="home_version_available">%1$s tersedia</string>
-    <string name="home_check_at_start">Periksa saat aplikasi dibuka</string>
-    <string name="home_check_at_start_help">Mencari pembaruan sekali setiap 12 jam.</string>
+    <string name="home_check_at_start">Periksa otomatis</string>
+    <string name="home_check_at_start_help">Mencari pembaruan setiap jam dan setiap perangkat dinyalakan.</string>
     <string name="home_add_site">Tambahkan situs</string>
     <string name="home_add_site_help">Situs streaming apa pun lewat alamatnya. Masuk ke Favorit di Beranda.</string>
     <string name="home_refresh_fmhy">Muat ulang daftar FMHY</string>

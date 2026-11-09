@@ -169,8 +169,8 @@
     <string name="home_check_updates_help">FMHYPlay %1$s। GitHub से नई रिलीज़ पूछता है और आपके कहने पर इंस्टॉल करता है।</string>
     <string name="home_up_to_date">अप टू डेट</string>
     <string name="home_version_available">%1$s उपलब्ध</string>
-    <string name="home_check_at_start">ऐप शुरू होने पर जांचें</string>
-    <string name="home_check_at_start_help">हर 12 घंटे में एक बार अपडेट देखता है।</string>
+    <string name="home_check_at_start">अपने आप जांचें</string>
+    <string name="home_check_at_start_help">हर घंटे और हर बार डिवाइस चालू होने पर अपडेट देखता है।</string>
     <string name="home_add_site">साइट जोड़ें</string>
     <string name="home_add_site_help">कोई भी स्ट्रीमिंग साइट, उसके पते से। यह होम पर पसंदीदा में जाती है।</string>
     <string name="home_refresh_fmhy">FMHY लिस्ट रीफ़्रेश करें</string>

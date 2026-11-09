@@ -89,6 +89,12 @@
     <string name="title_no_site_toast">Tidak ada situs untuk menonton</string>
     <string name="web_opening_episode">Membuka S%1$d E%2$d…</string>
     <string name="web_opening_hint">Ketuk atau tekan Kembali untuk melihat halaman</string>
+    <string name="web_step_loading">Memuat halaman…</string>
+    <string name="web_step_search">Mencari judul…</string>
+    <string name="web_step_play">Memulai video…</string>
+    <string name="web_step_done">Ketemu! Memulai pemutar…</string>
+    <string name="web_step_failed">Gagal dimulai. Giliranmu.</string>
+    <string name="home_going">Menuju Beranda…</string>
     <string name="web_pick_episode">S%1$d E%2$d: pilih di halaman</string>
     <string name="category_hint_tv">Tahan OK pada situs untuk favorit dan mirror</string>
     <string name="category_hint_touch">Tekan lama situs untuk favorit dan mirror</string>

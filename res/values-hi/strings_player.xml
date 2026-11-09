@@ -27,6 +27,7 @@
     <string name="player_zoom_16_9">16:9</string>
     <string name="player_zoom_4_3">4:3</string>
     <string name="player_zoom_now">ज़ूम · %1$s</string>
+    <string name="player_debug_now">डीबग ओवरले: %1$s</string>
     <string name="player_zoom_say">ज़ूम: %1$s</string>
     <string name="player_restart">शुरू से चलाएँ</string>
     <string name="player_portrait">पोर्ट्रेट</string>

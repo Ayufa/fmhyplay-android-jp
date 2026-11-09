@@ -27,6 +27,7 @@
     <string name="player_zoom_16_9">16:9</string>
     <string name="player_zoom_4_3">4:3</string>
     <string name="player_zoom_now">التكبير · %1$s</string>
+    <string name="player_debug_now">طبقة التصحيح: %1$s</string>
     <string name="player_zoom_say">التكبير: %1$s</string>
     <string name="player_restart">التشغيل من البداية</string>
     <string name="player_portrait">عمودي</string>
