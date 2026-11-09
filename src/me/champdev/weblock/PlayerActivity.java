@@ -87,7 +87,21 @@ public class PlayerActivity extends Activity {
     long hideAt;
     LinearLayout chipRow;
     final List<LinearLayout> chips = new ArrayList<>();
-    LinearLayout chipCast, chipRotate, chipRestart, chipServers, chipQuality, chipAudio, chipBoost, chipVoice, chipSubs, chipSpeed, chipZoom;
+    LinearLayout chipCast, chipRotate, chipEpisodes, chipPrev, chipNext, chipDub, chipServers, chipQuality, chipAudio, chipSubs, chipMore;
+    Catalog.Title seriesInfo;   // the series playing, with its episodes (for Episodes and Next)
+    View panel;                 // the Episodes list, over the video
+    TextView skipBtn;           // Skip intro / Skip recap / Next episode, over the picture
+    TextView tip;               // the name of the button the remote is on (icons only otherwise)
+    final SpeechMeter meter = new SpeechMeter();   // how loud the dialogue is, every 0.1 s (subtitle auto-sync)
+    List<long[]> syncCues;      // the downloaded subtitle file's lines, to line up with the speech
+    int syncTries;
+    long syncSet;               // the timing auto-sync last set (a different one means you set it yourself: then it stops)
+    List<Skips.Part> skips = new ArrayList<>();
+    final java.util.Set<Skips.Part> skipDone = new java.util.HashSet<>();   // skipped, or the next episode was refused by seeking back
+    Skips.Part skipShown;
+    boolean skipsAsked;
+    Skips.Part tail;            // the last 30 s, when no credits are known for this copy
+    int cutTop, cutRight;       // the camera cutout's room at the top and right (the Episodes list keeps clear of it)
     String chipLayoutKey = "";
     LinearLayout topBar, bottomBar;      // padded for notches; the centre buttons stay centred
     View rew, fwd;                       // the -10 / +10 buttons beside play
@@ -112,6 +126,7 @@ public class PlayerActivity extends Activity {
     final Runnable tick = new Runnable() {
         @Override public void run() {
             update();
+            checkSkip();
             if (Math.round(measuredFps) != Math.round(shownFps)) { shownFps = measuredFps; refreshChips(); }
             App.main.postDelayed(this, 500);
         }
@@ -150,11 +165,11 @@ public class PlayerActivity extends Activity {
         ImageView b = new ImageView(this);
         b.setImageResource(icon);
         b.setColorFilter(Color.WHITE);
-        int pad = dp(sizeDp / 4f);
+        int pad = dp(sizeDp / 6f);   // a big icon in a tight, faint disc
         b.setPadding(pad, pad, pad, pad);
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(0x66000000);
+        bg.setColor(0x40000000);
         b.setBackground(bg);
         b.setFocusable(false);
         b.setOnClickListener(v -> click.run());
@@ -162,24 +177,13 @@ public class PlayerActivity extends Activity {
         return b;
     }
 
-    /** -10 / +10: the round arrow with the number inside. */
+    /** -10 / +10 (the icon carries the number). */
     View skip(int icon, long ms) {
-        FrameLayout f = new FrameLayout(this);
-        ImageView b = circle(icon, 64, () -> seekBy(ms));
-        f.addView(b, new FrameLayout.LayoutParams(dp(64), dp(64)));
-        TextView n = new TextView(this);
-        n.setText("10");
-        n.setTextColor(Color.WHITE);
-        n.setTextSize(12);
-        n.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        n.setGravity(Gravity.CENTER);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(64), dp(64), Gravity.CENTER);
-        lp.topMargin = dp(2);
-        f.addView(n, lp);
-        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(64), dp(64));
-        ll.setMargins(dp(24), 0, dp(24), 0);
-        f.setLayoutParams(ll);
-        return f;
+        ImageView b = circle(icon, 52, () -> seekBy(ms));
+        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(52), dp(52));
+        ll.setMargins(dp(20), 0, dp(20), 0);
+        b.setLayoutParams(ll);
+        return b;
     }
 
     void showCues(CueGroup group) {
@@ -215,6 +219,7 @@ public class PlayerActivity extends Activity {
     void buildUi() {
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
+        root.setDefaultFocusHighlightEnabled(false);   // a remote key would grey out the whole picture
         surface = new SurfaceView(this);
         root.addView(surface, new FrameLayout.LayoutParams(-1, -1));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
@@ -280,15 +285,15 @@ public class PlayerActivity extends Activity {
 
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
-        int pad = dp(24);
-        top.setPadding(pad, dp(10), pad, dp(26));
+        int pad = dp(16);
+        top.setPadding(dp(4), dp(10), pad, dp(26));
         topBar = top;
         top.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xCC000000, 0x00000000}));
         ImageView back = circle(R.drawable.ic_p_back, 48, this::finish);
         top.addView(back);
         LinearLayout titles = new LinearLayout(this);
         titles.setOrientation(LinearLayout.VERTICAL);
-        titles.setPadding(dp(14), 0, 0, 0);
+        titles.setPadding(dp(4), 0, 0, 0);
         title = new TextView(this);
         title.setTextColor(Color.WHITE);
         title.setTextSize(18);
@@ -299,6 +304,9 @@ public class PlayerActivity extends Activity {
         if (getIntent().hasExtra("pageTitle")) {
             String clean = History.cleanTitle(String.valueOf(getIntent().getStringExtra("pageTitle")), String.valueOf(getIntent().getStringExtra("site")));
             if (!clean.isEmpty()) shown = clean;
+            // The show's own name when the page came from the catalog (a page title may be just the site's name)
+            WebActivity pg = WebActivity.active;
+            if (pg != null && pg.show != null && !pg.show.name.isEmpty() && !pg.show.name.equals("null")) shown = pg.show.name;
         }
         title.setText(shown);
         titles.addView(title);
@@ -316,7 +324,7 @@ public class PlayerActivity extends Activity {
         LinearLayout cluster = new LinearLayout(this);
         cluster.setGravity(Gravity.CENTER);
         rew = skip(R.drawable.ic_p_replay, -10000);
-        playPause = circle(R.drawable.ic_p_play, 88, this::toggle);
+        playPause = circle(R.drawable.ic_p_play, 68, this::toggle);
         playPause.setColorFilter(Color.WHITE);
         fwd = skip(R.drawable.ic_p_forward, 10000);
         cluster.addView(rew);
@@ -357,39 +365,66 @@ public class PlayerActivity extends Activity {
         timeTotal.setPadding(dp(10), 0, 0, 0);
         row.addView(timeTotal);
         bar.addView(row);
-        // All actions sit on the bar itself as round icon buttons, spread evenly (never wider than the screen):
-        // Down puts the remote on them, Left/Right moves, OK opens the choice, the label shows at the top
+        // One row of icon buttons: Previous / Next episode, Quality, Audio, Sub / Dub, Episodes, Servers, Subtitles, More (speed,
+        // boosts, zoom, from the start), Cast, Full screen. What each is set to shows under the title. Down puts the remote on them.
         chipRow = new LinearLayout(this);
-        chipRow.setOrientation(LinearLayout.VERTICAL);
-        chipRow.setGravity(Gravity.CENTER_HORIZONTAL);
-        chipRow.setPadding(0, dp(6), 0, 0);
-        chipCast = chip(R.drawable.ic_p_cast, () -> { if (casting != null) openRemote(); else pickTv(); });
-        chipRestart = chip(R.drawable.ic_refresh, () -> {
-            player.seekTo(0);
-            player.play();
-            say(App.t(R.string.player_from_start));
-        });
-        chipServers = chip(R.drawable.ic_p_servers, () -> pickServer());
+        chipRow.setGravity(Gravity.CENTER);
+        chipRow.setPadding(0, dp(4), 0, 0);
+        chipPrev = chip(R.drawable.ic_p_prev, () -> { int[] n = episodeStep(-1); if (n != null) playEpisode(n[0], n[1]); });
+        chipNext = chip(R.drawable.ic_p_next, () -> { int[] n = episodeStep(1); if (n != null) playEpisode(n[0], n[1]); });
         chipQuality = chip(R.drawable.ic_p_quality, this::pickQuality);
-        chipAudio = chip(R.drawable.ic_p_audio, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_AUDIO, App.t(R.string.player_audio), false));
-        chipBoost = chip(R.drawable.ic_p_volume, this::pickBoost);
-        chipVoice = chip(R.drawable.ic_p_voice, () -> {
-            voice = !voice;
-            applyBoost(true);
-            refreshChips();
-            say(App.t(voice ? R.string.player_dialog_on_video : R.string.player_dialog_off_video));
-        });
+        chipAudio = chip(R.drawable.ic_p_language, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_AUDIO, App.t(R.string.player_audio), false));
+        chipDub = chip(R.drawable.ic_p_language, this::pickSubDub);
+        chipEpisodes = chip(R.drawable.ic_p_episodes, this::episodesPanel);
+        chipServers = chip(R.drawable.ic_p_servers, () -> pickServer());
         chipSubs = chip(R.drawable.ic_p_subs, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_TEXT, App.t(R.string.player_subtitles), true));
-        chipSpeed = chip(R.drawable.ic_p_speed, this::pickSpeed);
-        chipZoom = chip(R.drawable.ic_p_zoom, this::cycleZoom);
+        chipMore = chip(R.drawable.ic_p_tune, this::more);
+        chipCast = chip(R.drawable.ic_p_cast, () -> { if (casting != null) openRemote(); else pickTv(); });
         chipRotate = chip(R.drawable.ic_p_fullscreen, () -> setRequestedOrientation(landscape()
             ? android.content.pm.ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT : android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE));
-        int screenW = getResources().getDisplayMetrics().widthPixels;
-        bar.addView(chipRow, new LinearLayout.LayoutParams(screenW - 2 * pad, -2));
-        ((LinearLayout.LayoutParams) chipRow.getLayoutParams()).gravity = Gravity.CENTER_HORIZONTAL;
+        bar.addView(chipRow, new LinearLayout.LayoutParams(-1, -2));
         overlay.addView(bar, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         controls = overlay;
         root.addView(overlay, new FrameLayout.LayoutParams(-1, -1));
+        tip = new TextView(this);
+        tip.setTextColor(Color.WHITE);
+        tip.setTextSize(14);
+        tip.setSingleLine();
+        tip.setPadding(dp(12), dp(6), dp(12), dp(6));
+        GradientDrawable tbg = new GradientDrawable();
+        tbg.setCornerRadius(dp(8));
+        tbg.setColor(0xE6000000);
+        tip.setBackground(tbg);
+        tip.setVisibility(View.GONE);
+        overlay.addView(tip, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
+
+        // Skip intro / Skip recap / Next episode: bottom right, over the picture, also while the controls are hidden
+        skipBtn = new TextView(this);
+        skipBtn.setTextColor(Color.WHITE);
+        skipBtn.setTextSize(15);
+        skipBtn.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        skipBtn.setPadding(dp(18), dp(9), dp(18), dp(9));
+        skipBtn.setCompoundDrawablesRelativeWithIntrinsicBounds(R.drawable.ic_p_next, 0, 0, 0);
+        skipBtn.setCompoundDrawablePadding(dp(6));
+        skipBtn.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+        GradientDrawable sbg = new GradientDrawable(), sfocus = new GradientDrawable();   // the same faint dark backdrop as the play buttons, with a thin edge
+        sbg.setCornerRadius(dp(22));
+        sbg.setColor(0x73000000);
+        sbg.setStroke(dp(1), 0x59FFFFFF);
+        sfocus.setCornerRadius(dp(22));
+        sfocus.setColor(0x73000000);
+        sfocus.setStroke(dp(2), Color.WHITE);   // the remote is on it
+        android.graphics.drawable.StateListDrawable sstates = new android.graphics.drawable.StateListDrawable();
+        sstates.addState(new int[]{android.R.attr.state_focused}, sfocus);
+        sstates.addState(new int[0], sbg);
+        skipBtn.setBackground(sstates);
+        skipBtn.setFocusable(true);
+        skipBtn.setDefaultFocusHighlightEnabled(false);
+        skipBtn.setVisibility(View.GONE);
+        skipBtn.setOnClickListener(v -> pressSkip());
+        FrameLayout.LayoutParams skp = new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.END);
+        skp.setMargins(0, 0, dp(24), dp(150));
+        root.addView(skipBtn, skp);
 
         if (android.os.Build.VERSION.SDK_INT >= 28) getWindow().getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         root.setOnApplyWindowInsetsListener((v, in) -> {
@@ -400,8 +435,10 @@ public class PlayerActivity extends Activity {
                 r = in.getDisplayCutout().getSafeInsetRight();
                 bt = in.getDisplayCutout().getSafeInsetBottom();
             }
-            int pad2 = dp(24);
-            topBar.setPadding(pad2 + l, dp(10) + t, pad2 + r, dp(26));
+            cutTop = t;
+            cutRight = r;
+            int pad2 = dp(16);
+            topBar.setPadding(dp(4) + l, dp(10) + t, pad2 + r, dp(26));
             bottomBar.setPadding(pad2 + l, dp(30), pad2 + r, dp(10) + bt);
             return in;
         });
@@ -434,9 +471,54 @@ public class PlayerActivity extends Activity {
 
     private android.view.GestureDetector taps;
 
+    int holding;          // 1 = 2x forward, -1 = 2x back, 0 = not held
+    float heldSpeed;
+    long backTo;
+
+    final Runnable backStep = new Runnable() {
+        @Override public void run() {
+            if (holding != -1 || player == null) return;
+            backTo = Math.max(0, backTo - 500);   // half a second back every quarter second: 2x
+            player.seekTo(backTo);
+            if (backTo > 0) App.main.postDelayed(this, 250);
+        }
+    };
+
+    void holdStart(boolean forward) {
+        holding = forward ? 1 : -1;
+        hideControls();   // just the picture and the 2x label while held
+        notice.setText(forward ? "2x  \u25B6\u25B6" : "\u25C0\u25C0  2x");
+        notice.setVisibility(View.VISIBLE);
+        App.main.removeCallbacks(hideNotice);
+        if (forward) {
+            heldSpeed = player.getPlaybackParameters().speed;
+            player.setPlaybackSpeed(2f);
+        } else {
+            backTo = player.getCurrentPosition();
+            App.main.post(backStep);
+        }
+    }
+
+    void holdEnd() {
+        if (holding == 1) player.setPlaybackSpeed(heldSpeed);
+        App.main.removeCallbacks(backStep);
+        holding = 0;
+        notice.setVisibility(View.GONE);
+    }
+
     boolean swipe(View v, MotionEvent ev) {
         if (taps == null) taps = new android.view.GestureDetector(this, new android.view.GestureDetector.SimpleOnGestureListener() {
             @Override public boolean onDown(MotionEvent e) { return true; }
+
+            // Hold: the right half plays at 2x, the left half goes back at 2x, until you let go
+            @Override public void onLongPress(MotionEvent e) {
+                if (swipeKind != 0 || player == null || player.isCurrentMediaItemLive()) return;
+                MotionEvent c = MotionEvent.obtain(e);   // not a tap any more: the controls stay as they are
+                c.setAction(MotionEvent.ACTION_CANCEL);
+                v.onTouchEvent(c);
+                c.recycle();
+                holdStart(e.getX() > v.getWidth() / 2f);
+            }
 
             @Override public boolean onDoubleTap(MotionEvent e) {
                 float third = v.getWidth() / 3f;
@@ -447,6 +529,10 @@ public class PlayerActivity extends Activity {
             }
         });
         taps.onTouchEvent(ev);
+        if (holding != 0) {
+            if (ev.getActionMasked() == MotionEvent.ACTION_UP || ev.getActionMasked() == MotionEvent.ACTION_CANCEL) holdEnd();
+            return true;
+        }
         switch (ev.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 downX = ev.getX();
@@ -500,58 +586,54 @@ public class PlayerActivity extends Activity {
         }
     }
 
-    /** A pill button: its icon and, beside it, its current value ("720p", "1x", "EN", "Fit"). Only the icon when it has no value. */
+    /** A round icon button. Its name shows on a long press (phone) and is read out by TalkBack. */
     LinearLayout chip(int icon, Runnable action) {
         LinearLayout t = new LinearLayout(this);
         t.setGravity(Gravity.CENTER);
-        t.setPadding(dp(10), 0, dp(10), 0);
         ImageView img = new ImageView(this);
         img.setImageResource(icon);
         img.setColorFilter(Color.WHITE);
-        t.addView(img, new LinearLayout.LayoutParams(dp(22), dp(22)));
-        TextView val = new TextView(this);
-        val.setTextColor(Color.WHITE);
-        val.setTextSize(14);
-        val.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        val.setSingleLine();
-        val.setPadding(dp(6), 0, 0, 0);
-        val.setVisibility(View.GONE);
-        t.addView(val);
+        t.addView(img, new LinearLayout.LayoutParams(dp(24), dp(24)));
         android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-        GradientDrawable on = new GradientDrawable(), off = new GradientDrawable();
-        on.setCornerRadius(dp(22));
-        off.setCornerRadius(dp(22));
-        on.setColor(Home.ACCENT);
-        off.setColor(0x44FFFFFF);
-        bg.addState(new int[]{android.R.attr.state_focused}, on);
-        bg.addState(new int[]{android.R.attr.state_pressed}, on);
-        bg.addState(new int[0], off);
+        GradientDrawable focused = new GradientDrawable(), pressed = new GradientDrawable();
+        focused.setShape(GradientDrawable.OVAL);
+        pressed.setShape(GradientDrawable.OVAL);
+        focused.setColor(Home.ACCENT);   // the remote's place, clear on a TV
+        pressed.setColor(0x33FFFFFF);
+        bg.addState(new int[]{android.R.attr.state_focused}, focused);
+        bg.addState(new int[]{android.R.attr.state_pressed}, pressed);
         t.setBackground(bg);
         t.setClickable(true);
         t.setFocusable(false);
         t.setOnClickListener(v -> { showControls(); action.run(); });
+        t.setOnFocusChangeListener((v, has) -> { if (has) showTip(v); else if (!inRow()) tip.setVisibility(View.GONE); });
         chips.add(t);
         return t;
     }
 
-    /**
-     * Show or hide a button, give it its pop-up label, and put its current value beside the icon.
-     * changed = the setting is not the default, so it is tinted.
-     */
-    void show(LinearLayout t, boolean visible, String label, boolean changed, String value) {
+    /** A white rounded badge with the letters cut out of it, like the CC icon: "SUB", "DUB". */
+    android.graphics.drawable.Drawable badge(String text) {
+        int w = dp(30), h = dp(20);
+        android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+        android.graphics.Canvas c = new android.graphics.Canvas(b);
+        android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        p.setColor(Color.WHITE);
+        c.drawRoundRect(0, 0, w, h, dp(4), dp(4), p);
+        p.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.CLEAR));
+        p.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+        p.setTextSize(dp(11));
+        p.setTextAlign(android.graphics.Paint.Align.CENTER);
+        p.setLetterSpacing(0.04f);
+        android.graphics.Paint.FontMetrics fm = p.getFontMetrics();
+        c.drawText(text, w / 2f, h / 2f - (fm.ascent + fm.descent) / 2, p);
+        return new android.graphics.drawable.BitmapDrawable(getResources(), b);
+    }
+
+    /** Show or hide a button and give it its name (long press, TalkBack). What it is set to shows in the line under the title. */
+    void show(LinearLayout t, boolean visible, String label) {
         t.setVisibility(visible ? View.VISIBLE : View.GONE);
         t.setContentDescription(label);
-        t.setTooltipText(label);   // long press (phone) says what an icon-only button does
-        int color = changed ? 0xFFFF6B86 : Color.WHITE;
-        ImageView img = (ImageView) t.getChildAt(0);
-        TextView val = (TextView) t.getChildAt(1);
-        img.setColorFilter(color);
-        val.setTextColor(color);
-        boolean text = value != null && !value.isEmpty();
-        val.setVisibility(text ? View.VISIBLE : View.GONE);
-        val.setText(text ? value : "");
-        int side = 12;
-        t.setPadding(dp(text ? side : side - 2), 0, dp(text ? side + 2 : side - 2), 0);
+        t.setTooltipText(label);
     }
 
     static void show(TextView t, boolean visible, String text) {
@@ -597,12 +679,6 @@ public class PlayerActivity extends Activity {
         fpsFrames = 0;
     };
 
-    /** A two or three letter code for a track: its language ("EN"), else the start of its label. */
-    static String codeOf(androidx.media3.common.Format f) {
-        if (f.language != null && !f.language.equals("und")) return f.language.substring(0, Math.min(2, f.language.length())).toUpperCase(Locale.ROOT);
-        return f.label == null ? "" : f.label.substring(0, Math.min(3, f.label.length())).toUpperCase(Locale.ROOT);
-    }
-
     // What each button shows right now: the actual quality, audio, subtitles, speed, zoom, server and episode
     void refreshChips() {
         if (player == null) return;
@@ -610,16 +686,15 @@ public class PlayerActivity extends Activity {
         WebActivity page = WebActivity.active;
         String cur = "";
         if (page != null) for (String[] v : page.servers.values()) if (!v[1].isEmpty()) cur = v[0];
-        show(chipServers, page != null && !page.servers.isEmpty(), cur.isEmpty() ? App.t(R.string.player_servers) : App.t(R.string.player_servers_now, cur), false,
-            cur.length() > 6 ? cur.substring(0, 6) : cur);
+        show(chipServers, page != null && !page.servers.isEmpty(), cur.isEmpty() ? App.t(R.string.player_servers) : App.t(R.string.player_servers_now, cur));
         int video = 0, audio = 0, text = 0;
-        String audioNow = "", textNow = null, audioCode = "", textCode = "";
+        String audioNow = "", textNow = null;
         for (Tracks.Group g : t.getGroups()) {
             for (int i = 0; i < g.length; i++) {
                 if (!g.isTrackSupported(i)) continue;
                 if (g.getType() == C.TRACK_TYPE_VIDEO) video++;
-                else if (g.getType() == C.TRACK_TYPE_AUDIO) { audio++; if (g.isTrackSelected(i)) { audioNow = labelOf(g.getTrackFormat(i), R.string.player_audio_n, audio); audioCode = codeOf(g.getTrackFormat(i)); } }
-                else if (g.getType() == C.TRACK_TYPE_TEXT) { text++; if (g.isTrackSelected(i)) { textNow = labelOf(g.getTrackFormat(i), R.string.player_subs_n, text); textCode = codeOf(g.getTrackFormat(i)); } }
+                else if (g.getType() == C.TRACK_TYPE_AUDIO) { audio++; if (g.isTrackSelected(i)) audioNow = labelOf(g.getTrackFormat(i), R.string.player_audio_n, audio); }
+                else if (g.getType() == C.TRACK_TYPE_TEXT) { text++; if (g.isTrackSelected(i)) textNow = labelOf(g.getTrackFormat(i), R.string.player_subs_n, text); }
             }
         }
         boolean manual = false;
@@ -630,58 +705,79 @@ public class PlayerActivity extends Activity {
         String pq = "";
         if (page != null) for (String[] v : page.qualities.values()) if (!v[1].isEmpty()) pq = v[0];
         if (video <= 1 && page != null && !page.qualities.isEmpty()) {
-            // The page's own quality list: its label ("1080p Full HD") shortened to the number
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("(?i)\\b(\\d{3,4}p|4k|8k)\\b").matcher(pq);
-            String shown = m.find() ? m.group(1).toLowerCase(Locale.ROOT).replace("k", "K") : h;
-            show(chipQuality, true, App.t(R.string.player_quality_now, pq.isEmpty() ? (h.isEmpty() ? App.t(R.string.player_auto) : h) : pq), !pq.isEmpty(), shown);
-        } else show(chipQuality, video > 1, App.t(R.string.player_quality_now, manual ? h : h.isEmpty() ? App.t(R.string.player_auto) : App.t(R.string.player_auto_quality, h)),
-            manual, h.isEmpty() ? App.t(R.string.player_auto) : h);
-        show(chipAudio, audio > 1, App.t(R.string.player_audio_now, audioNow), false, audioCode);
-        show(chipBoost, audio > 0, App.t(R.string.player_boost_now, boost == 0 ? App.t(R.string.player_off) : App.t(R.string.player_db, boost)), boost > 0, boost > 0 ? "+" + boost : "");
-        show(chipVoice, audio > 0, App.t(R.string.player_dialog_now, App.t(voice ? R.string.player_on : R.string.player_off)), voice, voice ? App.t(R.string.player_on) : "");
+            // The page's own quality list
+            show(chipQuality, true, App.t(R.string.player_quality_now, pq.isEmpty() ? (h.isEmpty() ? App.t(R.string.player_auto) : h) : pq));
+        } else show(chipQuality, video > 1, App.t(R.string.player_quality_now, manual ? h : h.isEmpty() ? App.t(R.string.player_auto) : App.t(R.string.player_auto_quality, h)));
+        show(chipAudio, audio > 1, App.t(R.string.player_audio_now, audioNow));
         boolean subsOn = textNow != null;
         String off = App.t(R.string.player_off);
-        show(chipSubs, text > 0 || canSearchSubs(), App.t(R.string.player_subs_now, subsOn ? textNow : off), subsOn, subsOn ? (textCode.isEmpty() ? "CC" : textCode) : off);
+        show(chipSubs, text > 0 || canSearchSubs(), App.t(R.string.player_subs_now, subsOn ? textNow : off));
         float sp = player.getPlaybackParameters().speed;
-        show(chipSpeed, true, App.t(R.string.player_speed_now, speedLabel(sp)), sp != 1f, speedLabel(sp));
-        show(chipZoom, true, App.t(R.string.player_zoom_now, App.t(ZOOMS[zoom])), zoom != 0, App.t(ZOOMS[zoom]));
-        show(chipCast, !App.tv && (casting != null || Cast.any()), casting != null ? App.t(R.string.cast_playing_on, casting) : App.t(R.string.cast_to_tv), casting != null, casting != null ? casting : "");
-        show(chipRestart, !player.isCurrentMediaItemLive(), App.t(R.string.player_restart), false, "");
+        show(chipMore, true, App.t(R.string.player_more));
+        int[] next = episodeStep(1), prev = episodeStep(-1);
+        show(chipPrev, prev != null, prev == null ? "" : App.t(R.string.player_prev_episode, prev[0], prev[1]));
+        show(chipEpisodes, seriesInfo != null, App.t(R.string.player_episodes));
+        show(chipNext, next != null, next == null ? "" : App.t(R.string.player_next_episode, next[0], next[1]));
+        String sd = subDubNow();
+        show(chipDub, subDub().size() >= 2, App.t(R.string.player_sub_dub, sd));
+        if (!sd.equals(chipDub.getTag())) {   // its icon says which: SUB or DUB (or the first letters of another, like HIN)
+            chipDub.setTag(sd);
+            ImageView img = (ImageView) chipDub.getChildAt(0);
+            img.setImageDrawable(badge(sd.isEmpty() ? "SUB" : sd.substring(0, Math.min(3, sd.length())).toUpperCase(Locale.ROOT)));
+            img.getLayoutParams().width = dp(30);
+            img.requestLayout();
+        }
+        show(chipCast, !App.tv && (casting != null || Cast.any()), casting != null ? App.t(R.string.cast_playing_on, casting) : App.t(R.string.cast_to_tv));
+        // Under the title: the episode, then what is picked (quality, audio, Sub / Dub, subtitles, server)
+        List<String> info = new ArrayList<>();
+        if (!epText.isEmpty()) info.add(epText);
+        String q = !pq.isEmpty() ? pq : h;
+        if (!q.isEmpty()) info.add(q);
+        if (audio > 1 && !audioNow.isEmpty()) info.add(audioNow);   // only when there is a choice ("Audio 1" says nothing)
+        if (subDub().size() >= 2) info.add(sd);
+        if (subsOn) info.add("CC " + textNow);
+        if (!cur.isEmpty()) info.add(cur);
+        if (sp != 1f) info.add(speedLabel(sp));
+        epLine.setText(String.join("  \u00B7  ", info));
+        epLine.setVisibility(info.isEmpty() ? View.GONE : View.VISIBLE);
         ((ImageView) chipRotate.getChildAt(0)).setImageResource(landscape() ? R.drawable.ic_p_fullscreen_exit : R.drawable.ic_p_fullscreen);
-        show(chipRotate, !App.tv, App.t(landscape() ? R.string.player_portrait : R.string.player_full_screen), false, "");
+        show(chipRotate, !App.tv, App.t(landscape() ? R.string.player_portrait : R.string.player_full_screen));
         fitChips();
     }
 
-    // Pills in as many centred rows as it takes to fit the width (one row on a TV, two on a phone), never overflowing.
+    // One compact centred row of icon buttons; on a narrow screen they shrink to fit, never wrapping.
     // Rebuilt only when what is shown changes, so the remote keeps its place.
     void fitChips() {
-        StringBuilder key = new StringBuilder();
-        for (LinearLayout c : chips) key.append(c.getVisibility() == View.VISIBLE ? ((TextView) c.getChildAt(1)).getText() + "|" : "-|");
+        StringBuilder key = new StringBuilder(landscape() ? "L" : "P");
+        for (LinearLayout c : chips) key.append(c.getVisibility() == View.VISIBLE ? '1' : '0');
         if (key.toString().equals(chipLayoutKey)) return;
         chipLayoutKey = key.toString();
         View had = getCurrentFocus();
         chipRow.removeAllViews();
-        for (LinearLayout c : chips) if (c.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) c.getParent()).removeView(c);
-        int max = ((LinearLayout.LayoutParams) chipRow.getLayoutParams()).width, gap = dp(8), used = 0;
-        LinearLayout row = null;
+        int n = 0;
+        for (LinearLayout c : chips) if (c.getVisibility() == View.VISIBLE) n++;
+        int max = getResources().getDisplayMetrics().widthPixels - 2 * dp(24);
+        int size = n == 0 ? dp(48) : Math.min(dp(48), max / n);
         for (LinearLayout c : chips) {
-            if (c.getVisibility() != View.VISIBLE) continue;
-            c.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-            int w = c.getMeasuredWidth();
-            if (row == null || used + w + gap > max) {
-                row = new LinearLayout(this);
-                row.setGravity(Gravity.CENTER);
-                LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-2, -2);
-                if (chipRow.getChildCount() > 0) rp.topMargin = dp(6);
-                chipRow.addView(row, rp);
-                used = 0;
-            }
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(44));
-            lp.setMargins(gap / 2, 0, gap / 2, 0);
-            row.addView(c, lp);
-            used += w + gap;
+            if (c.getParent() instanceof android.view.ViewGroup) ((android.view.ViewGroup) c.getParent()).removeView(c);
+            if (c.getVisibility() == View.VISIBLE) chipRow.addView(c, new LinearLayout.LayoutParams(size, size));
         }
         if (had != null && chips.contains(had)) had.requestFocus();
+    }
+
+    /** The focused button's name in a small label just above it (a remote has no long press for the tooltip). */
+    void showTip(View v) {
+        CharSequence name = v.getContentDescription();
+        if (name == null || name.length() == 0) { tip.setVisibility(View.GONE); return; }
+        tip.setText(name);
+        tip.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int[] at = new int[2], base = new int[2];
+        v.getLocationInWindow(at);
+        controls.getLocationInWindow(base);
+        int w = tip.getMeasuredWidth(), x = at[0] - base[0] + v.getWidth() / 2 - w / 2;
+        tip.setTranslationX(Math.max(dp(8), Math.min(controls.getWidth() - w - dp(8), x)));
+        tip.setTranslationY(at[1] - base[1] - tip.getMeasuredHeight() - dp(6));
+        tip.setVisibility(View.VISIBLE);
     }
 
     // Put the remote on the action row (on) or give it back to play/seek (off)
@@ -725,13 +821,15 @@ public class PlayerActivity extends Activity {
         DefaultHttpDataSource.Factory http = new DefaultHttpDataSource.Factory().setUserAgent(ua).setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(15000).setReadTimeoutMs(30000).setDefaultRequestProperties(headers);
         // The WebView's cookie for each request's own host, never one site's session sent to another
-        DataSource.Factory data = new ResolvingDataSource.Factory(http, spec -> {
+        DataSource.Factory web = new ResolvingDataSource.Factory(http, spec -> {
             String cookie = CookieManager.getInstance().getCookie(spec.uri.toString());
             return cookie == null || cookie.isEmpty() ? spec : spec.withAdditionalHeaders(Collections.singletonMap("Cookie", cookie));
         });
+        DataSource.Factory data = new androidx.media3.datasource.DefaultDataSource.Factory(this, web);   // downloaded subtitles are local files
 
-        // IPTV passes its own media type ("" = let ExoPlayer read it off the URL); pages only ever hand over HLS or DASH
-        String mime = getIntent().hasExtra("mime") ? getIntent().getStringExtra("mime") : getIntent().getBooleanExtra("dash", false) ? MimeTypes.APPLICATION_MPD : MimeTypes.APPLICATION_M3U8;
+        // IPTV passes its own media type ("" = let ExoPlayer read it off the URL); pages hand over HLS, DASH or a live FLV
+        String mime = getIntent().hasExtra("mime") ? getIntent().getStringExtra("mime") : getIntent().getBooleanExtra("dash", false) ? MimeTypes.APPLICATION_MPD
+            : Sniffer.path(url).endsWith(".flv") ? MimeTypes.VIDEO_FLV : MimeTypes.APPLICATION_M3U8;
         MediaItem.Builder item = mediaItem = new MediaItem.Builder().setUri(url);
         if (!mime.isEmpty()) item.setMimeType(mime);
         List<MediaItem.SubtitleConfiguration> subs = subList = new ArrayList<>();
@@ -756,6 +854,12 @@ public class PlayerActivity extends Activity {
                     @Override public void resetPosition(long pos, boolean joining) throws androidx.media3.exoplayer.ExoPlaybackException { super.resetPosition(pos - Subs.delayMs * 1000, joining); }
                 });
             }
+
+            // The sound passes through the speech meter (untouched), for subtitle auto-sync
+            @Override protected androidx.media3.exoplayer.audio.AudioSink buildAudioSink(android.content.Context c, boolean floatOut, boolean params) {
+                return new androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(c).setEnableFloatOutput(floatOut).setEnableAudioTrackPlaybackParams(params)
+                    .setAudioProcessors(new androidx.media3.common.audio.AudioProcessor[]{meter}).build();
+            }
         };
         player = new ExoPlayer.Builder(this, renderers.setEnableDecoderFallback(true).setMediaCodecSelector(PlayerActivity::decoders))
             .setMediaSourceFactory(new DefaultMediaSourceFactory(data)).setHandleAudioBecomingNoisy(true).build();
@@ -777,8 +881,13 @@ public class PlayerActivity extends Activity {
                 spinner.setVisibility(s == Player.STATE_BUFFERING ? View.VISIBLE : View.GONE);
                 if (s == Player.STATE_READY && getIntent().hasExtra("mime")) Iptv.played(channel());
                 if (s == Player.STATE_READY && !scrobbled && player.getPlayWhenReady()) { scrobbled = true; scrobble("start"); }
-                if (s == Player.STATE_READY && !subsTried) { subsTried = true; autoSubs(); }
-                if (s == Player.STATE_ENDED) { resume.remove(base); scrobble("stop"); finish(); }
+                if (s == Player.STATE_READY && !subsTried) { subsTried = true; autoSubs(); loadSkips(); }
+                if (s == Player.STATE_ENDED) {
+                    resume.remove(base);
+                    scrobble("stop");
+                    int[] n = episodeStep(1);
+                    if (n != null && !inPip) playEpisode(n[0], n[1]); else if (!inPip) finish();   // a series goes on with the next episode
+                }
                 update();
             }
 
@@ -789,6 +898,7 @@ public class PlayerActivity extends Activity {
 
             @Override public void onIsPlayingChanged(boolean playing) {
                 update();
+                updatePip();
                 if (playing) hideAt = System.currentTimeMillis() + 3500; else showControls();
             }
 
@@ -798,6 +908,7 @@ public class PlayerActivity extends Activity {
                 fpsFrames = 0;
                 if (v.width > 0 && v.height > 0) videoRatio = v.width * v.pixelWidthHeightRatio / v.height;
                 fit();
+                updatePip();
                 refreshChips();
             }
 
@@ -832,8 +943,11 @@ public class PlayerActivity extends Activity {
         player.prepare();
         player.play();
         episodeLine();
+        loadSeries();
         showControls();
         App.main.post(tick);
+        if (android.os.Build.VERSION.SDK_INT >= 33) registerReceiver(pipToggle, new android.content.IntentFilter(PIP_TOGGLE), 4 /* RECEIVER_NOT_EXPORTED */);
+        else registerReceiver(pipToggle, new android.content.IntentFilter(PIP_TOGGLE));
     }
 
     /**
@@ -933,6 +1047,7 @@ public class PlayerActivity extends Activity {
     final Runnable hideNotice = () -> notice.setVisibility(View.GONE);
 
     void showControls() {
+        if (inPip) return;
         controls.setVisibility(View.VISIBLE);
         hideAt = System.currentTimeMillis() + (inRow() ? 8000 : 3500);
         refreshChips();
@@ -940,6 +1055,7 @@ public class PlayerActivity extends Activity {
     }
 
     void hideControls() {
+        tip.setVisibility(View.GONE);
         rowFocus(false);
         controls.setVisibility(View.GONE);
     }
@@ -970,6 +1086,10 @@ public class PlayerActivity extends Activity {
 
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
         if (player == null) return super.dispatchKeyEvent(e);
+        if (panel != null) {   // the Episodes list: normal focus keys, Back closes it
+            if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (e.getAction() == KeyEvent.ACTION_UP) closePanel(); return true; }
+            return super.dispatchKeyEvent(e);
+        }
         int k = e.getKeyCode(), r = e.getRepeatCount();
         boolean down = e.getAction() == KeyEvent.ACTION_DOWN;
         if (inRow()) {
@@ -977,7 +1097,7 @@ public class PlayerActivity extends Activity {
             if (down) showControls();
             if (k == KeyEvent.KEYCODE_DPAD_LEFT || k == KeyEvent.KEYCODE_DPAD_RIGHT || k == KeyEvent.KEYCODE_DPAD_CENTER
                 || k == KeyEvent.KEYCODE_ENTER || k == KeyEvent.KEYCODE_NUMPAD_ENTER) return super.dispatchKeyEvent(e);
-            // Two rows on a phone: Up/Down move between them, Up from the top row hands the remote back to play/seek
+            // Up hands the remote back to play/seek
             if (k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (down) {
                     View n = getCurrentFocus().focusSearch(k == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);
@@ -990,6 +1110,8 @@ public class PlayerActivity extends Activity {
         if (!down) return super.dispatchKeyEvent(e);
         switch (k) {
             case KeyEvent.KEYCODE_DPAD_CENTER: case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_NUMPAD_ENTER:
+                if (r == 0) { if (skipBtn.getVisibility() == View.VISIBLE) pressSkip(); else toggle(); }   // the row has its own keys (inRow above)
+                return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE: case KeyEvent.KEYCODE_SPACE:
                 if (r == 0) toggle();
                 return true;
@@ -1021,7 +1143,8 @@ public class PlayerActivity extends Activity {
     // The page's own server list, read from the page when the stream started
     void pickServer() {
         WebActivity page = WebActivity.active;
-        pickFromPage(page == null ? null : page.servers, App.t(R.string.player_servers), App.t(R.string.player_no_servers));
+        if (page == null) { pickFromPage(null, App.t(R.string.player_servers), App.t(R.string.player_no_servers)); return; }
+        pickFromPage(page.servers, App.t(R.string.player_servers), App.t(R.string.player_no_servers));
     }
 
     // Quality: the stream's own choices if it has several, else the page's quality list (a page that serves one playlist per quality)
@@ -1112,7 +1235,7 @@ public class PlayerActivity extends Activity {
         int searchAt = search ? labels.size() : -1;
         if (search) labels.add(App.t(R.string.player_search_subs));
         int positionAt = type == C.TRACK_TYPE_TEXT ? labels.size() : -1;
-        if (positionAt >= 0) labels.add(App.t(R.string.player_subs_style, Subs.sizeLabel(), Subs.offsetLabel(), Subs.colorName(), Subs.backgroundLabel(), Subs.delayLabel()));
+        if (positionAt >= 0) labels.add(App.t(R.string.home_tab_settings));   // size, position, color, background, timing
         new AlertDialog.Builder(this).setTitle(name).setItems(labels.toArray(new String[0]), (d, i) -> {
             if (i == searchAt) { searchSubs(); return; }
             if (i == positionAt) { subtitleStyle(); return; }
@@ -1140,13 +1263,371 @@ public class PlayerActivity extends Activity {
         return s > 0 || e > 0 ? new int[]{s, e} : null;
     }
 
-    // "Season 1 · Episode 3" under the title
+    String epText = "";   // "Season 1 · Episode 3", first on the line under the title
+
     void episodeLine() {
         int[] pe = pageEpisode();
-        if (pe == null) { epLine.setVisibility(View.GONE); return; }
-        String label = pe[0] > 0 ? App.t(R.string.player_season_episode, pe[0], pe[1]) : App.t(R.string.player_episode, pe[1]);
-        epLine.setText(label);
-        epLine.setVisibility(View.VISIBLE);
+        epText = pe == null ? "" : pe[0] > 0 ? App.t(R.string.player_season_episode, pe[0], pe[1]) : App.t(R.string.player_episode, pe[1]);
+        refreshChips();
+    }
+
+    /** More: the settings changed less often, each with its value now. */
+    void more() {
+        List<String> labels = new ArrayList<>();
+        List<Runnable> acts = new ArrayList<>();
+        labels.add(App.t(R.string.player_speed_now, speedLabel(player.getPlaybackParameters().speed)));
+        acts.add(this::pickSpeed);
+        labels.add(App.t(R.string.player_boost_now, boost == 0 ? App.t(R.string.player_off) : App.t(R.string.player_db, boost)));
+        acts.add(this::pickBoost);
+        labels.add(App.t(R.string.player_dialog_now, App.t(voice ? R.string.player_on : R.string.player_off)));
+        acts.add(() -> {
+            voice = !voice;
+            applyBoost(true);
+            refreshChips();
+            say(App.t(voice ? R.string.player_dialog_on_video : R.string.player_dialog_off_video));
+        });
+        labels.add(App.t(R.string.player_zoom_now, App.t(ZOOMS[zoom])));
+        acts.add(this::cycleZoom);
+        if (!player.isCurrentMediaItemLive()) {
+            labels.add(App.t(R.string.player_restart));
+            acts.add(() -> { player.seekTo(0); player.play(); say(App.t(R.string.player_from_start)); });
+        }
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.player_more))
+            .setItems(labels.toArray(new String[0]), (d, i) -> acts.get(i).run()).show();
+    }
+
+    // ---- Skip intro, recap and credits ----
+
+    /** Where the intro, recap and credits are (TheIntroDB, AniSkip), once the title is known. */
+    void loadSkips() {
+        WebActivity page = WebActivity.active;
+        Catalog.Title t = seriesInfo != null ? seriesInfo : page != null ? page.show : null;
+        if (t == null || skipsAsked || !getIntent().hasExtra("pageTitle")) return;
+        int[] pe = pageEpisode();
+        if (t.series() && pe == null) return;
+        skipsAsked = true;
+        App.io.execute(() -> {
+            if (t.tmdb.isEmpty() && t.id.startsWith("tt")) Catalog.fill(t);   // the catalog's detail page has the TMDB id
+            List<Skips.Part> found = Skips.find(t, pe == null ? 0 : pe[0], pe == null ? 0 : pe[1]);
+            runOnUiThread(() -> skips = found);
+        });
+    }
+
+    /**
+     * Every half second: in an intro or recap, offer to skip it; in the credits (or the next-episode preview), offer the next
+     * episode (only a press moves on), or to skip the credits when they don't run to the end.
+     */
+    void checkSkip() {
+        if (player == null || inPip) return;   // the small window is just the picture
+        long pos = player.getCurrentPosition(), dur = player.getDuration();
+        Skips.Part now = null;
+        int[] next = episodeStep(1);
+        if (dur > 0 && dur != C.TIME_UNSET && panel == null) {
+            for (Skips.Part p : skips) if (p.has(pos, dur) && !skipDone.contains(p)) { now = p; break; }
+            // No credits known inside this copy (none timed, or the site's cut is shorter): the last 30 s of an episode count
+            if (now == null && next != null && dur - pos < 30000) {
+                boolean known = false;
+                for (Skips.Part p : skips) if (p.closing() && p.usable(dur) && p.start < dur) known = true;
+                if (!known) {
+                    if (tail == null || tail.start != dur - 30000) tail = new Skips.Part("credits", dur - 30000, -1);
+                    if (!skipDone.contains(tail)) now = tail;
+                }
+            }
+        }
+        boolean end = now != null && now.closing();
+        if (now == null || (end && next == null && now.end < 0)) { skipShown = null; skipBtn.setVisibility(View.GONE); return; }
+        skipShown = now;
+        if (end && next != null) {
+            skipBtn.setText(App.t(R.string.player_next_episode, next[0], next[1]));
+        } else {
+            // Settings, Skip intros: an intro or recap goes by itself (credits still ask: they may hide a scene)
+            if (!end && App.prefs.getBoolean("autoSkip", false) && player.isPlaying()) {
+                skipShown = now;
+                pressSkip();
+                say(App.t(now.kind.equals("recap") ? R.string.player_skipped_recap : R.string.player_skipped_intro));
+                return;
+            }
+            skipBtn.setText(App.t(now.kind.equals("recap") ? R.string.player_skip_recap : end ? R.string.player_skip_credits : R.string.player_skip_intro));
+        }
+        if (skipBtn.getVisibility() != View.VISIBLE) {
+            skipBtn.setVisibility(View.VISIBLE);
+            if (!inRow() && panel == null) skipBtn.requestFocus();   // OK presses it
+        }
+    }
+
+    void pressSkip() {
+        Skips.Part p = skipShown;
+        if (p == null || player == null) return;
+        skipDone.add(p);
+        skipBtn.setVisibility(View.GONE);
+        int[] next = episodeStep(1);
+        if (p.closing() && next != null) { playEpisode(next[0], next[1]); return; }
+        // land after the intro, never a few seconds back in it (the usual seek snaps to the nearest key frame)
+        player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.NEXT_SYNC);
+        player.seekTo(p.end < 0 ? player.getDuration() : p.end);
+        player.setSeekParameters(androidx.media3.exoplayer.SeekParameters.CLOSEST_SYNC);
+    }
+
+    // ---- Episodes, Next, Sub / Dub ----
+
+    /** The series playing, with its episodes: the page's (opened from the catalog), else looked up by the page's title. Once, in the background. */
+    void loadSeries() {
+        WebActivity page = WebActivity.active;
+        if (page == null || seriesInfo != null || !getIntent().hasExtra("pageTitle")) return;
+        Catalog.Title known = page.show;
+        if (known != null && !known.series()) return;
+        if (known == null && pageEpisode() == null) return;   // a movie, or a page that doesn't say it is an episode
+        String name = History.cleanTitle(String.valueOf(getIntent().getStringExtra("pageTitle")), String.valueOf(getIntent().getStringExtra("site")));
+        App.io.execute(() -> {
+            Catalog.Title t = known;
+            if (t == null) {
+                String id = Subs.imdbFor(name.replaceAll("(?i)\\b(S\\d+\\s*E\\d+|season \\d+|episode \\d+)\\b.*", "").trim(), true);
+                if (id.isEmpty()) return;
+                t = new Catalog.Title();
+                t.id = id;
+                t.type = "series";
+                t.name = name;
+            }
+            if (t.episodes.isEmpty()) Catalog.fill(t);
+            Catalog.Title done = t;
+            runOnUiThread(() -> {
+                if (isFinishing() || done.episodes.isEmpty()) return;
+                seriesInfo = done;
+                if (page.show == null) page.show = done;
+                refreshChips();
+                loadSkips();
+            });
+        });
+    }
+
+    /** The episode after (dir 1) or before (dir -1) the one playing, by season then number; null at either end or when unknown. */
+    int[] episodeStep(int dir) {
+        int[] pe = pageEpisode();
+        if (seriesInfo == null || pe == null) return null;
+        long now = Math.max(1, pe[0]) * 100000L + pe[1], best = 0;
+        for (Catalog.Episode e : seriesInfo.episodes) {
+            long k = e.season * 100000L + e.number;
+            if ((k - now) * dir > 0 && (best == 0 || (k - best) * dir < 0)) best = k;
+        }
+        return best == 0 ? null : new int[]{(int) (best / 100000), (int) (best % 100000)};
+    }
+
+    /** Leave the player and let the page open that episode (WebActivity.openEpisode); its stream comes back here. */
+    void playEpisode(int season, int episode) {
+        WebActivity page = WebActivity.active;
+        if (page == null) { finish(); return; }
+        page.pendingEpisode = new int[]{season, episode};
+        Toast.makeText(this, App.t(R.string.player_season_episode, season, episode), Toast.LENGTH_SHORT).show();
+        finish();
+    }
+
+    int panelSeason;
+
+    void episodesPanel() {
+        if (seriesInfo == null) return;
+        int[] pe = pageEpisode();
+        panelSeason = pe != null && pe[0] > 0 ? pe[0] : seriesInfo.episodes.get(0).season;
+        hideControls();
+        buildPanel();
+    }
+
+    /** The Episodes list: seasons across the top, the season's episodes (still, number, name, summary) below; the one playing is marked. */
+    void buildPanel() {
+        FrameLayout root = (FrameLayout) controls.getParent();
+        if (panel != null) root.removeView(panel);
+        int[] pe = pageEpisode();
+        LinearLayout p = new LinearLayout(this);
+        p.setOrientation(LinearLayout.VERTICAL);
+        p.setClickable(true);   // taps on it never reach the video underneath
+        p.setBackgroundColor(0xF00E0E12);
+        p.setPadding(dp(16), dp(14) + cutTop, dp(12) + cutRight, 0);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        TextView h = new TextView(this);
+        h.setText(App.t(R.string.player_episodes));
+        h.setTextColor(Color.WHITE);
+        h.setTextSize(20);
+        h.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        head.addView(h, new LinearLayout.LayoutParams(0, -2, 1));
+        head.addView(circle(R.drawable.ic_p_close, 40, this::closePanel));
+        p.addView(head);
+
+        java.util.TreeSet<Integer> seasons = new java.util.TreeSet<>();
+        for (Catalog.Episode e : seriesInfo.episodes) seasons.add(e.season);
+        if (seasons.size() > 1) {
+            LinearLayout row = new LinearLayout(this);
+            row.setPadding(0, dp(8), 0, dp(8));
+            for (int n : seasons) {
+                TextView c = new TextView(this);
+                c.setText(App.t(R.string.title_season, n));
+                c.setTextSize(14);
+                c.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                c.setTextColor(Color.WHITE);
+                c.setGravity(Gravity.CENTER);
+                c.setPadding(dp(14), 0, dp(14), 0);
+                c.setBackground(pill(n == panelSeason ? Home.ACCENT : 0x33FFFFFF));
+                c.setFocusable(true);
+                c.setOnClickListener(v -> { panelSeason = n; buildPanel(); });
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(36));
+                lp.rightMargin = dp(8);
+                row.addView(c, lp);
+            }
+            HorizontalScrollView sc = new HorizontalScrollView(this);
+            sc.setHorizontalScrollBarEnabled(false);
+            sc.addView(row);
+            p.addView(sc);
+        }
+
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        list.setPadding(0, dp(4), 0, dp(16));
+        View current = null;
+        for (Catalog.Episode e : seriesInfo.episodes) {
+            if (e.season != panelSeason) continue;
+            boolean playing = pe != null && Math.max(1, pe[0]) == e.season && pe[1] == e.number;
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(8), dp(8), dp(8), dp(8));
+            ImageView still = new ImageView(this);
+            still.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            GradientDrawable sb = new GradientDrawable();
+            sb.setCornerRadius(dp(8));
+            sb.setColor(0x22FFFFFF);
+            still.setBackground(sb);
+            still.setClipToOutline(true);
+            if (!e.thumb.isEmpty()) loadStill(still, e.thumb);
+            row.addView(still, new LinearLayout.LayoutParams(dp(112), dp(63)));
+            LinearLayout text = new LinearLayout(this);
+            text.setOrientation(LinearLayout.VERTICAL);
+            text.setPadding(dp(12), 0, 0, 0);
+            TextView name = new TextView(this);
+            name.setText(e.number + "  " + (e.title.isEmpty() ? App.t(R.string.player_episode, e.number) : e.title));
+            name.setTextColor(playing ? Home.ACCENT : Color.WHITE);
+            name.setTextSize(15);
+            name.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+            name.setSingleLine();
+            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            text.addView(name);
+            if (!e.overview.isEmpty()) {
+                TextView o = new TextView(this);
+                o.setText(e.overview);
+                o.setTextColor(0xB3FFFFFF);
+                o.setTextSize(12);
+                o.setMaxLines(2);
+                o.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                text.addView(o);
+            }
+            row.addView(text, new LinearLayout.LayoutParams(0, -2, 1));
+            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
+            bg.addState(new int[]{android.R.attr.state_focused}, rounded(0x55FFFFFF));
+            bg.addState(new int[]{android.R.attr.state_pressed}, rounded(0x33FFFFFF));
+            bg.addState(new int[0], rounded(playing ? 0x26FFFFFF : 0x00000000));
+            row.setBackground(bg);
+            row.setFocusable(true);
+            row.setOnClickListener(v -> { closePanel(); if (!playing) playEpisode(e.season, e.number); });
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
+            rp.bottomMargin = dp(4);
+            list.addView(row, rp);
+            if (playing) current = row;
+        }
+        sv.addView(list);
+        p.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        root.addView(p, new FrameLayout.LayoutParams(landscape() || App.tv ? Math.min(dp(440), screenW / 2) : -1, -1, Gravity.END));
+        panel = p;
+        View first = current != null ? current : list.getChildCount() > 0 ? list.getChildAt(0) : null;
+        if (first != null) first.post(() -> { sv.scrollTo(0, Math.max(0, first.getTop() - dp(80))); first.requestFocus(); });
+    }
+
+    GradientDrawable pill(int color) {
+        GradientDrawable d = new GradientDrawable();
+        d.setCornerRadius(dp(18));
+        d.setColor(color);
+        return d;
+    }
+
+    GradientDrawable rounded(int color) {
+        GradientDrawable d = new GradientDrawable();
+        d.setCornerRadius(dp(12));
+        d.setColor(color);
+        return d;
+    }
+
+    void loadStill(ImageView into, String url) {
+        into.setTag(url);
+        android.graphics.Bitmap hit = Home.images.get(url);
+        if (hit != null) { into.setImageBitmap(hit); return; }
+        App.io.execute(() -> {
+            android.graphics.Bitmap b = Home.fetch(url);
+            if (b == null) return;
+            Home.images.put(url, b);
+            runOnUiThread(() -> { if (url.equals(into.getTag())) into.setImageBitmap(b); });
+        });
+    }
+
+    void closePanel() {
+        if (panel == null) return;
+        ((android.view.ViewGroup) panel.getParent()).removeView(panel);
+        panel = null;
+    }
+
+    /** Sub / Dub: the page's own choice (a dropdown or toggle that frame.js found: label -> its key), else Sub and Dub by the site's address (key ""). */
+    Map<String, String> subDub() {
+        Map<String, String> out = new java.util.LinkedHashMap<>();
+        WebActivity page = WebActivity.active;
+        if (page == null) return out;
+        if (page.audios.size() >= 2) for (Map.Entry<String, String[]> e : page.audios.entrySet()) out.put(e.getValue()[0], e.getKey());
+        else if (page.show != null && page.show.anime && Sites.hasAudioLink(page.siteUrl) && pageEpisode() != null) {
+            out.put("Sub", "");
+            out.put("Dub", "");
+        }
+        return out;
+    }
+
+    /** The Sub / Dub playing: the page's selected one, else the one picked for this site before, else Sub. */
+    String subDubNow() {
+        WebActivity page = WebActivity.active;
+        if (page == null) return "";
+        for (String[] v : page.audios.values()) if (!v[1].isEmpty()) return v[0];
+        String want = App.prefs.getString("siteAudio:" + page.siteKey(), "");
+        return want.isEmpty() ? "Sub" : want;
+    }
+
+    /** One tap switches between two (Sub, Dub); more than two (Sub, Dub, Hindi) are listed. */
+    void pickSubDub() {
+        Map<String, String> m = subDub();
+        if (m.size() < 2) return;
+        List<String> labels = new ArrayList<>(m.keySet());
+        String now = subDubNow();
+        if (labels.size() == 2) {
+            String other = labels.get(labels.get(0).equalsIgnoreCase(now) ? 1 : 0);
+            switchSubDub(other, m.get(other));
+            return;
+        }
+        List<String> shown = new ArrayList<>();
+        for (String l : labels) shown.add(l + (l.equalsIgnoreCase(now) ? "  \u2713" : ""));
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.player_sub_dub, now))
+            .setItems(shown.toArray(new String[0]), (d, i) -> switchSubDub(labels.get(i), m.get(labels.get(i)))).show();
+    }
+
+    void switchSubDub(String label, String key) {
+        WebActivity page = WebActivity.active;
+        if (page == null) return;
+        page.rememberAudio(label);
+        carryMs = player.getCurrentPosition();   // the same episode in the other language: carry on from here
+        carryAt = SystemClock.elapsedRealtime();
+        if (!key.isEmpty()) {
+            for (Map.Entry<String, String[]> e : page.audios.entrySet()) e.getValue()[1] = e.getKey().equals(key) ? "1" : "";   // the pick is now the one playing
+            page.switchServer(key);
+        }
+        else {
+            int[] pe = pageEpisode();
+            page.pendingEpisode = new int[]{Math.max(1, pe[0]), pe[1]};
+        }
+        say(label);
+        finish();
     }
 
     // ---- OpenSubtitles ----
@@ -1156,45 +1637,46 @@ public class PlayerActivity extends Activity {
         return getIntent().hasExtra("pageTitle") && player != null && !player.isCurrentMediaItemLive();
     }
 
+    /** Search: pick a language (the one picked last, the device's and English first), then a file in it. */
     void searchSubs() {
-        say(App.t(R.string.player_searching_subs));
-        findSubs(found -> pickSubLanguage(Subs.byLanguage(found)), true);
+        List<String> codes = Subs.languages(), names = new ArrayList<>();
+        for (String c : codes) names.add(Subs.language(c));
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.player_subs_language))
+            .setItems(names.toArray(new String[0]), (d, i) -> {
+                say(App.t(R.string.player_searching_subs));
+                findSubs(codes.get(i), found -> pickRelease(codes.get(i), found), true);
+            }).show();
     }
 
-    /** OpenSubtitles' files for what is playing go to `then` (main thread) when there are any; `loud` says why when there are none. */
-    void findSubs(java.util.function.Consumer<List<Subs.Sub>> then, boolean loud) {
+    /** The files in one language for what is playing go to `then` (main thread) when there are any; `loud` says why when there are none. */
+    void findSubs(String lang, java.util.function.Consumer<List<Subs.Sub>> then, boolean loud) {
         Intent in = getIntent();
         String imdb = in.getStringExtra("imdb"), title = History.cleanTitle(String.valueOf(in.getStringExtra("pageTitle")), String.valueOf(in.getStringExtra("site")));
         // The page's own URL/title say which episode is playing (the site may have moved on from the one picked in the catalog)
         int[] pe = pageEpisode();
-        int season = pe == null ? 0 : pe[0], episode = pe == null ? 0 : pe[1];
-        final int s = season, e = episode;
-        final boolean needsEpisode = in.getBooleanExtra("series", false) && s == 0;
+        final int s = pe == null ? 0 : Math.max(1, pe[0]), e = pe == null ? 0 : pe[1];
+        final boolean needsEpisode = in.getBooleanExtra("series", false) && pe == null;
         App.io.execute(() -> {
-            String id = needsEpisode ? "" : imdb == null || imdb.isEmpty() ? Subs.imdbFor(title, s > 0) : imdb;
-            List<Subs.Sub> found = id.isEmpty() ? null : Subs.find(id, s, e);
+            String id = needsEpisode ? "" : imdb == null || !imdb.startsWith("tt") ? Subs.imdbFor(title, s > 0) : imdb;
+            List<Subs.Sub> found = id.isEmpty() ? null : Subs.search(id, s, e, lang);
             runOnUiThread(() -> {
                 if (isFinishing() || player == null) return;
                 if (found == null) { if (loud) say(App.t(needsEpisode ? R.string.player_open_episode : R.string.player_not_on_opensubs)); }
-                else if (found.isEmpty()) { if (loud) say(App.t(R.string.player_no_subs_title)); }
+                else if (found.isEmpty()) { if (loud) say(App.t(R.string.player_no_subs_lang, Subs.language(lang))); }
                 else then.accept(found);
             });
         });
     }
 
-    void pickSubLanguage(Map<String, List<Subs.Sub>> langs) {
-        List<String> codes = new ArrayList<>(langs.keySet()), labels = new ArrayList<>();
-        for (String c : codes) labels.add(Subs.language(c) + "  \u00B7  " + langs.get(c).size());
-        new AlertDialog.Builder(this).setTitle(App.t(R.string.player_subs_language)).setItems(labels.toArray(new String[0]), (d, i) -> {
-            List<Subs.Sub> files = langs.get(codes.get(i)).subList(0, Math.min(40, langs.get(codes.get(i)).size()));
-            List<String> names = new ArrayList<>();
-            for (Subs.Sub f : files) names.add(f.release);
-            new AlertDialog.Builder(this).setTitle(App.t(R.string.player_pick_release, Subs.language(codes.get(i))))
-                .setItems(names.toArray(new String[0]), (d2, j) -> {
-                    if (subKey() != null) Subs.remember(subKey(), files.get(j));
-                    addSubtitle(files.get(j));
-                }).show();
-        }).show();
+    void pickRelease(String lang, List<Subs.Sub> found) {
+        List<Subs.Sub> files = found.subList(0, Math.min(60, found.size()));
+        List<String> names = new ArrayList<>();
+        for (Subs.Sub f : files) names.add(f.release + (f.hearingImpaired ? "  \u00B7  CC" : "") + (f.source.equals("OpenSubtitles") ? "" : "  \u00B7  " + f.source));
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.player_pick_release, Subs.language(lang)))
+            .setItems(names.toArray(new String[0]), (d, j) -> {
+                if (subKey() != null) Subs.remember(subKey(), files.get(j));
+                addSubtitle(files.get(j));
+            }).show();
     }
 
     /** Which movie or episode is playing, to remember its subtitle file: IMDb id (else the page's title), plus season and episode. Null for an episode we can't tell. */
@@ -1227,9 +1709,7 @@ public class PlayerActivity extends Activity {
                 return;
             }
         }
-        findSubs(found -> {
-            for (Subs.Sub f : found) if (f.lang.equals(lang)) { addSubtitle(f); return; }
-        }, false);
+        findSubs(lang, found -> addSubtitle(found.get(0)), false);   // the most downloaded file in your language
     }
 
     // ---- Volume boost ----
@@ -1247,16 +1727,12 @@ public class PlayerActivity extends Activity {
     }
 
     /**
-     * Volume boost: louder than the system's maximum (LoudnessEnhancer). Dialog boost: an equalizer that lifts the speech range
-     * (about 0.8 to 4.5 kHz) by 6 dB and lowers the deep bass a little. Both on the player's sound, kept across videos.
-     */
-    /** told = the user just changed a boost (only then is "doesn't work on this device" worth saying) */
-    /**
      * Volume boost: LoudnessEnhancer (raises the level, limits the peaks). Dialog boost: an Equalizer that only CUTS (rumble and
      * bass down, voices untouched) plus 4 dB of LoudnessEnhancer make-up, so voices come out louder. Positive Equalizer gains are
      * avoided on purpose: Android's bundled Equalizer turns the whole output down by its largest boost to avoid clipping, which
      * made "dialog boost" quieter. Effects also move the track to another output path on many devices, so when the last one is
-     * switched off the audio output is rebuilt (a new audio session) to go back to the normal path.
+     * switched off the audio output is rebuilt (a new audio session) to go back to the normal path. With both off nothing is
+     * attached. told = the user just changed a boost (only then is "doesn't work on this device" worth saying).
      */
     void applyBoost(boolean told) {
         boolean had = booster != null || voices != null;
@@ -1302,10 +1778,25 @@ public class PlayerActivity extends Activity {
     }
 
     // Side-load the file and restart the stream at the same spot with it switched on
+    /** Downloads the file (unpacked, converted to UTF-8, kept for next time), then shows it as the subtitle track. */
     void addSubtitle(Subs.Sub sub) {
+        App.io.execute(() -> {
+            SubFetch.Fetched f;
+            try {
+                f = Subs.fetch(sub);
+            } catch (java.io.IOException e) {
+                runOnUiThread(() -> say(App.t(R.string.player_subs_failed)));
+                return;
+            }
+            runOnUiThread(() -> { if (player != null && !isFinishing()) showSubtitle(sub, f); });
+        });
+    }
+
+    void showSubtitle(Subs.Sub sub, SubFetch.Fetched f) {
+        String mime = f.ext.equals("vtt") ? MimeTypes.TEXT_VTT : f.ext.equals("srt") ? MimeTypes.APPLICATION_SUBRIP : MimeTypes.TEXT_SSA;
         subList.removeIf(c -> "opensubtitles".equals(c.id));
-        subList.add(new MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url)).setId("opensubtitles").setMimeType(MimeTypes.APPLICATION_SUBRIP)
-            .setLanguage(sub.lang).setLabel(Subs.language(sub.lang) + " (OpenSubtitles)").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build());
+        subList.add(new MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(f.file)).setId("opensubtitles").setMimeType(mime)
+            .setLanguage(sub.lang).setLabel(Subs.language(sub.lang) + " (" + sub.source + ")").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build());
         mediaItem.setSubtitleConfigurations(subList);
         long pos = player.getCurrentPosition();
         boolean playing = player.getPlayWhenReady();
@@ -1314,10 +1805,103 @@ public class PlayerActivity extends Activity {
         player.prepare();
         player.setPlayWhenReady(playing);
         say(App.t(R.string.player_subs_lang, Subs.language(sub.lang)));
+        // Auto-sync: once enough has played, line the file up with the speech (a release with a recap is often minutes off)
+        syncCues = null;
+        syncTries = 0;
+        syncSet = Subs.delayMs;
+        App.io.execute(() -> {
+            try {
+                List<long[]> cues = SubSync.cues(f.file);
+                runOnUiThread(() -> syncCues = cues);
+            } catch (java.io.IOException ignored) { }
+        });
+        App.main.removeCallbacks(syncCheck);
+        App.main.postDelayed(syncCheck, 45000);
+    }
+
+    /** Every 45 s (8 times at most) until the file is lined up with the speech, unless you set the timing yourself. */
+    final Runnable syncCheck = new Runnable() {
+        @Override public void run() {
+            if (player == null || isFinishing() || syncCues == null || Subs.delayMs != syncSet || syncTries++ >= 8) return;
+            float[] level = meter.snapshot();
+            List<long[]> cues = syncCues;
+            App.io.execute(() -> {
+                Long d = SubSync.offset(level, cues);
+                Log.i("SubSync", "try " + syncTries + ": " + (d == null ? "not sure yet" : d + " ms"));
+                runOnUiThread(() -> {
+                    if (player == null || isFinishing() || Subs.delayMs != syncSet) return;
+                    if (d == null) { App.main.postDelayed(syncCheck, 45000); return; }
+                    if (Math.abs(d - Subs.delayMs) < 250) return;   // already in sync
+                    boolean jump = Math.abs(d - Subs.delayMs) > 5000;
+                    Subs.delayMs = syncSet = d;
+                    if (jump) player.seekTo(player.getCurrentPosition());   // the subtitle track picks up its new place
+                    say(App.t(R.string.player_subs_synced, Subs.delayLabel()));
+                });
+            });
+        }
+    };
+
+    // ---- Picture in picture (phone): Home while a video plays keeps it playing in a small window ----
+
+    static final String PIP_TOGGLE = "me.champdev.weblock.PIP_TOGGLE";
+    boolean inPip, offScreen;   // in the small window; stopped (not seen at all)
+    final android.content.BroadcastReceiver pipToggle = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, Intent i) {
+            if (player == null) return;
+            if (player.isPlaying()) player.pause(); else player.play();
+        }
+    };
+
+    boolean canPip() {
+        return !App.tv && player != null && casting == null && !isFinishing()
+            && getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE);
+    }
+
+    /** The window's shape (the picture's, within what Android allows), a play / pause button, and (Android 12+) going in by itself on Home while playing. */
+    android.app.PictureInPictureParams pipParams() {
+        float r = videoRatio > 0 ? Math.max(0.42f, Math.min(2.38f, videoRatio)) : 16f / 9;
+        boolean playing = player.isPlaying();
+        String label = App.t(playing ? R.string.player_pause : R.string.player_play);
+        android.app.PendingIntent pi = android.app.PendingIntent.getBroadcast(this, 0, new Intent(PIP_TOGGLE).setPackage(getPackageName()),
+            android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+        android.app.RemoteAction act = new android.app.RemoteAction(android.graphics.drawable.Icon.createWithResource(this, playing ? R.drawable.ic_p_pause : R.drawable.ic_p_play), label, label, pi);
+        android.app.PictureInPictureParams.Builder b = new android.app.PictureInPictureParams.Builder()
+            .setAspectRatio(new android.util.Rational(Math.round(r * 1000), 1000)).setActions(Collections.singletonList(act));
+        if (android.os.Build.VERSION.SDK_INT >= 31) b.setAutoEnterEnabled(playing).setSeamlessResizeEnabled(true);
+        return b.build();
+    }
+
+    void updatePip() {
+        if (canPip()) try { setPictureInPictureParams(pipParams()); } catch (IllegalStateException ignored) { }
+    }
+
+    // Before Android 12 there is no going in by itself: Home (leaving while it plays) asks for it
+    @Override protected void onUserLeaveHint() {
+        super.onUserLeaveHint();
+        if (android.os.Build.VERSION.SDK_INT < 31 && canPip() && player.isPlaying()) {
+            try { enterPictureInPictureMode(pipParams()); } catch (IllegalStateException ignored) { }
+        }
+    }
+
+    @Override public void onPictureInPictureModeChanged(boolean in, android.content.res.Configuration c) {
+        super.onPictureInPictureModeChanged(in, c);
+        inPip = in;
+        if (in) {
+            closePanel();
+            hideControls();
+            skipBtn.setVisibility(View.GONE);
+            notice.setVisibility(View.GONE);
+        } else if (offScreen) finishAndRemoveTask();   // the small window was closed: the video is done with
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        offScreen = false;
     }
 
     @Override protected void onStop() {
         super.onStop();
+        offScreen = true;
         if (player == null) return;
         player.pause();
         long dur = player.getDuration(), pos = player.getCurrentPosition();
@@ -1408,6 +1992,7 @@ public class PlayerActivity extends Activity {
     }
 
     @Override protected void onDestroy() {
+        try { unregisterReceiver(pipToggle); } catch (IllegalArgumentException ignored) { }
         if (current == this) current = null;
         scrobble("stop");
         if (getIntent().hasExtra("mime")) Iptv.saveHealth();

@@ -154,6 +154,8 @@
     <string name="home_volume_boost_help">音量の小さいストリーム向けに、デバイスの最大音量を超えて大きくします。すべての動画で有効になり、プレイヤーの音量ブーストボタンで動画ごとに変更できます。</string>
     <string name="home_dialog_boost">ダイアログブースト</string>
     <string name="home_dialog_boost_help">声を大きくし、低音の響きを抑えます。すべての動画で有効になり、プレイヤーのダイアログブーストボタンで動画ごとに変更できます。</string>
+    <string name="home_auto_skip">イントロを自動でスキップ</string>
+    <string name="home_auto_skip_help">イントロとリキャップは、時刻が分かっている場合（TheIntroDB、AniSkip）は自動でスキップされます。クレジットでは「次のエピソード」ボタンが表示されます。</string>
     <string name="home_auto_subs">字幕の自動表示</string>
     <string name="home_auto_subs_help">映画とエピソードは、最後に選んだ言語（%1$s）の字幕で開始します。ストリーム自体の字幕を優先し、なければOpenSubtitlesを使います。動画用に選んだ字幕ファイルは常に戻ります。</string>
     <string name="home_simkl_help">プレイヤーで観た映画やエピソードを、無料の視聴記録サービスSimklに視聴済みとして記録します。対象は映画、シリーズ、アニメから開いたタイトルです。</string>

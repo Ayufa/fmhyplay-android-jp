@@ -97,17 +97,22 @@ final class Sniffer {
     }
 
     /** Any WebView thread. */
+    // A site's own clip before the video (Cinecat's 12 s "/promo/" bumper): never the stream to hand over
+    static final java.util.regex.Pattern PROMO = java.util.regex.Pattern.compile("/(promo|promos|preroll|pre-roll|bumper|bumpers)/");
+
     void request(String url, Map<String, String> headers) {
         String p = path(url);
-        boolean hls = p.endsWith(".m3u8"), dash = p.endsWith(".mpd");
-        if (hls || dash) manifest(url, dash, headers);
+        boolean hls = p.endsWith(".m3u8"), dash = p.endsWith(".mpd"), flv = p.endsWith(".flv");   // FLV: live sports pages (mpegts.js)
+        if (hls || dash || flv) manifest(url, dash, headers);
         else if ((p.endsWith(".vtt") || p.endsWith(".srt")) && subs.size() < 8 && !subs.contains(url)) subs.add(url);
     }
 
     /** A playlist the page downloaded under a URL with no .m3u8 in it (found by its first bytes). Any thread. */
     void manifest(String url, boolean dash, Map<String, String> headers) {
+        if (PROMO.matcher(path(url)).find()) return;
         String host = Uri.parse(url).getHost();
         if (host == null || AdBlock.blocked(host) || manifests.size() >= 20) return;
+        last = new Hit(url, dash, headers);
         if (isStale(url)) return;
         for (Hit h : manifests) if (h.url.equals(url)) return;
         // After Back, a stream from somewhere else (the user picked another server on the page) goes native again
@@ -128,6 +133,22 @@ final class Sniffer {
         return !manifests.isEmpty();
     }
 
+    private volatile Hit last;   // the newest stream the page asked for, even one held back as the old one
+
+    /** What the page plays right now, also when it was held back (a switch that did not happen): for the FMHYPlayer button. */
+    Hit lastSeen() {
+        Hit b = best();
+        return b != null ? b : last;
+    }
+
+    /** A switch that did not happen: the stream the page still plays is the one to hand over again. */
+    void unswitch() {
+        stale.clear();
+        Hit h = last;
+        fresh();
+        if (h != null) manifest(h.url, h.dash, h.headers);
+    }
+
     /** HLS before DASH; among HLS the newest master playlist, else the first one asked for. */
     Hit best() {
         Hit first = null, master = null, dash = null;
@@ -143,7 +164,17 @@ final class Sniffer {
         return subs;
     }
 
+    // A proxy carries the real address in its query (/proxy/hls?url=https%3A%2F%2Fcdn/.../master.m3u8): that address is the stream
+    static final java.util.regex.Pattern CARRIED = java.util.regex.Pattern.compile("[?&][^=&]+=(https?(?::|%3A)[^&]+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+
     static String path(String url) {
+        java.util.regex.Matcher m = CARRIED.matcher(url);
+        if (m.find()) {
+            try {
+                String inner = java.net.URLDecoder.decode(m.group(1), "UTF-8");
+                if (inner.startsWith("http")) url = inner;
+            } catch (Exception ignored) { }
+        }
         int q = url.length();
         for (char c : new char[]{'?', '#'}) {
             int i = url.indexOf(c);

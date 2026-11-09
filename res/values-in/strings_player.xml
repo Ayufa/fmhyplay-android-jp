@@ -33,7 +33,7 @@
     <string name="player_full_screen">Layar penuh</string>
     <string name="player_subs_file">Subtitle %1$d (%2$s)</string>
     <string name="player_channel_offline">Saluran sedang offline (%1$s)</string>
-    <string name="player_cant_play">Pemutar bawaan tidak bisa memutar ini (%1$s), kembali ke halaman</string>
+    <string name="player_cant_play">FMHYPlayer tidak bisa memutar ini (%1$s), kembali ke halaman</string>
     <string name="player_resumed_at">Dilanjutkan dari %1$s</string>
     <string name="player_live">LIVE</string>
     <string name="player_no_servers">Tidak ada daftar server di halaman ini</string>
@@ -42,14 +42,12 @@
     <string name="player_subs_n">Subtitle %1$d</string>
     <string name="player_no_audio">Tidak ada audio di video ini</string>
     <string name="player_no_subs">Tidak ada subtitle di video ini</string>
-    <string name="player_search_subs">"🔍  Cari di OpenSubtitles…"</string>
-    <string name="player_subs_style">"Aa  Ukuran, posisi, warna, latar, waktu  (%1$s · %2$s · %3$s · %4$s · %5$s)"</string>
+    <string name="player_search_subs">"🔍  Cari subtitle…"</string>
     <string name="player_season_episode">"Musim %1$d  ·  Episode %2$d"</string>
     <string name="player_episode">Episode %1$d</string>
     <string name="player_searching_subs">Mencari di OpenSubtitles…</string>
     <string name="player_open_episode">Buka dulu episodenya di situs</string>
     <string name="player_not_on_opensubs">Judul ini tidak ditemukan di OpenSubtitles</string>
-    <string name="player_no_subs_title">Tidak ada subtitle untuk judul ini</string>
     <string name="player_subs_language">Bahasa subtitle</string>
     <string name="player_pick_release">%1$s: pilih rilis yang cocok dengan videomu</string>
     <string name="player_subs_lang">Subtitle: %1$s</string>
@@ -105,4 +103,19 @@
     <string name="cast_refused">TV menolak pemutar Cast</string>
     <string name="cast_label_dlna">%1$s - DLNA</string>
     <string name="cast_dlna_refused">TV menolak video ini</string>
+    <string name="player_episodes">Episode</string>
+    <string name="player_next_episode">Berikutnya: S%1$d E%2$d</string>
+    <string name="player_prev_episode">Sebelumnya: S%1$d E%2$d</string>
+    <string name="player_skip_intro">Lewati intro</string>
+    <string name="player_skip_recap">Lewati rekap</string>
+    <string name="player_skip_credits">Lewati kredit</string>
+    <string name="player_no_subs_lang">Tidak ada subtitle %1$s untuk ini</string>
+    <string name="player_subs_failed">File subtitle tidak bisa dimuat</string>
+    <string name="player_subs_synced">Subtitle disinkronkan (%1$s)</string>
+    <string name="player_skipped_intro">Intro dilewati</string>
+    <string name="player_skipped_recap">Rekap dilewati</string>
+    <string name="player_play">Putar</string>
+    <string name="player_pause">Jeda</string>
+    <string name="player_sub_dub">Sub / Dub: %1$s</string>
+    <string name="player_more">Lainnya</string>
 </resources>

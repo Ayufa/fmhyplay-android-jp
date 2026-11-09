@@ -33,7 +33,7 @@
     <string name="player_full_screen">Pantalla completa</string>
     <string name="player_subs_file">Subtítulos %1$d (%2$s)</string>
     <string name="player_channel_offline">El canal está fuera de línea (%1$s)</string>
-    <string name="player_cant_play">El reproductor nativo no pudo reproducir esto (%1$s), volviendo a la página</string>
+    <string name="player_cant_play">FMHYPlayer no pudo reproducir esto (%1$s), volviendo a la página</string>
     <string name="player_resumed_at">Reanudado en %1$s</string>
     <string name="player_live">EN VIVO</string>
     <string name="player_no_servers">No se encontró una lista de servidores en esta página</string>
@@ -42,14 +42,12 @@
     <string name="player_subs_n">Subtítulos %1$d</string>
     <string name="player_no_audio">No hay audio en este video</string>
     <string name="player_no_subs">No hay subtítulos en este video</string>
-    <string name="player_search_subs">"🔍  Buscar en OpenSubtitles…"</string>
-    <string name="player_subs_style">"Aa  Tamaño, posición, color, fondo, sincronización  (%1$s · %2$s · %3$s · %4$s · %5$s)"</string>
+    <string name="player_search_subs">"🔍  Buscar subtítulos…"</string>
     <string name="player_season_episode">"Temporada %1$d  ·  Episodio %2$d"</string>
     <string name="player_episode">Episodio %1$d</string>
     <string name="player_searching_subs">Buscando en OpenSubtitles…</string>
     <string name="player_open_episode">Primero abre el episodio en el sitio</string>
     <string name="player_not_on_opensubs">No se encuentra este título en OpenSubtitles</string>
-    <string name="player_no_subs_title">No hay subtítulos para este título</string>
     <string name="player_subs_language">Idioma de los subtítulos</string>
     <string name="player_pick_release">%1$s: elige la versión que coincida con tu video</string>
     <string name="player_subs_lang">Subtítulos: %1$s</string>
@@ -105,4 +103,19 @@
     <string name="cast_refused">La TV rechazó el reproductor de Cast</string>
     <string name="cast_label_dlna">%1$s - DLNA</string>
     <string name="cast_dlna_refused">La TV rechazó este video</string>
+    <string name="player_episodes">Episodios</string>
+    <string name="player_next_episode">Siguiente: T%1$d E%2$d</string>
+    <string name="player_prev_episode">Anterior: T%1$d E%2$d</string>
+    <string name="player_skip_intro">Saltar intro</string>
+    <string name="player_skip_recap">Saltar resumen</string>
+    <string name="player_skip_credits">Saltar créditos</string>
+    <string name="player_no_subs_lang">No hay subtítulos en %1$s para esto</string>
+    <string name="player_subs_failed">No se pudo cargar el archivo de subtítulos</string>
+    <string name="player_subs_synced">Subtítulos sincronizados (%1$s)</string>
+    <string name="player_skipped_intro">Intro saltada</string>
+    <string name="player_skipped_recap">Resumen saltado</string>
+    <string name="player_play">Reproducir</string>
+    <string name="player_pause">Pausa</string>
+    <string name="player_sub_dub">Subtitulado / Doblado: %1$s</string>
+    <string name="player_more">Más</string>
 </resources>

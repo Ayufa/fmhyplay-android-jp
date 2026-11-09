@@ -31,7 +31,7 @@
     <string name="home_sites">Sitios</string>
     <string name="home_new_anime">Anime nuevo</string>
     <string name="home_newly_released">Estrenos recientes</string>
-    <string name="home_popular_animation">Animación popular</string>
+    <string name="home_popular_animation">Anime popular</string>
     <string name="home_catalog_retry">No se puede conectar con el catálogo. Toca para reintentar</string>
     <string name="home_nothing_here">No hay nada aquí</string>
     <string name="home_load_more">Cargar más</string>
@@ -154,6 +154,8 @@
     <string name="home_volume_boost_help">Más fuerte que el máximo del dispositivo, para transmisiones bajas. Todos los videos empiezan con esto; el botón Aumento de volumen del reproductor lo cambia para un solo video.</string>
     <string name="home_dialog_boost">Realce de diálogos</string>
     <string name="home_dialog_boost_help">Voces más fuertes, menos retumbe. Todos los videos empiezan con esto; el botón Realce de diálogos del reproductor lo cambia para un solo video.</string>
+    <string name="home_auto_skip">Saltar intros</string>
+    <string name="home_auto_skip_help">Las intros y los resúmenes se saltan solos cuando se conocen sus tiempos. En los créditos sigue el botón Siguiente episodio.</string>
     <string name="home_auto_subs">Subtítulos automáticos</string>
     <string name="home_auto_subs_help">Las películas y episodios empiezan con subtítulos en %1$s (el último idioma que elegiste): los del stream o, si no hay, de OpenSubtitles. Un archivo que elegiste para un video siempre vuelve.</string>
     <string name="home_simkl_help">Marca como vistos en Simkl, un tracker gratis, las películas y episodios que ves en el reproductor. Títulos abiertos desde Películas, Series o Anime.</string>

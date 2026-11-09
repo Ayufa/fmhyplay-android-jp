@@ -33,7 +33,7 @@
     <string name="player_full_screen">Full screen</string>
     <string name="player_subs_file">Subtitles %1$d (%2$s)</string>
     <string name="player_channel_offline">Channel is offline (%1$s)</string>
-    <string name="player_cant_play">Native player could not play this (%1$s), back to the page</string>
+    <string name="player_cant_play">FMHYPlayer could not play this (%1$s), back to the page</string>
     <string name="player_resumed_at">Resumed at %1$s</string>
     <string name="player_live">LIVE</string>
     <string name="player_no_servers">No servers list found on this page</string>
@@ -42,14 +42,12 @@
     <string name="player_subs_n">Subtitles %1$d</string>
     <string name="player_no_audio">No audio in this video</string>
     <string name="player_no_subs">No subtitles in this video</string>
-    <string name="player_search_subs">"🔍  Search OpenSubtitles…"</string>
-    <string name="player_subs_style">"Aa  Size, position, color, background, timing  (%1$s · %2$s · %3$s · %4$s · %5$s)"</string>
+    <string name="player_search_subs">"🔍  Search subtitles…"</string>
     <string name="player_season_episode">"Season %1$d  ·  Episode %2$d"</string>
     <string name="player_episode">Episode %1$d</string>
     <string name="player_searching_subs">Searching OpenSubtitles…</string>
     <string name="player_open_episode">Open the episode on the site first</string>
     <string name="player_not_on_opensubs">Can\'t find this title on OpenSubtitles</string>
-    <string name="player_no_subs_title">No subtitles for this title</string>
     <string name="player_subs_language">Subtitle language</string>
     <string name="player_pick_release">%1$s: pick a release that matches your video</string>
     <string name="player_subs_lang">Subtitles: %1$s</string>
@@ -105,4 +103,19 @@
     <string name="cast_refused">The TV refused the Cast player</string>
     <string name="cast_label_dlna">%1$s - DLNA</string>
     <string name="cast_dlna_refused">The TV refused this video</string>
+    <string name="player_episodes">Episodes</string>
+    <string name="player_next_episode">Next: S%1$d E%2$d</string>
+    <string name="player_prev_episode">Previous: S%1$d E%2$d</string>
+    <string name="player_skip_intro">Skip intro</string>
+    <string name="player_skip_recap">Skip recap</string>
+    <string name="player_skip_credits">Skip credits</string>
+    <string name="player_no_subs_lang">No %1$s subtitles for this one</string>
+    <string name="player_subs_failed">Could not load the subtitle file</string>
+    <string name="player_subs_synced">Subtitles synced (%1$s)</string>
+    <string name="player_skipped_intro">Intro skipped</string>
+    <string name="player_skipped_recap">Recap skipped</string>
+    <string name="player_play">Play</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_sub_dub">Sub / Dub: %1$s</string>
+    <string name="player_more">More</string>
 </resources>

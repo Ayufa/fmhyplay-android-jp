@@ -33,7 +33,7 @@
     <string name="player_full_screen">Vollbild</string>
     <string name="player_subs_file">Untertitel %1$d (%2$s)</string>
     <string name="player_channel_offline">Der Sender ist offline (%1$s)</string>
-    <string name="player_cant_play">Der native Player kann das nicht abspielen (%1$s), zurück zur Seite</string>
+    <string name="player_cant_play">FMHYPlayer kann das nicht abspielen (%1$s), zurück zur Seite</string>
     <string name="player_resumed_at">Fortgesetzt bei %1$s</string>
     <string name="player_live">LIVE</string>
     <string name="player_no_servers">Keine Serverliste auf dieser Seite gefunden</string>
@@ -42,14 +42,12 @@
     <string name="player_subs_n">Untertitel %1$d</string>
     <string name="player_no_audio">Kein Ton in diesem Video</string>
     <string name="player_no_subs">Keine Untertitel in diesem Video</string>
-    <string name="player_search_subs">"🔍  Auf OpenSubtitles suchen…"</string>
-    <string name="player_subs_style">"Aa  Größe, Position, Farbe, Hintergrund, Timing  (%1$s · %2$s · %3$s · %4$s · %5$s)"</string>
+    <string name="player_search_subs">"🔍  Untertitel suchen…"</string>
     <string name="player_season_episode">"Staffel %1$d  ·  Folge %2$d"</string>
     <string name="player_episode">Folge %1$d</string>
     <string name="player_searching_subs">Suche auf OpenSubtitles…</string>
     <string name="player_open_episode">Öffne zuerst die Folge auf der Seite</string>
     <string name="player_not_on_opensubs">Dieser Titel ist nicht auf OpenSubtitles zu finden</string>
-    <string name="player_no_subs_title">Keine Untertitel für diesen Titel</string>
     <string name="player_subs_language">Untertitelsprache</string>
     <string name="player_pick_release">%1$s: Wähle die Version, die zu deinem Video passt</string>
     <string name="player_subs_lang">Untertitel: %1$s</string>
@@ -105,4 +103,19 @@
     <string name="cast_refused">Der TV hat den Cast-Player abgelehnt</string>
     <string name="cast_label_dlna">%1$s - DLNA</string>
     <string name="cast_dlna_refused">Der TV hat dieses Video abgelehnt</string>
+    <string name="player_episodes">Folgen</string>
+    <string name="player_next_episode">Nächste: S%1$d E%2$d</string>
+    <string name="player_prev_episode">Vorherige: S%1$d E%2$d</string>
+    <string name="player_skip_intro">Intro überspringen</string>
+    <string name="player_skip_recap">Rückblick überspringen</string>
+    <string name="player_skip_credits">Abspann überspringen</string>
+    <string name="player_no_subs_lang">Keine Untertitel auf %1$s dafür</string>
+    <string name="player_subs_failed">Untertiteldatei konnte nicht geladen werden</string>
+    <string name="player_subs_synced">Untertitel angepasst (%1$s)</string>
+    <string name="player_skipped_intro">Intro übersprungen</string>
+    <string name="player_skipped_recap">Rückblick übersprungen</string>
+    <string name="player_play">Abspielen</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_sub_dub">Untertitel / Synchro: %1$s</string>
+    <string name="player_more">Mehr</string>
 </resources>

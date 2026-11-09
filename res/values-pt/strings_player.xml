@@ -33,7 +33,7 @@
     <string name="player_full_screen">Tela cheia</string>
     <string name="player_subs_file">Legendas %1$d (%2$s)</string>
     <string name="player_channel_offline">O canal está fora do ar (%1$s)</string>
-    <string name="player_cant_play">O player nativo não conseguiu reproduzir isto (%1$s), voltando para a página</string>
+    <string name="player_cant_play">O FMHYPlayer não conseguiu reproduzir isto (%1$s), voltando para a página</string>
     <string name="player_resumed_at">Retomado em %1$s</string>
     <string name="player_live">AO VIVO</string>
     <string name="player_no_servers">Nenhuma lista de servidores encontrada nesta página</string>
@@ -42,14 +42,12 @@
     <string name="player_subs_n">Legendas %1$d</string>
     <string name="player_no_audio">Nenhum áudio neste vídeo</string>
     <string name="player_no_subs">Nenhuma legenda neste vídeo</string>
-    <string name="player_search_subs">"🔍  Buscar no OpenSubtitles…"</string>
-    <string name="player_subs_style">"Aa  Tamanho, posição, cor, fundo, sincronia  (%1$s · %2$s · %3$s · %4$s · %5$s)"</string>
+    <string name="player_search_subs">"🔍  Buscar legendas…"</string>
     <string name="player_season_episode">"Temporada %1$d  ·  Episódio %2$d"</string>
     <string name="player_episode">Episódio %1$d</string>
     <string name="player_searching_subs">Buscando no OpenSubtitles…</string>
     <string name="player_open_episode">Abra o episódio no site primeiro</string>
     <string name="player_not_on_opensubs">Este título não foi encontrado no OpenSubtitles</string>
-    <string name="player_no_subs_title">Nenhuma legenda para este título</string>
     <string name="player_subs_language">Idioma da legenda</string>
     <string name="player_pick_release">%1$s: escolha a versão que combina com o seu vídeo</string>
     <string name="player_subs_lang">Legendas: %1$s</string>
@@ -105,4 +103,19 @@
     <string name="cast_refused">A TV recusou o player do Cast</string>
     <string name="cast_label_dlna">%1$s - DLNA</string>
     <string name="cast_dlna_refused">A TV recusou este vídeo</string>
+    <string name="player_episodes">Episódios</string>
+    <string name="player_next_episode">Próximo: T%1$d E%2$d</string>
+    <string name="player_prev_episode">Anterior: T%1$d E%2$d</string>
+    <string name="player_skip_intro">Pular abertura</string>
+    <string name="player_skip_recap">Pular resumo</string>
+    <string name="player_skip_credits">Pular créditos</string>
+    <string name="player_no_subs_lang">Sem legendas em %1$s para este</string>
+    <string name="player_subs_failed">Não foi possível carregar o arquivo de legenda</string>
+    <string name="player_subs_synced">Legendas sincronizadas (%1$s)</string>
+    <string name="player_skipped_intro">Abertura pulada</string>
+    <string name="player_skipped_recap">Resumo pulado</string>
+    <string name="player_play">Reproduzir</string>
+    <string name="player_pause">Pausar</string>
+    <string name="player_sub_dub">Legendado / Dublado: %1$s</string>
+    <string name="player_more">Mais</string>
 </resources>

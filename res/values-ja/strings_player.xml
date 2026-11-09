@@ -33,7 +33,7 @@
     <string name="player_full_screen">全画面</string>
     <string name="player_subs_file">字幕 %1$d (%2$s)</string>
     <string name="player_channel_offline">チャンネルはオフラインです (%1$s)</string>
-    <string name="player_cant_play">ネイティブプレイヤーで再生できませんでした (%1$s)。ページに戻ります</string>
+    <string name="player_cant_play">FMHYPlayerで再生できませんでした (%1$s)。ページに戻ります</string>
     <string name="player_resumed_at">前回の続きから再生: %1$s</string>
     <string name="player_live">LIVE</string>
     <string name="player_no_servers">このページにサーバーのリストが見つかりません</string>
@@ -42,14 +42,12 @@
     <string name="player_subs_n">字幕 %1$d</string>
     <string name="player_no_audio">この動画には音声がありません</string>
     <string name="player_no_subs">この動画には字幕がありません</string>
-    <string name="player_search_subs">"🔍  OpenSubtitlesで検索…"</string>
-    <string name="player_subs_style">"Aa  サイズ、位置、色、背景、タイミング  (%1$s · %2$s · %3$s · %4$s · %5$s)"</string>
+    <string name="player_search_subs">"🔍  字幕を検索…"</string>
     <string name="player_season_episode">"シーズン %1$d  ·  エピソード %2$d"</string>
     <string name="player_episode">エピソード %1$d</string>
     <string name="player_searching_subs">OpenSubtitlesを検索中…</string>
     <string name="player_open_episode">先にサイトでエピソードを開いてください</string>
     <string name="player_not_on_opensubs">OpenSubtitlesでこのタイトルが見つかりません</string>
-    <string name="player_no_subs_title">このタイトルの字幕がありません</string>
     <string name="player_subs_language">字幕の言語</string>
     <string name="player_pick_release">%1$s: 動画に合うリリースを選んでください</string>
     <string name="player_subs_lang">字幕: %1$s</string>
@@ -105,4 +103,19 @@
     <string name="cast_refused">TVがキャストプレイヤーを拒否しました</string>
     <string name="cast_label_dlna">%1$s - DLNA</string>
     <string name="cast_dlna_refused">TVがこの動画を拒否しました</string>
+    <string name="player_episodes">エピソード</string>
+    <string name="player_next_episode">次: S%1$d E%2$d</string>
+    <string name="player_prev_episode">前: S%1$d E%2$d</string>
+    <string name="player_skip_intro">イントロをスキップ</string>
+    <string name="player_skip_recap">リキャップをスキップ</string>
+    <string name="player_skip_credits">クレジットをスキップ</string>
+    <string name="player_no_subs_lang">この動画には%1$sの字幕がありません</string>
+    <string name="player_subs_failed">字幕ファイルを読み込めませんでした</string>
+    <string name="player_subs_synced">字幕を同期しました (%1$s)</string>
+    <string name="player_skipped_intro">イントロをスキップしました</string>
+    <string name="player_skipped_recap">リキャップをスキップしました</string>
+    <string name="player_play">再生</string>
+    <string name="player_pause">一時停止</string>
+    <string name="player_sub_dub">字幕 / 吹替: %1$s</string>
+    <string name="player_more">その他</string>
 </resources>

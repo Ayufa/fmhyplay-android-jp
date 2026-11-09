@@ -18,53 +18,72 @@
   <a href="https://fmhyplay.github.io/android/">Documentation</a> ·
   <a href="https://github.com/fmhyplay/android/releases/latest">Download</a> ·
   <a href="https://fmhyplay.github.io/android/guide.html">User guide</a> ·
-  <a href="https://fmhyplay.github.io/android/build.html">Build from source</a>
+  <a href="https://fmhyplay.github.io/android/build.html">Build from source</a> ·
+  <a href="https://buymeacoffee.com/rohit267">Support</a>
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/player.jpg" alt="The native player" width="760">
+  <img src="docs/screenshots/player.jpg" alt="FMHYPlayer" width="760">
 </p>
 
 ## Why
 
 Streaming sites are built for a desktop browser with a mouse. On a TV remote they are painful, they are full of pop-ups, and their embedded players stutter on weak hardware. FMHYPlay keeps the site (so you keep every title and server it offers) but takes over the part that goes wrong:
 
-- It **finds the video stream** the page starts and plays it in ExoPlayer with the hardware decoder, with nothing painted over the picture.
-- It **drives the site for you**: the player's Servers and Quality buttons press the site's own buttons, so you do not go back to the page to switch.
+- It **finds the video stream** the page starts and plays it in **FMHYPlayer** (ExoPlayer with the hardware decoder), with nothing painted over the picture.
+- It **drives the site for you**: pick a title and it opens that title's page (or the exact episode); the player's Episodes, Sub / Dub, Servers and Quality buttons press the site's own buttons, so you do not go back to the page.
 - It **blocks ads and pop-ups**, **tunnels the app's own traffic** through Cloudflare WARP when you want it, and works with a **TV remote** and with **touch**.
 
 ## Features
 
-**Native player**
-- Hands off automatically when a page starts an HLS or DASH stream; falls back to the page if the stream cannot be played
+**Cast to TV**
+- The **Cast** button in the phone's player sends the video to a TV on the same Wi-Fi, from the same spot. The phone becomes the remote: play, pause, seek, ±10 s and TV volume (the phone's volume keys work too)
+- **TV with FMHYPlay (recommended)**: the TV plays the stream itself, with the site's headers and cookie, WARP, ad blocking and subtitles. It opens even when FMHYPlay is closed on the TV
+- **Chromecast, Google TV and TVs with Cast built in**: no app needed on the TV; the phone relays the stream so sites still accept it
+- **DLNA / UPnP smart TVs** (Samsung, LG, Sony, Kodi and others): same relay; works best with MP4 and TS streams, since not every TV plays HLS
+
+<p align="center"><img src="docs/cast.svg" alt="Cast from the phone to a TV on the same Wi-Fi" width="760"></p>
+
+**Series and anime**
+- **Episodes** list in the player (seasons, stills, names), **Previous** and **Next**, and the next episode starts by itself
+- **Skip intro, recap and credits** (times from TheIntroDB and AniSkip), with a Next episode button at the credits; *Settings, Skip intros* skips them for you
+- **Sub / Dub** button for anime, remembered per site
+- Opens the exact episode directly on 34 TV sites and 22 anime sites; elsewhere it presses the episode in the site's own list or menus
+
+**FMHYPlayer**
+- Hands off automatically when a page starts an HLS, DASH or live FLV stream; falls back to the page if the stream cannot be played
+- One row of icon buttons: Previous, Next, Quality, Audio, Sub / Dub, Episodes, Servers, Subtitles, More, Cast, Full screen; what is picked shows under the title, and on a TV the button the remote is on shows its name
 - Replays the page's Referer, Origin and cookies, so streams that check them still play
-- Quality list with frame rate (for example 1080p60), audio and subtitle tracks, speed, and four zoom modes (Fit, Fill, Stretch, 16:9, 4:3)
+- **Resumes where you stopped on any site or server**, with a Restart button
+- Quality list with frame rate (for example 1080p60), audio and subtitle tracks, speed and zoom modes
 - **Servers and Quality buttons that control the site's own player**, including players inside cross-origin iframes
-- Episodes are picked in the site's own player: press Back, choose one there, and the new stream opens by itself once it differs from the one you left
-- **OpenSubtitles** built in (search by title and episode, side-loaded without losing your place), plus subtitle size, position and timing (0.1 s steps)
-- **Simkl** scrobbling (optional): connect with a code at simkl.com/pin, and titles you finish are marked watched
-- Phone gestures: swipe up and down on the left half for brightness and on the right half for volume, double-tap either side to jump 10 seconds
-- One layout on every screen size; resumes where you left off
+- **Volume boost** (up to +12 dB) and **Dialog boost** (clearer voices, on by default)
+- **Subtitles in any language** from OpenSubtitles, converted so every script shows right, remembered per title, optional auto subtitles in your language, and **auto-sync** that lines a file up with the speech; size, position, color, background and timing
+- **Simkl** and **PunchPlay** tracking (optional): what you watch is tracked there, titles you finish are marked watched
+- Phone: **picture in picture**, hold the right or left side for **2x**, follows the rotation lock with a Full screen button; swipe for brightness and volume, double-tap to skip 10 seconds
 
 **Browsing**
-- A directory of streaming sites that tracks the [FMHY](https://github.com/fmhy/edit) lists and refreshes itself
-- Movie and series catalog (posters, ratings, episodes) from Cinemeta, with search by typing or by voice
-- Opens a title's own page on many sites instead of searching for it
-- Continue watching, **favorites** for sites and channels (hold OK to mark one), and My list for titles
-- **Add your own site**: any address becomes a favorite with the same player, ad blocking and remote control
-- Dark pages (WebView dark mode), a remote-friendly cursor mode, and focus navigation designed for D-pads
+- Home with Continue watching, Favorites, and **New and Popular** for Movies, TV and Anime (from Cinemeta and Kitsu)
+- **One search** for movies, series, IPTV channels and sites, by typing or by voice
+- A directory of streaming sites that tracks the [FMHY](https://github.com/fmhy/edit) lists; opens a title's own page on about 70 sites and searches the rest for you, then opens the match
+- Anime opens on anime sites only
+- **Add your own site**, an optional address bar, dark pages, a cursor for the TV remote (with funny and useful looks)
+- Pop-ups that are real links open in the same tab (Back returns); pop-up ads are dropped, and "Join our Discord" style nag dialogs close by themselves
+
+**Your language**
+- English, Hindi, Spanish, Portuguese, Indonesian, Arabic (right to left) and German, picked from the phone's or TV's language
 
 **Network and privacy**
-- **In-app Cloudflare WARP**: a userspace WireGuard tunnel for the app's traffic only, with no VPN permission and no root; LAN addresses stay direct
+- **In-app Cloudflare WARP**: a userspace WireGuard tunnel for the app's traffic only, with no VPN permission and no root; LAN addresses stay direct. A WARP log to share when it fails
 - Domain-based ad, tracker and pop-up blocking, plus redirect blocking
-- No FMHYPlay account, no analytics, no telemetry. Updates come from this repository's releases, installed from inside the app
+- No FMHYPlay account, no analytics, no telemetry. Updates come from this repository's releases, with What's new before you install
 
 **IPTV**
 - More than 11,000 public channels from [iptv-org](https://github.com/iptv-org/iptv), grouped by category and country, with logos
-- A background check hides channels that are offline, and a Working list remembers the ones that played for you
-- **Add your own playlist, a single `.m3u8` stream link or an Xtream Codes login**; each playlist gets its own named row at the top. Links on your own network work too
-- Star channels, filter, and search by voice
-- Optional extra source list that you host yourself (see [docs](https://fmhyplay.github.io/android/guide.html#sources))
+- A background check hides channels that are offline, and a Working row shows the ones that played
+- **Add your own playlist, a single `.m3u8` stream link, an Xtream Codes login or a Stalker portal (MAC address)**; each playlist gets its own row
+- **Category and Language filters** in every channel list, and **pins**: keep a list with its filters (India · News · Hindi) as its own row
+- Favorite channels with a heart; channels also show up in the one search
 
 **Engineering**
 - Plain Java and SDK command-line tools, **no Gradle**, roughly 11 MB per APK
@@ -86,7 +105,17 @@ Streaming sites are built for a desktop browser with a mouse. On a TV remote the
 <p align="center">
   <img src="docs/screenshots/phone-home.jpg" alt="Phone home" height="420">
   &nbsp;
-  <img src="docs/screenshots/phone-player.jpg" alt="Phone player" height="420">
+  <img src="docs/screenshots/phone-cast.jpg" alt="Phone as the remote while casting" height="420">
+  &nbsp;
+  <img src="docs/screenshots/phone-hindi.jpg" alt="Home in Hindi" height="420">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/phone-player.jpg" alt="Phone player" width="760">
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/phone-episodes.jpg" alt="Episodes list in the player" height="420">
 </p>
 
 ## Install
@@ -101,6 +130,15 @@ Download the APK for your device from [Releases](https://github.com/fmhyplay/and
 Allow installs from your file manager or browser, open the APK, done. On a TV, `adb install -r FMHYPlay-TV-vX.Y.Z.apk` works over the network. Updates install over the old version because releases are signed with the same key. Check a download with `SHA256SUMS.txt` from the release.
 
 Requires Android 8.0 (API 26) or newer, arm64 or 32-bit ARM.
+
+### Fire TV
+
+1. On the Fire TV: *Settings → My Fire TV → About*, press OK on the device name 7 times (developer options on).
+2. Install **Downloader** (by AFTVnews) from the Amazon Appstore.
+3. *Settings → My Fire TV → Developer options → Install unknown apps* → turn on **Downloader**.
+4. In Downloader, type the code **`9828006`** or `https://github.com/fmhyplay/android/releases/latest/download/FMHYPlay-TV.apk`, then *Go → Install → Open*.
+
+Fire OS 7 or newer (Fire TV Stick 4K and later). The app updates itself afterwards. That link always gets the newest TV APK (`FMHYPlay-Android.apk` for phones).
 
 ## Build from source
 
@@ -119,6 +157,10 @@ The APKs appear in the project folder. Details, signing and the CI setup are in 
 2. The WebView's requests are watched for HLS and DASH playlists; some sites hide them behind URLs without an extension, so downloads are also recognised by their first bytes.
 3. When a stream shows up, the page is paused and the stream goes to ExoPlayer with the same headers and cookies the page used.
 4. The same script reads the page's server and quality lists. The player's buttons send a click back to it, the page switches, and the new stream is handed over the same way.
+
+## Support
+
+FMHYPlay is free and made in spare time. If it is useful to you: [Buy me a coffee](https://buymeacoffee.com/rohit267) or [PayPal](https://paypal.me/champdev).
 
 ## Legal
 

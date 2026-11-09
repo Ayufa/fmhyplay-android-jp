@@ -26,15 +26,17 @@ public class TitleActivity extends Home {
         t.name = getIntent().getStringExtra("name");
         t.year = String.valueOf(getIntent().getStringExtra("year"));
         t.poster = String.valueOf(getIntent().getStringExtra("poster"));
+        t.anime = getIntent().getBooleanExtra("anime", false);
         super.onCreate(state);
-        Warp.whenSettled(() -> App.io.execute(() -> {
+        App.io.execute(() -> {
             Catalog.fill(t);
+            // An animated title from the movie / TV catalog (or search, My list) that the anime databases know: show anime sites
             runOnUiThread(() -> {
                 if (t.series() && Catalog.seasons(t) > 0 && season > Catalog.seasons(t)) season = 1;
                 refocus = true;
                 build();
             });
-        }));
+        });
     }
 
     @Override protected void onResume() {
@@ -94,6 +96,35 @@ public class TitleActivity extends Home {
             overview.setPadding(0, dp(12), 0, 0);
             col.addView(overview);
         }
+        // Who made it and who is in it, where it is from, awards, and for a series whether it still runs and how much there is
+        List<String[]> facts = new ArrayList<>();
+        if (!t.cast.isEmpty()) facts.add(new String[]{App.t(R.string.title_cast), t.cast});
+        if (!t.director.isEmpty()) facts.add(new String[]{App.t(R.string.title_director), t.director});
+        else if (!t.writer.isEmpty()) facts.add(new String[]{App.t(R.string.title_writer), t.writer});
+        if (t.series() && !t.episodes.isEmpty()) {
+            int n = Catalog.seasons(t);
+            String size = App.t(n == 1 ? R.string.title_size_one : R.string.title_size, n, t.episodes.size());
+            facts.add(new String[]{App.t(R.string.title_show), t.status.isEmpty() ? size : size + "  ·  " + t.status});
+        }
+        if (!t.country.isEmpty()) facts.add(new String[]{App.t(R.string.title_country), t.country});
+        if (!t.awards.isEmpty()) facts.add(new String[]{App.t(R.string.title_awards), t.awards});
+        if (!facts.isEmpty()) {
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            box.setPadding(0, u(14, 10), 0, 0);
+            for (String[] f : facts) {
+                android.text.SpannableStringBuilder fact = new android.text.SpannableStringBuilder(f[0] + "   ");
+                fact.setSpan(new android.text.style.ForegroundColorSpan(MUTED), 0, f[0].length(), 0);
+                fact.append(f[1]);
+                TextView v = text("", sp(15, 13), TEXT, false);
+                v.setText(fact);
+                v.setMaxLines(2);
+                v.setEllipsize(TextUtils.TruncateAt.END);
+                v.setPadding(0, dp(3), 0, dp(3));
+                box.addView(v);
+            }
+            col.addView(box);
+        }
 
         LinearLayout buttons = new LinearLayout(this);
         buttons.setPadding(0, u(18, 12), 0, u(4, 2));
@@ -124,9 +155,10 @@ public class TitleActivity extends Home {
         // The sites that carry this kind of title: tap one and its own search box is filled in with the title
         List<Sites.Site> sites = options();
         if (!sites.isEmpty()) {
+            // one row that scrolls sideways, so the episodes below are a short move away
             col.addView(heading(App.t(R.string.title_watch_heading, t.displayName())));
-            Grid grid = new Grid(col);
-            for (Sites.Site s : sites) grid.add(s);
+            LinearLayout row = row();
+            for (Sites.Site s : sites) row.addView(siteCard(s, true));
         }
         if (t.series() && !t.episodes.isEmpty()) episodes();
         if (App.tv && refocus) col.postDelayed(watch::requestFocus, 60);
@@ -192,23 +224,45 @@ public class TitleActivity extends Home {
         }
     }
 
-    /** The site picked last time, else your first favorite, else FMHY's first pick for this kind of title. */
+    /**
+     * The sites for this kind of title: your favorites first, then FMHY's list. Anime gets only FMHY's anime streaming sites
+     * (favorites included only when they are among them), and the TV ones only if there are none.
+     */
     List<Sites.Site> options() {
-        List<Sites.Site> out = new ArrayList<>(Sites.favorites());
-        List<Sites.Site> row = Sites.load().get(t.series() ? Cats.TV : Cats.MOVIES);
+        List<Sites.Site> row = Sites.load().get(t.anime ? Cats.ANIME : t.series() ? Cats.TV : Cats.MOVIES);
+        if (t.anime && row != null) {
+            // FMHY's anime sites only, not the general ones that also carry anime
+            List<Sites.Site> only = new ArrayList<>();
+            for (Sites.Site s : row) if (s.group.equals("Anime Streaming")) only.add(s);
+            if (!only.isEmpty()) row = only;
+        }
+        if (t.anime && (row == null || row.isEmpty())) row = Sites.load().get(Cats.TV);
+        if (row != null) {
+            // the sites that open the title (or episode) directly come first, FMHY's order kept within each half
+            String kind = t.anime ? "anime" : t.series() ? "tv" : "movie";
+            row = new ArrayList<>(row);
+            row.sort(java.util.Comparator.comparing(s -> !Sites.hasLink(s.url, kind)));
+        }
+        List<Sites.Site> out = new ArrayList<>();
+        for (Sites.Site f : Sites.favorites()) if (!t.anime || (row != null && Sites.has(row, f.url))) out.add(f);
         if (row != null) for (Sites.Site s : row) if (!Sites.has(out, s.url) && out.size() < 30) out.add(s);
         return out;
     }
 
+    /** The site picked last time for this kind (anime keeps its own), else the first option. */
     Sites.Site chosen() {
         List<Sites.Site> options = options();
-        String url = App.prefs.getString("watchsite", "");
+        String url = App.prefs.getString(siteKey(), "");
         for (Sites.Site s : options) if (s.url.equals(url)) return s;
         return options.isEmpty() ? null : options.get(0);
     }
 
+    String siteKey() {
+        return t.anime ? "watchsite:anime" : "watchsite";
+    }
+
     @Override void openSite(Sites.Site s) {
-        App.prefs.edit().putString("watchsite", s.url).apply();
+        App.prefs.edit().putString(siteKey(), s.url).apply();
         startActivity(withTitle(titleIntent(s)));
     }
 
@@ -216,19 +270,22 @@ public class TitleActivity extends Home {
     android.content.Intent titleIntent(Sites.Site s) {
         String link = Sites.deeplink(s.url, t);
         android.content.Intent in = WebActivity.open(this, s.name, s.url, link != null ? link : s.url);
-        return link != null ? in : in.putExtra("q", t.name);
+        return link != null ? in.putExtra("play", !t.series()) : in.putExtra("q", t.name).putExtra("year", t.year);
     }
 
     void watch(Catalog.Episode e) {
         Sites.Site s = chosen();
         if (s == null) { toast(App.t(R.string.title_no_site_toast)); return; }
-        if (e != null) toast(App.t(R.string.title_pick_episode, e.season, e.number));
+        // A site that has episode pages but no page for the show (most anime sites): Watch starts the first episode
+        if (e == null && t.series() && Sites.deeplink(s.url, t) == null && Sites.hasLink(s.url, t.anime ? "anime" : "episode"))
+            for (Catalog.Episode x : t.episodes) if (e == null || x.season < e.season || (x.season == e.season && x.number < e.number)) e = x;
         startActivity(withTitle(titleIntent(s))
             .putExtra("season", e == null ? 0 : e.season).putExtra("episode", e == null ? 0 : e.number));
     }
 
     // What the native player needs to look up subtitles for this title
     android.content.Intent withTitle(android.content.Intent in) {
-        return in.putExtra("imdb", t.id).putExtra("series", t.series()).putExtra("name", t.name).putExtra("poster", t.poster);
+        return in.putExtra("imdb", t.id).putExtra("series", t.series()).putExtra("name", t.name).putExtra("poster", t.poster)
+            .putExtra("tmdb", t.tmdb).putExtra("anime", t.anime);
     }
 }
