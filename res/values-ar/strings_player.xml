@@ -117,5 +117,6 @@
     <string name="player_play">تشغيل</string>
     <string name="player_pause">إيقاف مؤقت</string>
     <string name="player_sub_dub">مترجم / مدبلج: %1$s</string>
+    <string name="player_home">الرئيسية</string>
     <string name="player_more">المزيد</string>
 </resources>

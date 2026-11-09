@@ -2,6 +2,15 @@
 
 Each `vX.Y.Z` tag publishes the TV and Android APKs; its section below becomes the release notes.
 
+## Unreleased
+
+### ✨ New
+- **Back to Home in one step**: a house button at the top right of the player (phone) and a small round one over a website (drag it out of the way; it remembers where). On a TV: *More, Home* in the player and *Menu, Back to home* on a website. Everything open closes and the place in the video is saved.
+- **A loading screen while an episode opens**: a dark screen with the episode's name covers the site's own pages. Tap it or press Back to see the page; it closes by itself, with a note to pick the episode by hand, if nothing starts in 40 seconds.
+
+### 🐞 Fixed
+- **Home and its tiles looked zoomed** after a video or page in landscape on a phone: the tiles were sized for the landscape width and never redrawn when the phone turned back.
+
 ## 2.18.4
 
 Everything new since 2.17.1 (2.18.0 to 2.18.4 together).

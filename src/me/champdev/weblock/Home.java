@@ -670,7 +670,27 @@ public class Home extends Activity {
     /** Tile edge in dp for a row of `cols` square tiles. */
     int squareDp(int cols) {
         int gap = dp(gapDp);
-        return Math.round((getResources().getDisplayMetrics().widthPixels - 2 * side - gap * (cols - 1)) / (float) cols / getResources().getDisplayMetrics().density) - 1;
+        return Math.round((winW() - 2 * side - gap * (cols - 1)) / (float) cols / getResources().getDisplayMetrics().density) - 1;
+    }
+
+    int builtW;   // the window width the tiles were last sized for
+
+    int winW() {
+        return builtW = getResources().getDisplayMetrics().widthPixels;
+    }
+
+    /**
+     * The phone turned (a fullscreen video, a page in landscape): tiles sized for the old width are drawn again. Coming back from a
+     * landscape player, onResume can draw while the window is still landscape, and the turn back to portrait arrives after it.
+     */
+    @Override public void onConfigurationChanged(android.content.res.Configuration c) {
+        super.onConfigurationChanged(c);
+        if (builtW != 0 && col != null && getResources().getDisplayMetrics().widthPixels != builtW) build();
+    }
+
+    /** Back to Home from any screen in one step: everything above it closes (the position is saved as each one stops). */
+    static void goHome(Activity a) {
+        a.startActivity(new Intent(a, Home.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
     }
 
     View channelCard(Iptv.Channel c, int cols, String row) {
@@ -1489,7 +1509,7 @@ public class Home extends Activity {
         Grid(LinearLayout into, int cols) {
             this.into = into;
             this.cols = cols;
-            int width = getResources().getDisplayMetrics().widthPixels - 2 * side;
+            int width = winW() - 2 * side;
             cell = (int) Math.floor((width - gap * (cols - 1)) / (float) cols / getResources().getDisplayMetrics().density) - 1;
         }
 

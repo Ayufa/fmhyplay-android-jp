@@ -61,6 +61,7 @@ Streaming sites are built for a desktop browser with a mouse. On a TV remote the
 - **Subtitles in any language** from OpenSubtitles, converted so every script shows right, remembered per title, optional auto subtitles in your language, and **auto-sync** that lines a file up with the speech; size, position, color, background and timing
 - **Simkl** and **PunchPlay** tracking (optional): what you watch is tracked there, titles you finish are marked watched
 - Phone: **picture in picture**, hold the right or left side for **2x**, follows the rotation lock with a Full screen button; swipe for brightness and volume, double-tap to skip 10 seconds
+- **Back to Home in one step** from the player (phone: house button, TV: More, Home) and from a website (phone: a small house you can drag, TV: Menu, Back to home), and a loading screen while an episode opens
 
 **Browsing**
 - Home with Continue watching, Favorites, and **New and Popular** for Movies, TV and Anime (from Cinemeta and Kitsu)

@@ -117,5 +117,6 @@
     <string name="player_play">Putar</string>
     <string name="player_pause">Jeda</string>
     <string name="player_sub_dub">Sub / Dub: %1$s</string>
+    <string name="player_home">Beranda</string>
     <string name="player_more">Lainnya</string>
 </resources>

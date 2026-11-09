@@ -117,5 +117,6 @@
     <string name="player_play">Play</string>
     <string name="player_pause">Pause</string>
     <string name="player_sub_dub">Sub / Dub: %1$s</string>
+    <string name="player_home">Home</string>
     <string name="player_more">More</string>
 </resources>

@@ -117,5 +117,6 @@
     <string name="player_play">Abspielen</string>
     <string name="player_pause">Pause</string>
     <string name="player_sub_dub">Untertitel / Synchro: %1$s</string>
+    <string name="player_home">Startseite</string>
     <string name="player_more">Mehr</string>
 </resources>

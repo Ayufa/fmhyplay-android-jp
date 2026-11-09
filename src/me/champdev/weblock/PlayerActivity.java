@@ -318,6 +318,7 @@ public class PlayerActivity extends Activity {
         epLine.setVisibility(View.GONE);
         titles.addView(epLine);
         top.addView(titles, new LinearLayout.LayoutParams(0, -2, 1));
+        if (!App.tv) top.addView(circle(R.drawable.ic_p_home, 40, () -> Home.goHome(this)));   // a TV has More, Home
         overlay.addView(top, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
 
         // -10  PLAY  +10
@@ -1292,6 +1293,8 @@ public class PlayerActivity extends Activity {
             labels.add(App.t(R.string.player_restart));
             acts.add(() -> { player.seekTo(0); player.play(); say(App.t(R.string.player_from_start)); });
         }
+        labels.add(App.t(R.string.player_home));
+        acts.add(() -> Home.goHome(this));
         new AlertDialog.Builder(this).setTitle(App.t(R.string.player_more))
             .setItems(labels.toArray(new String[0]), (d, i) -> acts.get(i).run()).show();
     }

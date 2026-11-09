@@ -24,6 +24,7 @@ import android.provider.MediaStore;
 import android.text.InputType;
 import android.util.Base64;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.ViewGroup;
 import android.view.KeyEvent;
 import android.view.View;
@@ -45,6 +46,7 @@ import android.webkit.WebViewClient;
 import android.webkit.WebViewDatabase;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -132,6 +134,9 @@ public class WebActivity extends Activity {
     String audioTriedAt = "";   // the page address the remembered Sub / Dub pick was last applied on
     String pendingServer;
     int[] pendingEpisode;      // {season, episode} picked in the player's Episodes list, opened when the page is back
+    View opening;              // the backdrop (spinner and the episode's name) while an episode is being opened
+    TextView openingText;
+    Runnable openingGiveUp = () -> { };   // never null: Handler.removeCallbacks(null) would drop every message without a callback
     int[] episodeAfterLoad;    // the episode to press on the page once it has loaded (a site without an episode address)
     boolean playAfterLoad;     // an episode page opened from the app: press its Play once it has loaded
     volatile boolean episodeFound;
@@ -336,6 +341,32 @@ public class WebActivity extends Activity {
         status.setTextSize(18);
         status.setGravity(Gravity.CENTER);
         root.addView(status, new FrameLayout.LayoutParams(-1, -1));
+        // The backdrop while an episode opens: the page flashing through its own screens is not for watching
+        LinearLayout wait = new LinearLayout(this);
+        wait.setOrientation(LinearLayout.VERTICAL);
+        wait.setGravity(Gravity.CENTER);
+        wait.setBackgroundColor(Home.BG);
+        wait.setClickable(true);   // a tap shows the page (and the touches don't reach it meanwhile)
+        wait.setOnClickListener(v -> hideOpening());
+        ProgressBar spin = new ProgressBar(this);
+        spin.setIndeterminateTintList(ColorStateList.valueOf(Home.ACCENT));
+        wait.addView(spin, new LinearLayout.LayoutParams(Home.dp(this, 44), Home.dp(this, 44)));
+        openingText = new TextView(this);
+        openingText.setTextColor(Home.TEXT);
+        openingText.setTextSize(App.tv ? 20 : 17);
+        openingText.setGravity(Gravity.CENTER);
+        openingText.setPadding(0, Home.dp(this, 16), 0, Home.dp(this, 4));
+        wait.addView(openingText);
+        TextView hint = new TextView(this);
+        hint.setTextColor(Home.MUTED);
+        hint.setTextSize(App.tv ? 15 : 13);
+        hint.setText(App.t(R.string.web_opening_hint));
+        hint.setGravity(Gravity.CENTER);
+        wait.addView(hint);
+        wait.setVisibility(View.GONE);
+        opening = wait;
+        root.addView(wait, new FrameLayout.LayoutParams(-1, -1));
+        if (!App.tv) addHomeButton(root);   // a TV has Menu, Back to home
         setContentView(root);
         // 90/120 Hz phones would repaint an animated page twice as often for no visible gain: ask for 60 (less heat)
         android.view.WindowManager.LayoutParams wp = getWindow().getAttributes();
@@ -493,7 +524,7 @@ public class WebActivity extends Activity {
     // Hand the stream over, but let the server scan finish first (it needs the page awake; the player pauses it), at most 3 s (a Servers menu takes a second to open)
     void onStream() {
         if (!resumed || isFinishing()) return;
-        if (!App.prefs.getBoolean("native", true)) { web.evaluateJavascript(CHIP, null); return; }
+        if (!App.prefs.getBoolean("native", true)) { hideOpening(); web.evaluateJavascript(CHIP, null); return; }
         if (holdForEpisode) return;   // picking the episode on the page: its stream comes next
         if (scanDone) playNative(); else { handoffWaiting = true; App.main.postDelayed(waitedHandoff, 3000); }
     }
@@ -505,6 +536,7 @@ public class WebActivity extends Activity {
     void playNative() {
         Sniffer.Hit h = sniffer.lastSeen();   // also the stream held back by a switch that did not happen
         if (h == null) { toast(App.t(R.string.web_no_video)); return; }
+        hideOpening();
         sniffer.handedOff(h);
         if (fullscreen != null) chrome.onHideCustomView();
         // The CDN trusts the page that embedded the player, so replay what the WebView sent for the stream (Referer, Origin)
@@ -564,6 +596,7 @@ public class WebActivity extends Activity {
      */
     void openEpisode(int season, int episode, String fallback) {
         getIntent().putExtra("season", season).putExtra("episode", episode);
+        showOpening(season, episode);
         Catalog.Title t = show;
         String audio = App.prefs.getString("siteAudio:" + siteKey(), "").toLowerCase(java.util.Locale.ROOT).contains("dub") ? "dub" : "sub";
         App.io.execute(() -> {
@@ -604,6 +637,7 @@ public class WebActivity extends Activity {
         web.evaluateJavascript("postMessage({fp:'episode',s:" + season + ",e:" + episode + "},'*')", null);
         App.main.postDelayed(() -> {
             if (episodeFound || isFinishing()) return;
+            hideOpening();
             toast(App.t(R.string.web_pick_episode, season, episode));
             holdForEpisode = false;
             if (sniffer.has()) onStream();   // hand over what plays now
@@ -893,6 +927,11 @@ public class WebActivity extends Activity {
 
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
         int k = e.getKeyCode();
+        // OK on the remote while the "Opening" screen is up shows the page (and is not pressed on the page behind it)
+        if ((k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER) && opening != null && opening.getVisibility() == View.VISIBLE) {
+            if (e.getAction() == KeyEvent.ACTION_UP) hideOpening();
+            return true;
+        }
         if ((k == KeyEvent.KEYCODE_MEDIA_PLAY || k == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) && sniffer.has()) {
             if (e.getAction() == KeyEvent.ACTION_UP) playNative();
             return true;
@@ -923,7 +962,7 @@ public class WebActivity extends Activity {
         items.add(App.t(clean ? R.string.web_smooth_on : R.string.web_smooth_off));
         acts.add(() -> { App.prefs.edit().putBoolean("cleanvideo", !clean).apply(); toast(App.t(clean ? R.string.web_smooth_off_toast : R.string.web_smooth_on_toast)); });
         items.add(App.t(R.string.web_back_home));
-        acts.add(this::finish);
+        acts.add(() -> Home.goHome(this));
         new AlertDialog.Builder(this).setTitle(site)
             .setItems(items.toArray(new String[0]), (d, i) -> acts.get(i).run()).show();
         return true;
@@ -948,7 +987,72 @@ public class WebActivity extends Activity {
 
     @Override public void onBackPressed() {
         if (fullscreen != null) chrome.onHideCustomView();
+        else if (opening.getVisibility() == View.VISIBLE) hideOpening();   // see the page
         else closePopupOrGoBack();
+    }
+
+    /** The backdrop goes up with the episode's name, and comes down by itself after 40 s if nothing started (with a note to pick it by hand). */
+    void showOpening(int season, int episode) {
+        openingText.setText(App.t(R.string.web_opening_episode, season, episode));
+        opening.setVisibility(View.VISIBLE);
+        App.main.removeCallbacks(openingGiveUp);
+        openingGiveUp = () -> {
+            if (isFinishing() || opening.getVisibility() != View.VISIBLE) return;
+            hideOpening();
+            toast(App.t(R.string.web_pick_episode, season, episode));
+        };
+        App.main.postDelayed(openingGiveUp, 40000);
+    }
+
+    void hideOpening() {
+        if (opening != null) opening.setVisibility(View.GONE);
+        App.main.removeCallbacks(openingGiveUp);
+    }
+
+    /** A small round Home button over the page (phones), which can be dragged out of the way of a site's own buttons. */
+    void addHomeButton(FrameLayout root) {
+        int size = Home.dp(this, 40), margin = Home.dp(this, 4), slop = android.view.ViewConfiguration.get(this).getScaledTouchSlop();
+        ImageView b = new ImageView(this);
+        b.setImageResource(R.drawable.ic_p_home);
+        b.setColorFilter(Color.WHITE);
+        b.setPadding(size / 5, size / 5, size / 5, size / 5);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+        bg.setColor(0x99000000);
+        b.setBackground(bg);
+        b.setAlpha(0.75f);
+        b.setContentDescription(App.t(R.string.player_home));
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(size, size, Gravity.START | Gravity.BOTTOM);
+        lp.setMargins(margin, 0, 0, Home.dp(this, 96));
+        root.addView(b, lp);
+        b.setTranslationX(App.prefs.getFloat("homeX", 0));
+        b.setTranslationY(App.prefs.getFloat("homeY", 0));
+        b.setOnTouchListener(new View.OnTouchListener() {
+            float offX, offY, downX, downY;
+            boolean moved;
+            @Override public boolean onTouch(View v, MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downX = e.getRawX(); downY = e.getRawY();
+                        offX = v.getTranslationX() - downX; offY = v.getTranslationY() - downY;
+                        moved = false;
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        if (!moved && Math.hypot(e.getRawX() - downX, e.getRawY() - downY) < slop) return true;
+                        moved = true;
+                        // stay inside the screen: it sits at the left edge, 96 dp above the bottom, before it is moved
+                        v.setTranslationX(Math.max(-margin, Math.min(root.getWidth() - size - margin, e.getRawX() + offX)));
+                        v.setTranslationY(Math.max(size + lp.bottomMargin - root.getHeight(), Math.min(lp.bottomMargin, e.getRawY() + offY)));
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        if (moved) App.prefs.edit().putFloat("homeX", v.getTranslationX()).putFloat("homeY", v.getTranslationY()).apply();
+                        else Home.goHome(WebActivity.this);
+                        return true;
+                    default:
+                        return true;
+                }
+            }
+        });
     }
 
     // An open pop-up on the page gets closed first (the page script knows); otherwise Back leaves as usual.
@@ -1006,6 +1110,7 @@ public class WebActivity extends Activity {
         if (active == this) active = null;
         Warp.route(true);
         App.main.removeCallbacks(capture);
+        App.main.removeCallbacks(openingGiveUp);
         if (fileCb != null) { fileCb.onReceiveValue(null); fileCb = null; }
         if (fullscreen != null) chrome.onHideCustomView();
         if (pointer != null) pointer.release();
