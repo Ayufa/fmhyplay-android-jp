@@ -1749,16 +1749,12 @@ public class Home extends Activity {
         col.addView(secBox, bl);
     }
 
-    /** A link: opened in the phone's browser; on a TV, in the app's own. */
+    /** A link: always the device's own browser, never the app's. A device with none (most TVs) shows the address to open elsewhere. */
     void openLink(String url) {
-        if (App.tv) {   // a TV's "browser" for a link is often nothing or a settings stub: the app's own browser is the one that works
-            startActivity(WebActivity.open(this, String.valueOf(Uri.parse(url).getHost()), url, url));
-            return;
-        }
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE));
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         } catch (android.content.ActivityNotFoundException e) {
-            startActivity(WebActivity.open(this, String.valueOf(Uri.parse(url).getHost()), url, url));
+            new AlertDialog.Builder(this).setMessage(url.replaceFirst("^https://", "")).setPositiveButton(android.R.string.ok, null).show();
         }
     }
 
