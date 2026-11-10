@@ -27,6 +27,7 @@
     <string name="player_zoom_16_9">16:9</string>
     <string name="player_zoom_4_3">4:3</string>
     <string name="player_zoom_now">Zoom · %1$s</string>
+    <string name="player_debug_now">Sobreposição de depuração: %1$s</string>
     <string name="player_zoom_say">Zoom: %1$s</string>
     <string name="player_restart">Assistir do início</string>
     <string name="player_portrait">Retrato</string>
@@ -117,5 +118,6 @@
     <string name="player_play">Reproduzir</string>
     <string name="player_pause">Pausar</string>
     <string name="player_sub_dub">Legendado / Dublado: %1$s</string>
+    <string name="player_home">Início</string>
     <string name="player_more">Mais</string>
 </resources>

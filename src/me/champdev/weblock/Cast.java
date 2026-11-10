@@ -217,9 +217,9 @@ final class Cast {
         @Override public IBinder onBind(Intent i) { return null; }
     }
 
-    /** Started at boot only so the process (App.onCreate, which starts the server) is running before anyone opens FMHYPlay. */
+    /** Started at boot so the process (App.onCreate, which starts the server) is running before anyone opens FMHYPlay, and so the update check runs at every boot. */
     public static class Boot extends android.content.BroadcastReceiver {
-        @Override public void onReceive(Context c, Intent i) { }
+        @Override public void onReceive(Context c, Intent i) { Update.schedule(c, true); }   // the process is up; check for an update once the network is
     }
 
     // ---- Phone: finding TVs and talking to them ----

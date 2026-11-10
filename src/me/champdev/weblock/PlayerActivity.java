@@ -92,6 +92,7 @@ public class PlayerActivity extends Activity {
     View panel;                 // the Episodes list, over the video
     TextView skipBtn;           // Skip intro / Skip recap / Next episode, over the picture
     TextView tip;               // the name of the button the remote is on (icons only otherwise)
+    View tipFor;                // the button the label above is showing the name of
     final SpeechMeter meter = new SpeechMeter();   // how loud the dialogue is, every 0.1 s (subtitle auto-sync)
     List<long[]> syncCues;      // the downloaded subtitle file's lines, to line up with the speech
     int syncTries;
@@ -123,10 +124,13 @@ public class PlayerActivity extends Activity {
 
     private float shownFps;
 
+    long startedAt;   // where this video was resumed (0: from the start)
+    int saveTicks;
     final Runnable tick = new Runnable() {
         @Override public void run() {
             update();
             checkSkip();
+            if (++saveTicks >= 20) { saveTicks = 0; if (player != null && player.isPlaying()) savePosition(); }   // every 10 s: a killed app still has the place
             if (Math.round(measuredFps) != Math.round(shownFps)) { shownFps = measuredFps; refreshChips(); }
             App.main.postDelayed(this, 500);
         }
@@ -201,12 +205,12 @@ public class PlayerActivity extends Activity {
         subtitle.setVisibility(sb.length() == 0 ? View.GONE : View.VISIBLE);
     }
 
-    /** Subtitle size, background and distance from the bottom: 22 sp and 100 dp (clear of the controls), changed by the Subtitles panel. */
+    /** Subtitle size, background and distance from the bottom: 22 sp and 20 dp, changed by the Subtitles panel. */
     void placeSubtitle() {
         subtitle.setTextSize(22f * Subs.size() / 100);
         subtitle.setBackgroundColor((Subs.background() * 255 / 100) << 24);
         subtitle.setTextColor(Subs.color());
-        ((FrameLayout.LayoutParams) subtitle.getLayoutParams()).bottomMargin = dp(Math.max(0, 100 + Subs.offset()));
+        ((FrameLayout.LayoutParams) subtitle.getLayoutParams()).bottomMargin = dp(Math.max(0, 20 + Subs.offset()));
         subtitle.requestLayout();
     }
 
@@ -224,7 +228,10 @@ public class PlayerActivity extends Activity {
         root.addView(surface, new FrameLayout.LayoutParams(-1, -1));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             fit();
-            if (r - l != or - ol) subtitle.setMaxWidth((r - l) * 3 / 4);   // long lines wrap in two instead of running edge to edge
+            if (r - l != or - ol) {
+                subtitle.setMaxWidth((r - l) * 3 / 4);   // long lines wrap in two instead of running edge to edge
+                debug.setMaxWidth((r - l) * 3 / 5);      // the panel never takes more than 60% of the width
+            }
         });
 
         subtitle = new TextView(this);
@@ -318,6 +325,11 @@ public class PlayerActivity extends Activity {
         epLine.setVisibility(View.GONE);
         titles.addView(epLine);
         top.addView(titles, new LinearLayout.LayoutParams(0, -2, 1));
+        if (!App.tv) {   // a TV has More, Home
+            ImageView house = circle(R.drawable.ic_p_home, 40, () -> Home.goHome(this));
+            house.setColorFilter(Home.ACCENT);   // the app's accent, on the website's button too
+            top.addView(house);
+        }
         overlay.addView(top, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
 
         // -10  PLAY  +10
@@ -426,6 +438,18 @@ public class PlayerActivity extends Activity {
         skp.setMargins(0, 0, dp(24), dp(150));
         root.addView(skipBtn, skp);
 
+        // The debug overlay: monospace, a panel down the whole right edge, never takes a touch (the controls under it still work)
+        debug = new TextView(this);
+        debug.setTypeface(android.graphics.Typeface.MONOSPACE);
+        debug.setTextSize(App.tv ? 13 : 10.5f);
+        debug.setTextColor(0xFFE8E8E8);
+        debug.setBackgroundColor(0x99000000);
+        debug.setPadding(dp(8), dp(5), dp(8), dp(5));
+        debug.setClickable(false);
+        debug.setFocusable(false);
+        debug.setVisibility(View.GONE);
+        root.addView(debug, new FrameLayout.LayoutParams(-2, -1, Gravity.END));
+
         if (android.os.Build.VERSION.SDK_INT >= 28) getWindow().getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         root.setOnApplyWindowInsetsListener((v, in) -> {
             int l = 0, t = 0, r = 0, bt = 0;
@@ -437,6 +461,7 @@ public class PlayerActivity extends Activity {
             }
             cutTop = t;
             cutRight = r;
+            debug.setPadding(dp(8), dp(10) + t, dp(8) + r, dp(10) + bt);   // clear of a camera cutout and the bottom edge
             int pad2 = dp(16);
             topBar.setPadding(dp(4) + l, dp(10) + t, pad2 + r, dp(26));
             bottomBar.setPadding(pad2 + l, dp(30), pad2 + r, dp(10) + bt);
@@ -634,6 +659,7 @@ public class PlayerActivity extends Activity {
         t.setVisibility(visible ? View.VISIBLE : View.GONE);
         t.setContentDescription(label);
         t.setTooltipText(label);
+        if (t == tipFor && tip.getVisibility() == View.VISIBLE) showTip(t);   // the state changed under the remote (subtitles off): the label above follows
     }
 
     static void show(TextView t, boolean visible, String text) {
@@ -664,6 +690,28 @@ public class PlayerActivity extends Activity {
     // The stream's frame rate, read off the frames' own timestamps: the shortest gap between two frames in a row. A slow decoder that
     // drops frames makes the gaps longer, never shorter, so the shortest gap is still the true frame duration.
     volatile float measuredFps;
+
+    // The debug overlay (More, Debug overlay): PlayerStats keeps the numbers, the text refreshes once a second while it is on
+    final PlayerStats stats = new PlayerStats();
+    TextView debug;
+    boolean debugOn;
+    final long createdAt = SystemClock.elapsedRealtime();
+    long readyAt;   // the first time the video was ready to play, for "opened in"
+    final Runnable debugTick = new Runnable() {
+        @Override public void run() {
+            if (!debugOn || player == null || isFinishing() || offScreen) return;
+            debug.setText(stats.text(player, PlayerActivity.this));
+            App.main.postDelayed(this, 1000);
+        }
+    };
+
+    void setDebug(boolean on) {
+        debugOn = on;
+        App.prefs.edit().putBoolean("playerDebug", on).apply();
+        debug.setVisibility(on && !inPip ? View.VISIBLE : View.GONE);
+        App.main.removeCallbacks(debugTick);
+        if (on) debugTick.run();
+    }
     private long fpsLastUs = -1, fpsMinGapUs = Long.MAX_VALUE;
     private int fpsFrames;
     static final float[] RATES = {23.976f, 24, 25, 29.97f, 30, 48, 50, 59.94f, 60, 100, 119.88f, 120};
@@ -769,6 +817,7 @@ public class PlayerActivity extends Activity {
     void showTip(View v) {
         CharSequence name = v.getContentDescription();
         if (name == null || name.length() == 0) { tip.setVisibility(View.GONE); return; }
+        tipFor = v;
         tip.setText(name);
         tip.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         int[] at = new int[2], base = new int[2];
@@ -876,8 +925,10 @@ public class PlayerActivity extends Activity {
         String audio = App.prefs.getString("audioLang", "");
         player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
             .setPreferredAudioLanguages(audio.isEmpty() ? new String[]{Locale.getDefault().getLanguage()} : new String[]{audio, Locale.getDefault().getLanguage()}).build());
+        player.addAnalyticsListener(stats);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int s) {
+                if (s == Player.STATE_READY && readyAt == 0) readyAt = SystemClock.elapsedRealtime();
                 spinner.setVisibility(s == Player.STATE_BUFFERING ? View.VISIBLE : View.GONE);
                 if (s == Player.STATE_READY && getIntent().hasExtra("mime")) Iptv.played(channel());
                 if (s == Player.STATE_READY && !scrobbled && player.getPlayWhenReady()) { scrobbled = true; scrobble("start"); }
@@ -927,6 +978,7 @@ public class PlayerActivity extends Activity {
                 finish();
             }
         });
+        setDebug(App.prefs.getBoolean("playerDebug", false));   // the overlay stays on or off across videos
         // Where to start: a server switch from the Servers button, else where this title was last left on any site or server
         // (Continue watching), else where this very stream was left
         Long at = null;
@@ -938,6 +990,7 @@ public class PlayerActivity extends Activity {
         if (carryMs > 0 && SystemClock.elapsedRealtime() - carryAt < 45000) at = carryMs;
         carryMs = 0;
         if (getIntent().hasExtra("castAt")) at = getIntent().getLongExtra("castAt", 0);   // sent from a phone: carry on where it was
+        startedAt = at == null ? 0 : at;
         if (at != null && at > 10000) say(App.t(R.string.player_resumed_at, clock(at)));
         if (at != null && at > 10000) player.setMediaItem(item.build(), at); else player.setMediaItem(item.build());
         player.prepare();
@@ -1085,6 +1138,7 @@ public class PlayerActivity extends Activity {
     }
 
     @Override public boolean dispatchKeyEvent(KeyEvent e) {
+        if (Home.holdBack(this, e)) return true;
         if (player == null) return super.dispatchKeyEvent(e);
         if (panel != null) {   // the Episodes list: normal focus keys, Back closes it
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (e.getAction() == KeyEvent.ACTION_UP) closePanel(); return true; }
@@ -1215,9 +1269,10 @@ public class PlayerActivity extends Activity {
     }
 
     void pickTrack(Tracks tracks, int type, String name, boolean canOff) {
-        List<String> labels = new ArrayList<>();
+        List<String> labels = new ArrayList<>(), plain = new ArrayList<>(), langs = new ArrayList<>();   // plain, langs: the same rows without the check mark, for remembering the pick
+        List<Integer> nums = new ArrayList<>();
         List<TrackSelectionOverride> picks = new ArrayList<>();
-        if (canOff) { labels.add(App.t(R.string.player_off)); picks.add(null); }
+        if (canOff) { labels.add(App.t(R.string.player_off)); picks.add(null); plain.add(""); langs.add(""); nums.add(0); }
         int n = 0;
         for (Tracks.Group g : tracks.getGroups()) {
             if (g.getType() != type) continue;
@@ -1228,6 +1283,9 @@ public class PlayerActivity extends Activity {
                 String label = labelOf(f, type == C.TRACK_TYPE_TEXT ? R.string.player_subs_n : R.string.player_audio_n, ++n);
                 labels.add(label + (g.isTrackSelected(t) ? "  ✓" : ""));
                 picks.add(new TrackSelectionOverride(tg, t));
+                plain.add(label);
+                langs.add(f.language == null ? "" : f.language);
+                nums.add(n);
             }
         }
         boolean search = type == C.TRACK_TYPE_TEXT && canSearchSubs();
@@ -1239,7 +1297,11 @@ public class PlayerActivity extends Activity {
         new AlertDialog.Builder(this).setTitle(name).setItems(labels.toArray(new String[0]), (d, i) -> {
             if (i == searchAt) { searchSubs(); return; }
             if (i == positionAt) { subtitleStyle(); return; }
-            if (type == C.TRACK_TYPE_TEXT && picks.get(i) == null && subKey() != null) Subs.remember(subKey(), null);   // Off: don't bring the file back next time
+            // Off keeps a file or track picked before from coming back; a track of the stream replaces a file; either way the next resume does the same
+            if (type == C.TRACK_TYPE_TEXT) for (String k : subKeys(false)) {
+                Subs.remember(k, null);
+                Subs.rememberTrack(k, picks.get(i) == null ? null : langs.get(i), plain.get(i), nums.get(i));
+            }
             androidx.media3.common.TrackSelectionParameters.Builder b = player.getTrackSelectionParameters().buildUpon().clearOverridesOfType(type);
             if (picks.get(i) == null) b.setTrackTypeDisabled(type, true); else b.setTrackTypeDisabled(type, false).addOverride(picks.get(i));
             player.setTrackSelectionParameters(b.build());
@@ -1288,10 +1350,14 @@ public class PlayerActivity extends Activity {
         });
         labels.add(App.t(R.string.player_zoom_now, App.t(ZOOMS[zoom])));
         acts.add(this::cycleZoom);
+        labels.add(App.t(R.string.player_debug_now, App.t(debugOn ? R.string.player_on : R.string.player_off)));
+        acts.add(() -> setDebug(!debugOn));
         if (!player.isCurrentMediaItemLive()) {
             labels.add(App.t(R.string.player_restart));
             acts.add(() -> { player.seekTo(0); player.play(); say(App.t(R.string.player_from_start)); });
         }
+        labels.add(App.t(R.string.player_home));
+        acts.add(() -> Home.goHome(this));
         new AlertDialog.Builder(this).setTitle(App.t(R.string.player_more))
             .setItems(labels.toArray(new String[0]), (d, i) -> acts.get(i).run()).show();
     }
@@ -1674,28 +1740,65 @@ public class PlayerActivity extends Activity {
         for (Subs.Sub f : files) names.add(f.release + (f.hearingImpaired ? "  \u00B7  CC" : "") + (f.source.equals("OpenSubtitles") ? "" : "  \u00B7  " + f.source));
         new AlertDialog.Builder(this).setTitle(App.t(R.string.player_pick_release, Subs.language(lang)))
             .setItems(names.toArray(new String[0]), (d, j) -> {
-                if (subKey() != null) Subs.remember(subKey(), files.get(j));
+                for (String k : subKeys(false)) { Subs.remember(k, files.get(j)); Subs.rememberTrack(k, null, "", 0); }   // the file replaces a track picked before
                 addSubtitle(files.get(j));
             }).show();
     }
 
     /** Which movie or episode is playing, to remember its subtitle file: IMDb id (else the page's title), plus season and episode. Null for an episode we can't tell. */
-    String subKey() {
+    List<String> subKeys(boolean older) {
         Intent in = getIntent();
-        String imdb = in.getStringExtra("imdb");
-        String id = imdb != null && !imdb.isEmpty() ? imdb
-            : History.cleanTitle(String.valueOf(in.getStringExtra("pageTitle")), String.valueOf(in.getStringExtra("site"))).toLowerCase(Locale.ROOT);
+        List<String> keys = new ArrayList<>();
         int[] pe = pageEpisode();
-        if (pe == null && in.getBooleanExtra("series", false)) return null;
-        return pe == null ? id : id + ":" + pe[0] + ":" + pe[1];
+        if (pe == null && in.getBooleanExtra("series", false)) return keys;
+        String tail = pe == null ? "" : ":" + pe[0] + ":" + pe[1], site = String.valueOf(in.getStringExtra("site")), raw = String.valueOf(in.getStringExtra("pageTitle"));
+        String imdb = in.getStringExtra("imdb");
+        boolean hasImdb = imdb != null && !imdb.isEmpty() && !imdb.equals("null");
+        if (hasImdb) keys.add(imdb + tail);
+        String title = History.same(History.titleOf(raw, site));
+        if (!title.isEmpty()) keys.add("t:" + title + tail);
+        if (older && !hasImdb) keys.add(History.cleanTitle(raw, site).toLowerCase(Locale.ROOT) + tail);   // how earlier versions filed a title without an IMDb id
+        return keys;
+    }
+
+    /** The stream's own subtitle track picked for this video before: the same language and name, else the same place in the list; false when none fits. */
+    boolean restoreTrack(JSONObject r) {
+        String want = androidx.media3.common.util.Util.normalizeLanguageCode(r.optString("lang")), label = r.optString("label");
+        int idx = r.optInt("index"), n = 0, score = 0, bestT = -1;
+        Tracks.Group best = null;
+        for (Tracks.Group g : player.getCurrentTracks().getGroups()) {
+            if (g.getType() != C.TRACK_TYPE_TEXT) continue;
+            for (int t = 0; t < g.length; t++) {
+                if (!g.isTrackSupported(t)) continue;
+                androidx.media3.common.Format f = g.getTrackFormat(t);
+                n++;
+                int sc = (!want.isEmpty() && f.language != null && androidx.media3.common.util.Util.normalizeLanguageCode(f.language).equals(want) ? 2 : 0)
+                    + (labelOf(f, R.string.player_subs_n, n).equals(label) ? 2 : 0) + (n == idx ? 1 : 0);
+                if (sc > score) { score = sc; best = g; bestT = t; }
+            }
+        }
+        if (best == null || score < 2) return false;   // neither the language nor the name matches: leave it off
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .clearOverridesOfType(C.TRACK_TYPE_TEXT).addOverride(new TrackSelectionOverride(best.getMediaTrackGroup(), bestT)).build());
+        say(App.t(R.string.player_subs_lang, labelOf(best.getTrackFormat(bestT), R.string.player_subs_n, n)));
+        return true;
     }
 
     /** At the start: the file picked for this video before; else, with Auto subtitles on, the stream's own track or OpenSubtitles' first file in your language. */
     void autoSubs() {
         if (!canSearchSubs()) return;
-        String key = subKey();
-        Subs.Sub kept = key == null ? null : Subs.remembered(key);
-        if (kept != null) { addSubtitle(kept); return; }
+        Subs.Sub kept = null;
+        JSONObject track = null;
+        for (String k : subKeys(true)) {
+            if (kept == null) kept = Subs.remembered(k);
+            if (track == null) track = Subs.rememberedTrack(k);
+        }
+        // A pick found under one key is filed under the others too: opened from the catalog or from Continue watching, it is the same video
+        if (kept != null) { for (String k : subKeys(false)) Subs.remember(k, kept); addSubtitle(kept); return; }
+        if (track != null) {
+            for (String k : subKeys(false)) Subs.rememberTrack(k, track.optString("lang"), track.optString("label"), track.optInt("index"));
+            if (restoreTrack(track)) return;
+        }
         if (!Subs.auto()) return;
         String lang = Subs.preferred(), want = androidx.media3.common.util.Util.normalizeLanguageCode(lang);
         for (Tracks.Group g : player.getCurrentTracks().getGroups()) {
@@ -1886,6 +1989,7 @@ public class PlayerActivity extends Activity {
     @Override public void onPictureInPictureModeChanged(boolean in, android.content.res.Configuration c) {
         super.onPictureInPictureModeChanged(in, c);
         inPip = in;
+        if (debug != null) debug.setVisibility(debugOn && !in ? View.VISIBLE : View.GONE);
         if (in) {
             closePanel();
             hideControls();
@@ -1897,6 +2001,7 @@ public class PlayerActivity extends Activity {
     @Override protected void onStart() {
         super.onStart();
         offScreen = false;
+        if (debugOn && player != null) debugTick.run();
     }
 
     @Override protected void onStop() {
@@ -1904,10 +2009,25 @@ public class PlayerActivity extends Activity {
         offScreen = true;
         if (player == null) return;
         player.pause();
+        savePosition();
+    }
+
+    /**
+     * Remembers where this video is, for Continue watching and the next time it opens: on leaving and every 10 s while it plays.
+     * Not a spot under 10 s of a video that was resumed (leaving right after opening must not wipe the saved place).
+     */
+    void savePosition() {
+        if (player == null) return;
         long dur = player.getDuration(), pos = player.getCurrentPosition();
+        if (pos < 10000 && startedAt > 10000) return;
         if (dur != C.TIME_UNSET && !player.isCurrentMediaItemLive() && pos < dur - 30000) resume.put(base, pos); else resume.remove(base);
-        if (dur != C.TIME_UNSET && dur > 0 && !player.isCurrentMediaItemLive() && !getIntent().hasExtra("mime"))
-            History.savePosition(getIntent().getStringExtra("site"), getIntent().getStringExtra("pageTitle"), getIntent().getStringExtra("pageUrl"), pos, dur);
+        if (dur != C.TIME_UNSET && dur > 0 && !player.isCurrentMediaItemLive() && !getIntent().hasExtra("mime")) {
+            Intent in = getIntent();
+            // The page's own capture may not have made its entry yet (the player opened first): make it, or there is nowhere to keep the place
+            if (in.getStringExtra("siteUrl") != null && in.getStringExtra("pageUrl") != null)
+                History.record(in.getStringExtra("site"), in.getStringExtra("siteUrl"), in.getStringExtra("pageUrl"), in.getStringExtra("pageTitle"), in.getStringExtra("image"));
+            History.savePosition(in.getStringExtra("site"), in.getStringExtra("pageTitle"), in.getStringExtra("pageUrl"), pos, dur);
+        }
     }
 
     // ---- Simkl ----
@@ -1997,6 +2117,7 @@ public class PlayerActivity extends Activity {
         scrobble("stop");
         if (getIntent().hasExtra("mime")) Iptv.saveHealth();
         App.main.removeCallbacks(tick);
+        App.main.removeCallbacks(debugTick);
         App.main.removeCallbacks(hideNotice);
         if (booster != null) { booster.release(); booster = null; }
         if (voices != null) { voices.release(); voices = null; }

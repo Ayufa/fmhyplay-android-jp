@@ -87,6 +87,14 @@
     <string name="title_season">Temporada %1$d</string>
     <string name="title_episode">Episódio %1$d</string>
     <string name="title_no_site_toast">Nenhum site para assistir</string>
+    <string name="web_opening_episode">Abrindo S%1$d E%2$d…</string>
+    <string name="web_opening_hint">Toque ou pressione Voltar para ver a página</string>
+    <string name="web_step_loading">Carregando a página…</string>
+    <string name="web_step_search">Procurando o título…</string>
+    <string name="web_step_play">Iniciando o vídeo…</string>
+    <string name="web_step_done">Achei! Abrindo o player…</string>
+    <string name="web_step_failed">Não iniciou. Agora é com você.</string>
+    <string name="home_going">Indo para o Início…</string>
     <string name="web_pick_episode">T%1$d E%2$d: escolha na página</string>
     <string name="category_hint_tv">Segure OK em um site para favoritos e espelhos</string>
     <string name="category_hint_touch">Toque e segure um site para favoritos e espelhos</string>

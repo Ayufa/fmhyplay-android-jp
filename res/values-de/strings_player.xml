@@ -27,6 +27,7 @@
     <string name="player_zoom_16_9">16:9</string>
     <string name="player_zoom_4_3">4:3</string>
     <string name="player_zoom_now">Zoom · %1$s</string>
+    <string name="player_debug_now">Debug-Overlay: %1$s</string>
     <string name="player_zoom_say">Zoom: %1$s</string>
     <string name="player_restart">Von Anfang an abspielen</string>
     <string name="player_portrait">Hochformat</string>
@@ -117,5 +118,6 @@
     <string name="player_play">Abspielen</string>
     <string name="player_pause">Pause</string>
     <string name="player_sub_dub">Untertitel / Synchro: %1$s</string>
+    <string name="player_home">Startseite</string>
     <string name="player_more">Mehr</string>
 </resources>

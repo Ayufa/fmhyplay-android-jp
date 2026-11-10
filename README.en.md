@@ -54,13 +54,16 @@ Streaming sites are built for a desktop browser with a mouse. On a TV remote the
 - Hands off automatically when a page starts an HLS, DASH or live FLV stream; falls back to the page if the stream cannot be played
 - One row of icon buttons: Previous, Next, Quality, Audio, Sub / Dub, Episodes, Servers, Subtitles, More, Cast, Full screen; what is picked shows under the title, and on a TV the button the remote is on shows its name
 - Replays the page's Referer, Origin and cookies, so streams that check them still play
-- **Resumes where you stopped on any site or server**, with a Restart button
+- **Resumes where you stopped on any site or server**, with a Restart button; the place is saved every 10 seconds while you watch, and the subtitles you had on come back
 - Quality list with frame rate (for example 1080p60), audio and subtitle tracks, speed and zoom modes
 - **Servers and Quality buttons that control the site's own player**, including players inside cross-origin iframes
-- **Volume boost** (up to +12 dB) and **Dialog boost** (clearer voices, on by default)
+- **Volume boost** (up to +12 dB) and **Dialog boost** (clearer voices, off until you turn it on in Settings or in the player)
+- **Debug overlay** (*More, Debug overlay*, off by default): a panel down the right edge with resolution, frame rate, codec and decoder (hardware or software), video and audio bitrate, network speed, buffer, frames shown and dropped, stream type, host, how long the video took to open, and memory, refreshed every second
 - **Subtitles in any language** from OpenSubtitles, converted so every script shows right, remembered per title, optional auto subtitles in your language, and **auto-sync** that lines a file up with the speech; size, position, color, background and timing
 - **Simkl** and **PunchPlay** tracking (optional): what you watch is tracked there, titles you finish are marked watched
 - Phone: **picture in picture**, hold the right or left side for **2x**, follows the rotation lock with a Full screen button; swipe for brightness and volume, double-tap to skip 10 seconds
+- **Back to Home in one step** from the player (phone: house button, TV: More, Home) and from a website (phone: a house at the top right, TV: Menu, Back to home), or by **holding Back for 3 seconds** on any screen
+- A translucent **loading screen** (title, current step, a cat that spins while it works, jumps when the stream is found and stares when it gets stuck) while the app drives a site, until the player is up; tap it or press Back to see the page
 
 **Browsing**
 - Home with Continue watching, Favorites, and **New and Popular** for Movies, TV and Anime (from Cinemeta and Kitsu)
@@ -76,7 +79,7 @@ Streaming sites are built for a desktop browser with a mouse. On a TV remote the
 **Network and privacy**
 - **In-app Cloudflare WARP**: a userspace WireGuard tunnel for the app's traffic only, with no VPN permission and no root; LAN addresses stay direct. A WARP log to share when it fails
 - Domain-based ad, tracker and pop-up blocking, plus redirect blocking
-- No FMHYPlay account, no analytics, no telemetry. Updates come from this repository's releases, with What's new before you install
+- No FMHYPlay account, no analytics, no telemetry. Updates come from this repository's releases, looked for every hour and at every boot (even with the app closed), with What's new before you install
 
 **IPTV**
 - More than 11,000 public channels from [iptv-org](https://github.com/iptv-org/iptv), grouped by category and country, with logos

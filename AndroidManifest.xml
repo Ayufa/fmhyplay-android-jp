@@ -41,6 +41,7 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|uiMode"/>
         <activity android:name=".Cast$Remote" android:exported="false" android:screenOrientation="portrait"/>
         <service android:name=".Cast$Keep" android:exported="false" android:foregroundServiceType="connectedDevice"/>
+        <service android:name=".Update$Job" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="false"/>
         <receiver android:name=".Cast$Boot" android:exported="true">
             <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/></intent-filter>
         </receiver>

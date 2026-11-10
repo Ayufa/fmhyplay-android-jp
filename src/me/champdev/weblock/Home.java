@@ -68,6 +68,7 @@ public class Home extends Activity {
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
+        GifView.prefetch();   // the loading backdrop's pictures, fetched once
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         ScrollView sv = page = new ScrollView(this);
@@ -115,6 +116,10 @@ public class Home extends Activity {
     @Override protected void onResume() {
         super.onResume();
         build();
+    }
+
+    @Override public boolean dispatchKeyEvent(android.view.KeyEvent e) {
+        return holdBack(this, e) || super.dispatchKeyEvent(e);
     }
 
     @Override public boolean onKeyUp(int k, android.view.KeyEvent e) {
@@ -670,7 +675,51 @@ public class Home extends Activity {
     /** Tile edge in dp for a row of `cols` square tiles. */
     int squareDp(int cols) {
         int gap = dp(gapDp);
-        return Math.round((getResources().getDisplayMetrics().widthPixels - 2 * side - gap * (cols - 1)) / (float) cols / getResources().getDisplayMetrics().density) - 1;
+        return Math.round((winW() - 2 * side - gap * (cols - 1)) / (float) cols / getResources().getDisplayMetrics().density) - 1;
+    }
+
+    int builtW;   // the window width the tiles were last sized for
+
+    int winW() {
+        return builtW = getResources().getDisplayMetrics().widthPixels;
+    }
+
+    /**
+     * The phone turned (a fullscreen video, a page in landscape): tiles sized for the old width are drawn again. Coming back from a
+     * landscape player, onResume can draw while the window is still landscape, and the turn back to portrait arrives after it.
+     */
+    @Override public void onConfigurationChanged(android.content.res.Configuration c) {
+        super.onConfigurationChanged(c);
+        if (builtW != 0 && col != null && getResources().getDisplayMetrics().widthPixels != builtW) build();
+    }
+
+    /** Back to Home from any screen in one step: everything above it closes (the position is saved as each one stops). */
+    static Runnable holdRun;
+    static boolean held;   // a Back hold already sent us Home: the release must not go back one more screen
+
+    /**
+     * Holding Back for 3 seconds goes Home from any screen (a remote has no Home button on screen). Call it first in dispatchKeyEvent;
+     * true means the key is used up (the release that ends a hold). A normal press is left to the screen.
+     */
+    static boolean holdBack(Activity a, android.view.KeyEvent e) {
+        if (e.getKeyCode() != android.view.KeyEvent.KEYCODE_BACK) return false;
+        if (e.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            if (e.getRepeatCount() == 0 && a.getClass() != Home.class) {
+                App.main.removeCallbacks(holdRun);
+                held = false;
+                holdRun = () -> { held = true; Toast.makeText(App.app, App.t(R.string.home_going), Toast.LENGTH_SHORT).show(); goHome(a); };
+                App.main.postDelayed(holdRun, 3000);
+            }
+            return held;
+        }
+        App.main.removeCallbacks(holdRun);
+        boolean was = held;
+        held = false;
+        return was;
+    }
+
+    static void goHome(Activity a) {
+        a.startActivity(new Intent(a, Home.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
     }
 
     View channelCard(Iptv.Channel c, int cols, String row) {
@@ -1489,7 +1538,7 @@ public class Home extends Activity {
         Grid(LinearLayout into, int cols) {
             this.into = into;
             this.cols = cols;
-            int width = getResources().getDisplayMetrics().widthPixels - 2 * side;
+            int width = winW() - 2 * side;
             cell = (int) Math.floor((width - gap * (cols - 1)) / (float) cols / getResources().getDisplayMetrics().density) - 1;
         }
 
@@ -1559,7 +1608,8 @@ public class Home extends Activity {
         card.setBackground(rounded(colorFor(e.site), 0));   // square, so the watched line runs straight edge to edge
         card.setClipToOutline(true);
         focusable(card, 0);
-        card.setOnClickListener(v -> startActivity(WebActivity.open(this, e.site, e.siteUrl, e.url)));
+        // Resume: the episode's own page, with the backdrop up while the app presses play and hands over to the player
+        card.setOnClickListener(v -> startActivity(WebActivity.open(this, e.site, e.siteUrl, e.url).putExtra("play", true).putExtra("name", e.title)));
         card.setOnLongClickListener(v -> {
             new AlertDialog.Builder(this).setTitle(e.title)
                 .setItems(new String[]{App.t(R.string.home_open_site_home, e.site), App.t(R.string.home_remove_continue)}, (d, i) -> {

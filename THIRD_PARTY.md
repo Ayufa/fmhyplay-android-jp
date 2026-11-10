@@ -22,9 +22,10 @@ FMHYPlay is MIT licensed (see `LICENSE`). It includes, or downloads at build or 
 | [iptv-org](https://github.com/iptv-org/iptv) | the public channel playlist on the IPTV tab |
 | [Cinemeta](https://v3-cinemeta.strem.io) | posters, titles and episode lists |
 | OpenSubtitles through the [Stremio addon](https://opensubtitles-v3.strem.io) | subtitles in the native player |
+| [Tenor](https://tenor.com)'s CDN (`media.tenor.com`) | three cat GIFs on the loading screen, fetched once and kept on the device (not bundled; they belong to their creators) |
 | Cloudflare WARP | the optional tunnel; registered through Cloudflare's own endpoint at first start |
 
-FMHYPlay is not affiliated with or endorsed by FMHY, Cloudflare, Stremio, OpenSubtitles, iptv-org or any streaming site.
+FMHYPlay is not affiliated with or endorsed by FMHY, Cloudflare, Tenor, Stremio, OpenSubtitles, iptv-org or any streaming site.
 
 ## Icons
 

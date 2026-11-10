@@ -169,8 +169,8 @@
     <string name="home_check_updates_help">FMHYPlay %1$s. Fragt GitHub nach einer neueren Version und installiert sie, wenn du willst.</string>
     <string name="home_up_to_date">Aktuell</string>
     <string name="home_version_available">%1$s verfügbar</string>
-    <string name="home_check_at_start">Beim App-Start prüfen</string>
-    <string name="home_check_at_start_help">Sucht alle 12 Stunden einmal nach einem Update.</string>
+    <string name="home_check_at_start">Automatisch prüfen</string>
+    <string name="home_check_at_start_help">Sucht jede Stunde und bei jedem Start des Geräts nach einem Update.</string>
     <string name="home_add_site">Seite hinzufügen</string>
     <string name="home_add_site_help">Jede Streaming-Seite über ihre Adresse. Sie landet in den Favoriten auf Start.</string>
     <string name="home_refresh_fmhy">FMHY-Listen aktualisieren</string>

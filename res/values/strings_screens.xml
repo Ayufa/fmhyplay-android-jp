@@ -87,6 +87,14 @@
     <string name="title_season">Season %1$d</string>
     <string name="title_episode">Episode %1$d</string>
     <string name="title_no_site_toast">No site to watch on</string>
+    <string name="web_opening_episode">Opening S%1$d E%2$d…</string>
+    <string name="web_opening_hint">Tap or press Back to see the page</string>
+    <string name="web_step_loading">Loading the page…</string>
+    <string name="web_step_search">Searching for the title…</string>
+    <string name="web_step_play">Starting the video…</string>
+    <string name="web_step_done">Got it! Starting the player…</string>
+    <string name="web_step_failed">Couldn\'t start it. Over to you.</string>
+    <string name="home_going">Going to Home…</string>
     <string name="web_pick_episode">S%1$d E%2$d: pick it on the page</string>
     <string name="category_hint_tv">Hold OK on a site for favorites and mirrors</string>
     <string name="category_hint_touch">Long-press a site for favorites and mirrors</string>
