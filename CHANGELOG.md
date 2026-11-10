@@ -21,6 +21,10 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 - **Pull down to refresh** on a phone: reloads the open tab (catalog lists, sites on Sports, channels on IPTV).
 - **IPTV tab redone**: what you watched and your favorites first, then your playlists and pins, then your country's channels with its own categories (India: News, Movies, Kids...), then all countries and all categories as compact cards. Channel logos sit on one quiet tone.
 - **Navigation on every screen**: title pages, search and lists keep the tabs (bottom bar on a phone, rail on a TV); pressing one goes Home on that tab.
+- **Player menus are a side panel** (along the bottom on an upright phone) instead of pop-ups in the middle of the picture: name on the left, its value on the right, a tick on the one in use.
+- **Player buttons in two groups**: Previous, Next and Episodes/Channels on the left; quality, audio, subtitles, More, Cast and Full screen on the right. Focus is the white ring.
+- **Live channels in the player**: Previous / Next and the remote's Channel + / − move through the channel's category in its country, and Channels (or Down from the buttons) opens a strip of those channels along the bottom while the video keeps playing.
+- **More to watch** in the player for a movie: the same strip with other movies; picking one opens its page.
 - Rows show grey placeholders while they load, so the page does not jump.
 
 ### 🔧 Changed
