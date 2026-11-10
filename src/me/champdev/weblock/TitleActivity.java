@@ -43,7 +43,7 @@ public class TitleActivity extends Home {
     }
 
     @Override protected void onResume() {
-        refocus = true;
+        refocus = focusKey == null && focusPath == null;   // back from a site: the focus returns to the card it left (Home.restoreFocus), not to Watch
         super.onResume();
     }
 
@@ -205,7 +205,7 @@ public class TitleActivity extends Home {
             }
         }
         if (t.series() && !t.episodes.isEmpty()) episodes();
-        if (App.tv && refocus) col.postDelayed(watch::requestFocus, 60);
+        if (App.tv && refocus && !watch.requestFocus()) col.post(watch::requestFocus);
         refocus = false;
     }
 

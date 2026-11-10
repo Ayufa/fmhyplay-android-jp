@@ -135,9 +135,14 @@ public class Home extends Activity {
         super.onResume();
         boolean back = App.tv && (focusKey != null || focusPath != null) && savedTab == tab;   // coming back from a video or a page
         skipFocus = back;
+        if (back) {   // the page holds the focus (unseen) while it is redrawn, so it never flashes on the rail's first button
+            col.setFocusable(true);
+            col.setDefaultFocusHighlightEnabled(false);
+            col.requestFocus();
+        }
         build();
         skipFocus = false;
-        if (back) col.postDelayed(() -> restoreFocus(15), 150);
+        if (back) restoreFocus(15);
     }
 
     // ---- TV: the remote's place is kept. Coming back to a screen puts it on the card it left from, not on the first button ----
@@ -175,15 +180,15 @@ public class Home extends Activity {
         if (at == col || (at != null && !at.isFocusable())) at = null;
         View pick = at != null && (focusKey == null || focusKey.equals(at.getTag())) ? at : focusKey != null ? keyed(col, focusKey) : null;
         if (pick == null && tries <= 0) pick = at;   // the card is gone (watched to the end, removed): the same spot
-        if (pick == null) {
-            if (tries > 0) col.postDelayed(() -> restoreFocus(tries - 1), 150);
-            else { focusKey = null; focusPath = null; }
-            return;
-        }
+        if (pick == null && tries > 0) { col.postDelayed(() -> restoreFocus(tries - 1), 100); return; }
         focusKey = null;
         focusPath = null;
-        page.scrollTo(0, savedScroll);
-        pick.requestFocus();
+        if (pick == null) pick = firstCard;
+        if (pick != null) {
+            page.scrollTo(0, savedScroll);
+            pick.requestFocus();
+        }
+        col.setFocusable(false);
     }
 
     static View keyed(View v, String key) {
@@ -299,7 +304,8 @@ public class Home extends Activity {
             default: settingsTab();
         }
         View first = firstCard;
-        if (App.tv && first != null && !skipFocus) col.postDelayed(first::requestFocus, 60);
+        // at once (a wait showed the focus on the rail for a moment), and again after layout in case it could not take it yet
+        if (App.tv && first != null && !skipFocus && !first.requestFocus()) col.post(first::requestFocus);
     }
 
     void buildHome() {
