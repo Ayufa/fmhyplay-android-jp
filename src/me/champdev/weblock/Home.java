@@ -305,7 +305,10 @@ public class Home extends Activity {
         }
         View first = firstCard;
         // at once (a wait showed the focus on the rail for a moment), and again after layout in case it could not take it yet
-        if (App.tv && first != null && !skipFocus && !first.requestFocus()) col.post(first::requestFocus);
+        if (App.tv && first != null && !skipFocus) {
+            if (!first.requestFocus()) col.post(first::requestFocus);
+            col.setFocusable(false);   // it only held the focus while the page was empty (selectTab)
+        }
     }
 
     void buildHome() {
@@ -672,6 +675,11 @@ public class Home extends Activity {
         styleTabs();
         col.removeAllViews();
         page.scrollTo(0, 0);
+        if (App.tv) {   // the focus leaves the rail at this press: the page holds it, unseen, until its first card is there
+            col.setFocusable(true);
+            col.setDefaultFocusHighlightEnabled(false);
+            col.requestFocus();
+        }
         col.post(() -> {
             if (tab != n) return;
             build();   // on a TV the remote lands on the tab's first card (build does it), not left behind on the rail
