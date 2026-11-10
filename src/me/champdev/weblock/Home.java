@@ -133,11 +133,88 @@ public class Home extends Activity {
 
     @Override protected void onResume() {
         super.onResume();
+        boolean back = App.tv && (focusKey != null || focusPath != null) && savedTab == tab;   // coming back from a video or a page
+        skipFocus = back;
         build();
+        skipFocus = false;
+        if (back) col.postDelayed(() -> restoreFocus(15), 150);
     }
 
+    // ---- TV: the remote's place is kept. Coming back to a screen puts it on the card it left from, not on the first button ----
+
+    String focusKey;   // the card's own key (a title, channel or site), when it has one
+    int[] focusPath;   // where it sat in the page: child numbers from the page down to it
+    int savedScroll, savedTab = -1;
+
+    @Override protected void onPause() {
+        super.onPause();
+        View f = getCurrentFocus();
+        focusKey = null;
+        focusPath = null;
+        if (!App.tv || f == null || !inside(f, col)) return;
+        focusKey = f.getTag() instanceof String ? (String) f.getTag() : null;
+        List<Integer> path = new ArrayList<>();
+        for (View v = f; v != col; v = (View) v.getParent()) path.add(0, ((android.view.ViewGroup) v.getParent()).indexOfChild(v));
+        focusPath = new int[path.size()];
+        for (int i = 0; i < focusPath.length; i++) focusPath[i] = path.get(i);
+        savedScroll = page.getScrollY();
+        savedTab = tab;
+    }
+
+    static boolean inside(View v, View root) {
+        for (android.view.ViewParent p = v == null ? null : v.getParent(); p != null; p = p.getParent()) if (p == root) return true;
+        return false;
+    }
+
+    /** The card at the remembered place if it is the same card, else the first card with its key, else whatever sits at the place. Rows that fill in late are waited for. */
+    void restoreFocus(int tries) {
+        if (focusKey == null && focusPath == null) return;
+        View at = col;
+        for (int i = 0; focusPath != null && at != null && i < focusPath.length; i++)
+            at = at instanceof android.view.ViewGroup && focusPath[i] < ((android.view.ViewGroup) at).getChildCount() ? ((android.view.ViewGroup) at).getChildAt(focusPath[i]) : null;
+        if (at == col || (at != null && !at.isFocusable())) at = null;
+        View pick = at != null && (focusKey == null || focusKey.equals(at.getTag())) ? at : focusKey != null ? keyed(col, focusKey) : null;
+        if (pick == null && tries <= 0) pick = at;   // the card is gone (watched to the end, removed): the same spot
+        if (pick == null) {
+            if (tries > 0) col.postDelayed(() -> restoreFocus(tries - 1), 150);
+            else { focusKey = null; focusPath = null; }
+            return;
+        }
+        focusKey = null;
+        focusPath = null;
+        page.scrollTo(0, savedScroll);
+        pick.requestFocus();
+    }
+
+    static View keyed(View v, String key) {
+        if (v.isFocusable() && key.equals(v.getTag())) return v;
+        if (v instanceof android.view.ViewGroup) for (int i = 0; i < ((android.view.ViewGroup) v).getChildCount(); i++) {
+            View hit = keyed(((android.view.ViewGroup) v).getChildAt(i), key);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
+    View railView;
+
     @Override public boolean dispatchKeyEvent(android.view.KeyEvent e) {
-        return holdBack(this, e) || super.dispatchKeyEvent(e);
+        if (holdBack(this, e)) return true;
+        // TV: Up and Down stay where they are, in the page or in the rail. (Android picks the nearest button anywhere on screen,
+        // so Down at the end of a page jumped into the rail.) Left and Right cross between the two.
+        int k = e.getKeyCode();
+        View f = getCurrentFocus();
+        if (App.tv && f != null && (k == android.view.KeyEvent.KEYCODE_DPAD_UP || k == android.view.KeyEvent.KEYCODE_DPAD_DOWN) && !(f instanceof EditText)) {
+            android.view.ViewGroup zone = inside(f, page) ? page : railView != null && inside(f, railView) ? (android.view.ViewGroup) railView : null;
+            if (zone != null) {
+                if (e.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                    View n = android.view.FocusFinder.getInstance().findNextFocus(zone, f, k == android.view.KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);
+                    if (n != null) n.requestFocus();
+                    else if (zone == page) page.arrowScroll(k == android.view.KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);   // text past the last card
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(e);
     }
 
     @Override public boolean onKeyUp(int k, android.view.KeyEvent e) {
@@ -525,6 +602,7 @@ public class Home extends Activity {
         fit.setVerticalScrollBarEnabled(false);
         fit.setBackgroundColor(NAV);
         fit.addView(r);
+        railView = fit;
         return fit;
     }
 
@@ -929,6 +1007,7 @@ public class Home extends Activity {
         card.addView(text(String.valueOf(n), sp(12, 11), MUTED, false));
         card.setBackground(rounded(CARD, dp(12)));
         focusable(card, dp(12));
+        card.setTag("g" + type + key);
         card.setOnClickListener(v -> openIptv(type, key, label, false));
         return card;
     }
@@ -992,6 +1071,7 @@ public class Home extends Activity {
         lp.setMargins(0, 0, dp(gapDp), 0);
         t.setLayoutParams(lp);
         focusable(t, dp(14));
+        t.setTag("c" + c.url);
         t.setOnClickListener(v -> Iptv.play(this, c));
         // Hold OK (or press Menu): take it off this row, or star it
         t.setOnLongClickListener(v -> {
@@ -1669,15 +1749,10 @@ public class Home extends Activity {
         col.addView(secBox, bl);
     }
 
-    /** A link: opened in the browser on a phone; a TV shows the address to open elsewhere. */
+    /** A link: opened in the device's browser, or inside the app when it has none (most TVs). */
     void openLink(String url) {
-        if (App.tv) {
-            new AlertDialog.Builder(this).setMessage(App.t(R.string.home_open_elsewhere) + "\n\n" + url.replaceFirst("^https://", ""))
-                .setPositiveButton(android.R.string.ok, null).show();
-            return;
-        }
         try {
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)).addCategory(Intent.CATEGORY_BROWSABLE));
         } catch (android.content.ActivityNotFoundException e) {
             startActivity(WebActivity.open(this, String.valueOf(Uri.parse(url).getHost()), url, url));
         }
@@ -1755,6 +1830,7 @@ public class Home extends Activity {
         art.setBackground(rounded(colorFor(t.name), dp(10)));
         art.setClipToOutline(true);
         art.setContentDescription(t.name);
+        art.setTag("t" + t.id);
         focusable(art, dp(10));
         art.setOnClickListener(v -> openTitle(t));
         art.setOnLongClickListener(v -> {
@@ -1963,6 +2039,7 @@ public class Home extends Activity {
 
         card.setBackground(rounded(colorFor(e.site), dp(12)));
         card.setClipToOutline(true);
+        card.setTag("h" + e.url);
         focusable(card, dp(12));
         // Resume: the episode's own page, with the backdrop up while the app presses play and hands over to the player
         card.setOnClickListener(v -> startActivity(WebActivity.open(this, e.site, e.siteUrl, e.url).putExtra("play", true).putExtra("name", e.title)));
@@ -2016,6 +2093,7 @@ public class Home extends Activity {
 
         card.setBackground(rounded(CARD, dp(14)));
         focusable(card, dp(14));
+        card.setTag("s" + s.url);
         card.setOnClickListener(v -> openSite(s));
         // Hold OK (or press Menu) for: favorite, mirrors, remove
         card.setOnLongClickListener(v -> {

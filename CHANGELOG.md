@@ -35,6 +35,7 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 - **Pictures load faster and stay loaded**: their own download threads, one download per picture however many cards show it, decoded at the card's size, and a memory cache sized to the device (it held about 17 posters before, so scrolling back loaded them again). A missing picture is not asked for again for ten minutes. The picture folder is capped at 200 MB.
 - **Tabs switch without the lag**: the pressed tab lights up at once, site lists and catalog pages are parsed once instead of on every switch, and the rows below the first screen are added a frame later.
 - **Less memory**: pictures are fetched and decoded only when their card comes near the screen, at the size they are shown, and photos take half the memory; the web engine loads when a site is opened instead of at app start; the player's strips size their pictures to the cards.
+- **TV remote keeps its place**: Up and Down stay inside the page (they no longer jump into the side rail at the end of a page), and coming back from a video or a title puts the focus on the card you left from, not on Search.
 
 ### 🐞 Fixed
 - **Crash on pages with a long number after "episode"** in the address or title (ten digits or more): saving it to Continue watching overflowed. Such a number is now treated as an id, not an episode.
