@@ -131,19 +131,19 @@ public class TitleActivity extends Home {
         if (!facts.isEmpty()) {
             LinearLayout box = new LinearLayout(this);
             box.setOrientation(LinearLayout.VERTICAL);
-            box.setPadding(0, u(14, 10), 0, 0);
+            box.setPadding(0, u(12, 8), 0, 0);
             for (String[] f : facts) {
                 android.text.SpannableStringBuilder fact = new android.text.SpannableStringBuilder(f[0] + "   ");
                 fact.setSpan(new android.text.style.ForegroundColorSpan(MUTED), 0, f[0].length(), 0);
                 fact.append(f[1]);
-                TextView v = text("", sp(15, 13), TEXT, false);
+                TextView v = text("", sp(14, 12), TEXT, false);
                 v.setText(fact);
                 v.setMaxLines(2);
                 v.setEllipsize(TextUtils.TruncateAt.END);
-                v.setPadding(0, dp(3), 0, dp(3));
+                v.setPadding(0, dp(2), 0, dp(2));
                 box.addView(v);
             }
-            col.addView(box);
+            info.addView(box);   // beside the poster, not a block of its own under it
         }
 
         LinearLayout buttons = new LinearLayout(this);
