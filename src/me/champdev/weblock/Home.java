@@ -43,8 +43,8 @@ import java.util.Map;
 public class Home extends Activity {
     // One accent, kept for play and progress; everything else is ink, two card tones and two text tones
     static final int BG = 0xFF0E0C13, CARD = 0xFF1A1721, CARD_HI = 0xFF282431, NAV = 0xFF131019, ACCENT = 0xFFFF3B5C, TEXT = 0xFFF4F2F7, MUTED = 0xFF9690A3;
-    // Decoded pictures: a fifth of the app's memory (it was a fixed 24 MB, about 17 posters, so scrolling back decoded them all again)
-    static final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>((int) Math.min(Runtime.getRuntime().maxMemory() / 5, 96L << 20)) {
+    // Decoded pictures: a sixth of the app's memory (it was a fixed 24 MB, about 17 posters, so scrolling back decoded them all again)
+    static final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>((int) Math.min(Runtime.getRuntime().maxMemory() / 6, 64L << 20)) {
         @Override protected int sizeOf(String k, Bitmap b) { return b.getAllocationByteCount(); }
     };
     // Pictures load on their own threads (the shared pool is busy with catalogs and WARP), one download per picture however many cards ask

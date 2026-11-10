@@ -15,7 +15,8 @@ import java.util.List;
 /** One movie or series: poster, details, episodes by season, and Watch on the site you picked (its search box is filled in for you). */
 public class TitleActivity extends Home {
     final Catalog.Title t = new Catalog.Title();
-    int season = 1;
+    static final int PAGE = 50;
+    int season = 1, shownEps = PAGE;
     boolean refocus = true;   // TV: land on Watch when the screen first appears, not after every season click
 
     @Override boolean tabs() { return false; }
@@ -192,13 +193,13 @@ public class TitleActivity extends Home {
         if (!sites.isEmpty()) {
             // one row that scrolls sideways, so the episodes below are a short move away
             col.addView(heading(App.t(R.string.title_watch_heading, t.name)));
-            if (App.tv) {
+            if (App.tv || t.series()) {   // a series keeps the sites to one sideways row: its episodes come right after
                 LinearLayout row = row();
                 for (Sites.Site s : sites) row.addView(siteCard(s, true));
             } else {
-                // A phone scrolls down, not sideways: two across. A series keeps it to three rows, its episodes come next
+                // A movie on a phone: the page scrolls down, not sideways, so two across
                 Grid grid = new Grid(col);
-                for (Sites.Site s : t.series() && sites.size() > 6 ? sites.subList(0, 6) : sites) grid.add(s);
+                for (Sites.Site s : sites) grid.add(s);
                 cardW = 156;
             }
         }
@@ -213,7 +214,7 @@ public class TitleActivity extends Home {
         seasons.setClipChildren(false);
         for (int s = 1; s <= Catalog.seasons(t); s++) {
             final int n = s;
-            TextView c = chip(v -> { season = n; build(); });
+            TextView c = chip(v -> { season = n; shownEps = PAGE; build(); });
             c.setText(App.t(R.string.title_season, s));
             c.setTextColor(s == season ? 0xFFFFFFFF : TEXT);
             c.setBackground(rounded(s == season ? ACCENT : CARD, dp(22)));
@@ -231,8 +232,12 @@ public class TitleActivity extends Home {
         sc.addView(seasons);
         col.addView(sc);
 
+        // A page of episodes at a time: a daily soap has 2000 in one season, and a row (with its picture) for each ran the device out of memory
+        int shown = 0, inSeason = 0;
+        for (Catalog.Episode e : t.episodes) if (e.season == season) inSeason++;
         for (Catalog.Episode e : t.episodes) {
             if (e.season != season) continue;
+            if (shown++ == shownEps) break;
             LinearLayout row = new LinearLayout(this);
             row.setGravity(Gravity.CENTER_VERTICAL);
             row.setPadding(u(12, 8), u(10, 7), u(14, 10), u(10, 7));
@@ -240,7 +245,7 @@ public class TitleActivity extends Home {
             thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
             thumb.setBackground(rounded(colorFor(e.title), dp(8)));
             thumb.setClipToOutline(true);
-            if (!e.thumb.isEmpty()) loadImage(thumb, e.thumb, null);
+            if (!e.thumb.isEmpty()) loadImage(thumb, e.thumb, null, dp(App.tv ? 160 : 100));
             row.addView(thumb, new LinearLayout.LayoutParams(dp(App.tv ? 160 : 100), dp(App.tv ? 90 : 56)));
             LinearLayout text = new LinearLayout(this);
             text.setOrientation(LinearLayout.VERTICAL);
@@ -264,6 +269,15 @@ public class TitleActivity extends Home {
             focusable(row, dp(14));
             row.setOnClickListener(v -> watch(e));
             col.addView(row);
+        }
+        if (inSeason > shownEps) {
+            TextView more = text(App.t(R.string.home_load_more) + "  (" + (inSeason - shownEps) + ")", sp(15, 14), TEXT, true);
+            more.setGravity(Gravity.CENTER);
+            more.setPadding(0, dp(13), 0, dp(13));
+            more.setBackground(rounded(CARD, dp(14)));
+            focusable(more, dp(14));
+            more.setOnClickListener(v -> { int y = page.getScrollY(); shownEps += PAGE; build(); page.post(() -> page.scrollTo(0, y)); });
+            col.addView(more);
         }
     }
 

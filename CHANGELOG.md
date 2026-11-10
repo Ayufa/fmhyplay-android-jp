@@ -37,6 +37,7 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 
 ### 🐞 Fixed
 - **Crash on pages with a long number after "episode"** in the address or title (ten digits or more): saving it to Continue watching overflowed. Such a number is now treated as an id, not an episode.
+- **A series with thousands of episodes in one season** (daily soaps) could close the app: every episode got a row and a picture at once. Episodes now come 50 at a time, with Load more.
 - Posters and pictures nobody opened for 60 days are removed from storage (they used to pile up forever).
 - A download that broke half way no longer leaves its connection open.
 
