@@ -79,7 +79,7 @@ public class Home extends Activity {
         col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         // One margin on every side; rows get a little slack past it so the grown focus ring never clips
-        side = u(28, 10);
+        side = u(16, 10);
         slack = u(10, 6);
         cardW = App.tv ? 220 : 156;
         cardH = App.tv ? 92 : 62;
@@ -1910,7 +1910,10 @@ public class Home extends Activity {
         v.setForeground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), states, rounded(Color.WHITE, radius)));
         v.setOnFocusChangeListener((view, has) -> {
             // not a text box, and not a view focused before it has a size (width 0 passed as "small": the search box grew off the screen)
-            float s = has && !(view instanceof EditText) && view.getWidth() > 0 && view.getWidth() < dp(330) ? 1.05f : 1f;
+            // only cards on the page grow: the rail's buttons keep their size (grown, the rail cut their rings)
+            boolean card = false;
+            for (android.view.ViewParent q = view.getParent(); q != null && !card; q = q.getParent()) card = q == col;
+            float s = has && card && !(view instanceof EditText) && view.getWidth() > 0 && view.getWidth() < dp(330) ? 1.05f : 1f;
             view.animate().scaleX(s).scaleY(s).translationZ(has ? dp(8) : 0).setDuration(120).start();
             if (has) view.post(() -> reveal(view));
         });
