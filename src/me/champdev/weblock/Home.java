@@ -441,6 +441,7 @@ public class Home extends Activity {
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(30), dp(30));
         r.addView(logo, ll);
         TextView name = brand(10);
+        name.setGravity(Gravity.CENTER);
         name.setPadding(0, dp(2), 0, dp(8));
         r.addView(name);
         ImageView search = iconButton(R.drawable.ic_search, App.t(R.string.home_search), v -> startActivity(new Intent(this, SearchActivity.class)));
@@ -1186,23 +1187,23 @@ public class Home extends Activity {
     }
 
     void settingsTab() {
-        section(App.t(R.string.home_tab_home));
+        section(App.t(R.string.home_tab_home), R.drawable.ic_home);
         TextView regionValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_region), App.t(R.string.home_region_help), regionValue, v -> regionDialog()));
+        secBox.addView(settingRow(App.t(R.string.home_region), App.t(R.string.home_region_help), regionValue, v -> regionDialog()));
         String region = App.region();
         boolean local = Catalog.languages(region).length > 0;
         regionValue.setText(local ? new java.util.Locale("", region).getDisplayCountry() : App.t(App.prefs.getString("region", "").equals("-") ? R.string.home_off : R.string.warp_dns_auto));
         regionValue.setTextColor(local ? GREEN : MUTED);
-        section(App.t(R.string.home_connection));
+        section(App.t(R.string.home_connection), R.drawable.ic_shield);
         warpValue = new TextView(this);
-        col.addView(settingRow("WARP", App.t(R.string.home_warp_help), warpValue, v -> toggleWarp()));
+        secBox.addView(settingRow("WARP", App.t(R.string.home_warp_help), warpValue, v -> toggleWarp()));
         TextView dnsValue = new TextView(this);
         String savedDns = App.prefs.getString("warpDns", "");
-        col.addView(settingRow(App.t(R.string.warp_dns_title), App.t(R.string.warp_dns_help), dnsValue, v -> warpDnsDialog()));
+        secBox.addView(settingRow(App.t(R.string.warp_dns_title), App.t(R.string.warp_dns_help), dnsValue, v -> warpDnsDialog()));
         dnsValue.setText(savedDns.isEmpty() ? App.t(R.string.warp_dns_auto) : savedDns);
         dnsValue.setTextColor(savedDns.isEmpty() ? MUTED : GREEN);
         adValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_ad_block), App.t(R.string.home_ad_block_help), adValue, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_ad_block), App.t(R.string.home_ad_block_help), adValue, v -> {
             App.prefs.edit().putBoolean("adblock", !AdBlock.enabled()).apply();
             updateChips();
         }));
@@ -1210,7 +1211,7 @@ public class Home extends Activity {
             // Casts from phones open the player by themselves only with "Display over other apps" (Android blocks a closed app otherwise)
             TextView castValue = new TextView(this);
             boolean ready = Cast.canOpen(this);
-            col.addView(settingRow(App.t(R.string.home_cast_title), App.t(ready ? R.string.home_cast_help_ready : R.string.home_cast_help_allow, Cast.tvName(this)), castValue, v -> {
+            secBox.addView(settingRow(App.t(R.string.home_cast_title), App.t(ready ? R.string.home_cast_help_ready : R.string.home_cast_help_allow, Cast.tvName(this)), castValue, v -> {
                 try {
                     startActivity(new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName())));
                 } catch (Exception e) {
@@ -1221,7 +1222,7 @@ public class Home extends Activity {
             castValue.setTextColor(ready ? GREEN : ACCENT);
         }
         TextView urlValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_address_bar), App.t(App.tv ? R.string.home_address_bar_help_tv : R.string.home_address_bar_help_phone), urlValue, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_address_bar), App.t(App.tv ? R.string.home_address_bar_help_tv : R.string.home_address_bar_help_phone), urlValue, v -> {
             App.prefs.edit().putBoolean("urlbar", !App.prefs.getBoolean("urlbar", false)).apply();
             build();
         }));
@@ -1229,7 +1230,7 @@ public class Home extends Activity {
         urlValue.setTextColor(App.prefs.getBoolean("urlbar", false) ? GREEN : MUTED);
         if (App.tv) {
             TextView cursor = new TextView(this);
-            col.addView(settingRow(App.t(R.string.home_cursor_on_sites), App.t(R.string.home_cursor_help), cursor, v -> {
+            secBox.addView(settingRow(App.t(R.string.home_cursor_on_sites), App.t(R.string.home_cursor_help), cursor, v -> {
                 App.prefs.edit().putBoolean("pointer", !App.prefs.getBoolean("pointer", true)).apply();
                 build();
             }));
@@ -1237,7 +1238,7 @@ public class Home extends Activity {
             cursor.setText(App.t(on ? R.string.home_on : R.string.home_off));
             cursor.setTextColor(on ? GREEN : MUTED);
             TextView lookValue = new TextView(this);
-            col.addView(settingRow(App.t(R.string.home_cursor_look), App.t(R.string.home_cursor_look_help), lookValue, v -> {
+            secBox.addView(settingRow(App.t(R.string.home_cursor_look), App.t(R.string.home_cursor_look_help), lookValue, v -> {
                 String[] items = new String[Pointer.LOOKS.length];
                 for (int i = 0; i < items.length; i++)
                     items[i] = Pointer.lookIcon(i) + "   " + Pointer.lookLabel(i) + (Pointer.LOOKS[i].equals(Pointer.look()) ? "  \u2713" : "");
@@ -1249,7 +1250,7 @@ public class Home extends Activity {
             lookValue.setText(Pointer.lookName());
             lookValue.setTextColor(TEXT);
             TextView sizeValue = new TextView(this);
-            col.addView(settingRow(App.t(R.string.home_cursor_size), App.t(R.string.home_cursor_size_help), sizeValue, v -> {
+            secBox.addView(settingRow(App.t(R.string.home_cursor_size), App.t(R.string.home_cursor_size_help), sizeValue, v -> {
                 int next = Pointer.SIZES[0];
                 for (int i = 0; i < Pointer.SIZES.length - 1; i++) if (Pointer.SIZES[i] == Pointer.size()) next = Pointer.SIZES[i + 1];
                 App.prefs.edit().putInt("cursorSize", next).apply();
@@ -1258,27 +1259,27 @@ public class Home extends Activity {
             sizeValue.setText(Pointer.size() + "%");
             sizeValue.setTextColor(TEXT);
         }
-        col.addView(settingRow(App.t(R.string.home_warp_log), App.t(R.string.home_warp_log_help), null, v -> warpLog()));
+        secBox.addView(settingRow(App.t(R.string.home_warp_log), App.t(R.string.home_warp_log_help), null, v -> warpLog()));
 
-        section(App.t(R.string.home_your_data));
+        section(App.t(R.string.home_your_data), R.drawable.ic_delete);
         List<Sites.Site> favs = Sites.favorites();
-        col.addView(settingRow(App.t(R.string.home_clear_favorites), App.t(favs.size() == 1 ? R.string.home_sites_one : R.string.home_sites_many, favs.size()), null, v -> confirmClearFavorites(favs.size())));
+        secBox.addView(settingRow(App.t(R.string.home_clear_favorites), App.t(favs.size() == 1 ? R.string.home_sites_one : R.string.home_sites_many, favs.size()), null, v -> confirmClearFavorites(favs.size())));
         int seen = History.list().size();
-        col.addView(settingRow(App.t(R.string.home_clear_history), App.t(seen == 1 ? R.string.home_history_count_one : R.string.home_history_count_many, seen), null, v ->
+        secBox.addView(settingRow(App.t(R.string.home_clear_history), App.t(seen == 1 ? R.string.home_history_count_one : R.string.home_history_count_many, seen), null, v ->
             confirm(App.t(R.string.home_clear_history_title), App.t(R.string.home_clear_history_msg), App.t(R.string.home_clear), () -> { History.save(new ArrayList<>()); build(); toast(App.t(R.string.home_history_cleared)); })));
         int watched = Iptv.history().size();
-        col.addView(settingRow(App.t(R.string.home_clear_iptv_history), App.t(watched == 1 ? R.string.home_iptv_history_count_one : R.string.home_iptv_history_count_many, watched), null, v ->
+        secBox.addView(settingRow(App.t(R.string.home_clear_iptv_history), App.t(watched == 1 ? R.string.home_iptv_history_count_one : R.string.home_iptv_history_count_many, watched), null, v ->
             confirm(App.t(R.string.home_clear_iptv_history_title), App.t(R.string.home_clear_iptv_history_msg), App.t(R.string.home_clear), () -> { App.prefs.edit().remove("iptvhist").apply(); build(); toast(App.t(R.string.home_iptv_history_cleared)); })));
-        col.addView(settingRow(App.t(R.string.home_clear_web), App.t(R.string.home_clear_web_help), null, v ->
+        secBox.addView(settingRow(App.t(R.string.home_clear_web), App.t(R.string.home_clear_web_help), null, v ->
             confirm(App.t(R.string.home_clear_web) + "?", App.t(R.string.home_clear_web_help), App.t(R.string.home_clear), this::clearWebData)));
         int listed = Catalog.mine().size();
-        col.addView(settingRow(App.t(R.string.home_clear_mylist), App.t(listed == 1 ? R.string.home_titles_one : R.string.home_titles_many, listed), null, v ->
+        secBox.addView(settingRow(App.t(R.string.home_clear_mylist), App.t(listed == 1 ? R.string.home_titles_one : R.string.home_titles_many, listed), null, v ->
             confirm(App.t(R.string.home_clear_mylist_title), App.t(R.string.home_clear_mylist_msg, listed), App.t(R.string.home_clear), () -> { App.prefs.edit().remove("mylist").apply(); build(); toast(App.t(R.string.home_mylist_cleared)); })));
 
-        section("IPTV");
+        section("IPTV", R.drawable.ic_live);
         if (Iptv.adultAvailable()) {
             TextView adultValue = new TextView(this);
-            col.addView(settingRow(App.t(R.string.home_adult), App.t(R.string.home_adult_help), adultValue, v -> {
+            secBox.addView(settingRow(App.t(R.string.home_adult), App.t(R.string.home_adult_help), adultValue, v -> {
                 App.prefs.edit().putBoolean("adult", !Iptv.adultOn()).apply();
                 build();
             }));
@@ -1286,30 +1287,30 @@ public class Home extends Activity {
             adultValue.setTextColor(Iptv.adultOn() ? GREEN : MUTED);
         }
         TextView extrasValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_extras_title), App.t(R.string.home_extras_help), extrasValue, v -> extrasDialog()));
+        secBox.addView(settingRow(App.t(R.string.home_extras_title), App.t(R.string.home_extras_help), extrasValue, v -> extrasDialog()));
         extrasValue.setText(App.t(Iptv.extrasUrl().isEmpty() ? R.string.home_none : Iptv.extrasUrl().equals(Iptv.DEFAULT_EXTRAS) ? R.string.home_default : R.string.home_custom));
         extrasValue.setTextColor(Iptv.extrasUrl().isEmpty() ? MUTED : GREEN);
-        col.addView(settingRow(App.t(R.string.home_add_playlist_title), App.t(R.string.home_add_playlist_help), null, v -> addPlaylistDialog()));
+        secBox.addView(settingRow(App.t(R.string.home_add_playlist_title), App.t(R.string.home_add_playlist_help), null, v -> addPlaylistDialog()));
         for (String url : Iptv.mine()) {
             int n = Iptv.parse(Iptv.read(Iptv.mineFile(url)), false).size();
             String name = Iptv.playlistName(url);
-            col.addView(settingRow(name, App.t(n == 1 ? R.string.home_playlist_channels_one : R.string.home_playlist_channels_many, n), null, v ->
+            secBox.addView(settingRow(name, App.t(n == 1 ? R.string.home_playlist_channels_one : R.string.home_playlist_channels_many, n), null, v ->
                 confirm(App.t(R.string.home_remove_playlist_title), name, App.t(R.string.home_remove), () -> { Iptv.removePlaylist(url); build(); toast(App.t(R.string.home_playlist_removed)); })));
         }
         TextView deadValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_hide_offline), App.t(R.string.home_hide_offline_help), deadValue, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_hide_offline), App.t(R.string.home_hide_offline_help), deadValue, v -> {
             App.prefs.edit().putBoolean("hideDead", !Iptv.hideDead()).apply();
             build();
         }));
         deadValue.setText(App.t(Iptv.hideDead() ? R.string.home_on : R.string.home_off));
         deadValue.setTextColor(Iptv.hideDead() ? GREEN : MUTED);
-        col.addView(settingRow(App.t(R.string.home_check_channels), Iptv.sweeping ? App.t(R.string.home_checking_progress, Iptv.sweepDone, Iptv.sweepTotal) : App.t(R.string.home_offline_now, Iptv.deadCount()), null, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_check_channels), Iptv.sweeping ? App.t(R.string.home_checking_progress, Iptv.sweepDone, Iptv.sweepTotal) : App.t(R.string.home_offline_now, Iptv.deadCount()), null, v -> {
             if (Iptv.sweeping) { toast(App.t(R.string.home_already_checking)); return; }
             Iptv.health.clear();
             toast(App.t(R.string.home_checking_background));
             Iptv.sweep();
         }));
-        col.addView(settingRow(App.t(R.string.home_refresh_iptv), App.t(R.string.home_refresh_iptv_help), null, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_refresh_iptv), App.t(R.string.home_refresh_iptv_help), null, v -> {
             toast(App.t(R.string.home_downloading_channels));
             App.io.execute(() -> {
                 boolean ok = Iptv.refresh();
@@ -1317,14 +1318,14 @@ public class Home extends Activity {
             });
         }));
 
-        section(App.t(R.string.home_player));
+        section(App.t(R.string.home_player), R.drawable.ic_pb_play);
         TextView subValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_subtitles), App.t(R.string.home_subtitles_help), subValue, v ->
+        secBox.addView(settingRow(App.t(R.string.home_subtitles), App.t(R.string.home_subtitles_help), subValue, v ->
             Subs.panel(this, false, () -> subValue.setText(Subs.sizeLabel() + " \u00B7 " + Subs.offsetLabel()), this::build)));
         subValue.setText(Subs.sizeLabel() + " \u00B7 " + Subs.offsetLabel());
         subValue.setTextColor(Subs.size() == 100 && Subs.offset() == 0 && Subs.background() == 50 && Subs.colorIndex() == 0 ? MUTED : GREEN);
         TextView boostValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_volume_boost), App.t(R.string.home_volume_boost_help), boostValue, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_volume_boost), App.t(R.string.home_volume_boost_help), boostValue, v -> {
             int next = PlayerActivity.BOOSTS[0];
             for (int i = 0; i < PlayerActivity.BOOSTS.length - 1; i++) if (PlayerActivity.BOOSTS[i] == PlayerActivity.boostDb()) next = PlayerActivity.BOOSTS[i + 1];
             App.prefs.edit().putInt("boost", next).apply();
@@ -1333,14 +1334,14 @@ public class Home extends Activity {
         boostValue.setText(PlayerActivity.boostDb() == 0 ? App.t(R.string.home_off) : "+" + PlayerActivity.boostDb() + " dB");
         boostValue.setTextColor(PlayerActivity.boostDb() == 0 ? MUTED : GREEN);
         TextView voiceValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_dialog_boost), App.t(R.string.home_dialog_boost_help), voiceValue, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_dialog_boost), App.t(R.string.home_dialog_boost_help), voiceValue, v -> {
             App.prefs.edit().putBoolean("dialogBoost", !PlayerActivity.dialogBoost()).apply();
             build();
         }));
         voiceValue.setText(App.t(PlayerActivity.dialogBoost() ? R.string.home_on : R.string.home_off));
         voiceValue.setTextColor(PlayerActivity.dialogBoost() ? GREEN : MUTED);
         TextView autoSub = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_auto_subs), App.t(R.string.home_auto_subs_help, Subs.language(Subs.preferred())), autoSub, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_auto_subs), App.t(R.string.home_auto_subs_help, Subs.language(Subs.preferred())), autoSub, v -> {
             App.prefs.edit().putBoolean("subAuto", !Subs.auto()).apply();
             build();
         }));
@@ -1348,44 +1349,44 @@ public class Home extends Activity {
         autoSub.setTextColor(Subs.auto() ? GREEN : MUTED);
         TextView autoSkip = new TextView(this);
         boolean skipOn = App.prefs.getBoolean("autoSkip", false);
-        col.addView(settingRow(App.t(R.string.home_auto_skip), App.t(R.string.home_auto_skip_help), autoSkip, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_auto_skip), App.t(R.string.home_auto_skip_help), autoSkip, v -> {
             App.prefs.edit().putBoolean("autoSkip", !skipOn).apply();
             build();
         }));
         autoSkip.setText(App.t(skipOn ? R.string.home_on : R.string.home_off));
         autoSkip.setTextColor(skipOn ? GREEN : MUTED);
         TextView simklValue = new TextView(this);
-        col.addView(settingRow("Simkl", App.t(R.string.home_simkl_help), simklValue, v -> {
+        secBox.addView(settingRow("Simkl", App.t(R.string.home_simkl_help), simklValue, v -> {
             if (Simkl.signedIn()) confirm(App.t(R.string.home_simkl_disconnect_title), App.t(R.string.home_simkl_disconnect_msg), App.t(R.string.home_disconnect), () -> { Simkl.signOut(); build(); });
             else simklDialog();
         }));
         simklValue.setText(App.t(Simkl.signedIn() ? R.string.home_connected : R.string.home_connect));
         simklValue.setTextColor(Simkl.signedIn() ? GREEN : ACCENT);
         TextView ppValue = new TextView(this);
-        col.addView(settingRow("PunchPlay", App.t(R.string.punchplay_help), ppValue, v -> {
+        secBox.addView(settingRow("PunchPlay", App.t(R.string.punchplay_help), ppValue, v -> {
             if (PunchPlay.signedIn()) confirm(App.t(R.string.punchplay_disconnect_title), App.t(R.string.punchplay_disconnect_msg), App.t(R.string.home_disconnect), () -> { PunchPlay.signOut(); build(); });
             else punchPlayDialog();
         }));
         ppValue.setText(App.t(PunchPlay.signedIn() ? R.string.home_connected : R.string.home_connect));
         ppValue.setTextColor(PunchPlay.signedIn() ? GREEN : ACCENT);
 
-        section(App.t(R.string.home_updates));
+        section(App.t(R.string.home_updates), R.drawable.ic_refresh);
         String newer = Update.latest();
         TextView updValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_check_updates), App.t(R.string.home_check_updates_help, Update.installed()), updValue, v -> checkUpdate(updValue)));
+        secBox.addView(settingRow(App.t(R.string.home_check_updates), App.t(R.string.home_check_updates_help, Update.installed()), updValue, v -> checkUpdate(updValue)));
         updValue.setText(newer.isEmpty() ? App.t(R.string.home_up_to_date) : App.t(R.string.home_version_available, newer));
         updValue.setTextColor(newer.isEmpty() ? MUTED : GREEN);
         TextView autoValue = new TextView(this);
-        col.addView(settingRow(App.t(R.string.home_check_at_start), App.t(R.string.home_check_at_start_help), autoValue, v -> {
+        secBox.addView(settingRow(App.t(R.string.home_check_at_start), App.t(R.string.home_check_at_start_help), autoValue, v -> {
             App.prefs.edit().putBoolean("updateCheck", !Update.auto()).apply();
             build();
         }));
         autoValue.setText(App.t(Update.auto() ? R.string.home_on : R.string.home_off));
         autoValue.setTextColor(Update.auto() ? GREEN : MUTED);
 
-        section(App.t(R.string.home_sites));
-        col.addView(settingRow(App.t(R.string.home_add_site), App.t(R.string.home_add_site_help), null, v -> addSiteDialog()));
-        col.addView(settingRow(App.t(R.string.home_refresh_fmhy), App.t(R.string.home_refresh_fmhy_help), null, v -> {
+        section(App.t(R.string.home_sites), R.drawable.ic_language);
+        secBox.addView(settingRow(App.t(R.string.home_add_site), App.t(R.string.home_add_site_help), null, v -> addSiteDialog()));
+        secBox.addView(settingRow(App.t(R.string.home_refresh_fmhy), App.t(R.string.home_refresh_fmhy_help), null, v -> {
             toast(App.t(R.string.home_checking_fmhy));
             App.io.execute(() -> {
                 boolean changed = Sites.refresh();
@@ -1396,21 +1397,22 @@ public class Home extends Activity {
         // Which build is this? (the TV and phone APKs share a package, so say it on screen)
         String ver = "";
         try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) { }
-        section(App.t(R.string.home_donate));
+        section(App.t(R.string.home_donate), R.drawable.ic_heart);
         View why = note(App.t(R.string.home_donate_help));
+        why.setPadding(u(52, 50), 0, dp(14), dp(8));
         why.setVisibility(secOpen ? View.VISIBLE : View.GONE);
-        col.addView(why);
-        col.addView(settingRow("Buy Me a Coffee", "buymeacoffee.com/rohit267", null, v -> openLink("https://buymeacoffee.com/rohit267")));
-        col.addView(settingRow("PayPal", "paypal.me/champdev", null, v -> openLink("https://paypal.me/champdev")));
+        secBox.addView(why);
+        secBox.addView(settingRow("Buy Me a Coffee", "buymeacoffee.com/rohit267", null, v -> openLink("https://buymeacoffee.com/rohit267")));
+        secBox.addView(settingRow("PayPal", "paypal.me/champdev", null, v -> openLink("https://paypal.me/champdev")));
 
-        section(App.t(R.string.home_about));
-        col.addView(settingRow(App.t(R.string.home_about_site), "fmhyplay.github.io/android", null, v -> openLink("https://fmhyplay.github.io/android/")));
-        col.addView(settingRow(App.t(R.string.home_about_source), "github.com/fmhyplay/android", null, v -> openLink("https://github.com/fmhyplay/android")));
-        col.addView(settingRow(App.t(R.string.home_about_bug), "github.com/fmhyplay/android/issues", null, v -> openLink("https://github.com/fmhyplay/android/issues")));
+        section(App.t(R.string.home_about), R.drawable.ic_info);
+        secBox.addView(settingRow(App.t(R.string.home_about_site), "fmhyplay.github.io/android", null, v -> openLink("https://fmhyplay.github.io/android/")));
+        secBox.addView(settingRow(App.t(R.string.home_about_source), "github.com/fmhyplay/android", null, v -> openLink("https://github.com/fmhyplay/android")));
+        secBox.addView(settingRow(App.t(R.string.home_about_bug), "github.com/fmhyplay/android/issues", null, v -> openLink("https://github.com/fmhyplay/android/issues")));
         TextView about = text(App.t(App.tv ? R.string.home_about_tv : R.string.home_about_phone, ver), sp(12, 11), MUTED, false);
-        about.setPadding(u(14, 10), dp(6), 0, dp(8));
+        about.setPadding(u(52, 50), dp(6), dp(14), dp(12));
         about.setVisibility(secOpen ? View.VISIBLE : View.GONE);
-        col.addView(about);
+        secBox.addView(about);
         secOpen = true;
         updateChips();
     }
@@ -1557,18 +1559,27 @@ public class Home extends Activity {
     boolean secOpen = true;   // whether the rows being added now are shown
 
     /** A Settings group: one line that opens and closes its rows, so the tab starts as a short list. */
-    void section(String title) {
+    void section(String title, int icon) {
         secOpen = openSections.contains(title);
+        secBox = new LinearLayout(this);   // one card per group: its heading, then its rows with a hairline between them
+        secBox.setOrientation(LinearLayout.VERTICAL);
+        secBox.setBackground(rounded(CARD, dp(14)));
+        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(-1, -2);
+        bl.bottomMargin = dp(8);
+        col.addView(secBox, bl);
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(u(16, 14), u(11, 11), u(18, 16), u(11, 11));
+        row.setPadding(u(16, 14), u(12, 12), u(18, 16), u(12, 12));
+        ImageView ic = new ImageView(this);
+        ic.setImageResource(icon);
+        ic.setColorFilter(secOpen ? ACCENT : MUTED);
+        LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(dp(22), dp(22));
+        il.rightMargin = dp(14);
+        row.addView(ic, il);
         row.addView(text(title, sp(16, 15), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
         row.addView(text(secOpen ? "\u2212" : "+", sp(20, 19), MUTED, false));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(6);
-        row.setLayoutParams(lp);
-        row.setBackground(rounded(secOpen ? CARD_HI : CARD, dp(12)));
-        focusable(row, dp(12));
+        row.setBackground(rounded(0, dp(14)));
+        focusable(row, dp(14));
         row.setOnClickListener(v -> {
             if (!openSections.remove(title)) openSections.add(title);
             focusSection = title;
@@ -1576,10 +1587,12 @@ public class Home extends Activity {
             build();
             skipFocus = false;
         });
-        col.addView(row);
+        secBox.addView(row);
         if (firstCard == null) firstCard = row;
         if (App.tv && title.equals(focusSection)) { focusSection = null; row.post(row::requestFocus); }
     }
+
+    LinearLayout secBox;
 
     /** A link: opened in the browser on a phone; a TV shows the address to open elsewhere. */
     void openLink(String url) {
@@ -1598,7 +1611,7 @@ public class Home extends Activity {
     View settingRow(String title, String help, TextView value, View.OnClickListener click) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(u(16, 14), u(9, 9), u(18, 14), u(9, 9));
+        row.setPadding(u(52, 50), u(9, 9), u(18, 14), u(9, 9));   // text under the heading's text, past its icon
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
         left.addView(text(title, sp(15, 15), TEXT, true));
@@ -1613,15 +1626,22 @@ public class Home extends Activity {
             row.addView(value);
         }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(6);
-        lp.leftMargin = u(14, 10);   // under its section's line
         row.setLayoutParams(lp);
-        row.setBackground(rounded(CARD, dp(12)));
+        row.setBackground(rounded(0, dp(12)));
         focusable(row, dp(12));
         row.setOnClickListener(click);
-        row.setVisibility(secOpen ? View.VISIBLE : View.GONE);
         if (firstCard == null && secOpen) firstCard = row;
-        return row;
+        // the row under a hairline that lines up with the text
+        LinearLayout both = new LinearLayout(this);
+        both.setOrientation(LinearLayout.VERTICAL);
+        View line = new View(this);
+        line.setBackgroundColor(0x14FFFFFF);
+        LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(-1, 1);
+        dl.setMargins(u(52, 50), 0, u(18, 14), 0);
+        both.addView(line, dl);
+        both.addView(row);
+        both.setVisibility(secOpen ? View.VISIBLE : View.GONE);
+        return both;
     }
 
     /** A poster with its name and year under it. The picture is the part that takes focus and clicks. */
