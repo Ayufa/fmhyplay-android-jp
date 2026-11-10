@@ -213,6 +213,12 @@ public class Home extends Activity {
             titleRow(movies, country, "movie", "local=" + region, 1);
             titleRow(shows, country, "series", "local=" + region, 2);
         }
+        // The rows below the first screen are added a frame later, so Home shows up at once
+        final int id = built;
+        col.post(() -> { if (id == built && tab == 0) lowerHome(movies, shows, anime); });
+    }
+
+    void lowerHome(String movies, String shows, String anime) {
         // Each kind: what just came out, then what everyone watches (anime: Kitsu's trending)
         String fresh = App.t(R.string.home_new), popular = App.t(R.string.home_popular);
         titleRow(movies, fresh, "movie", "genre=" + Catalog.NEW, 1);
@@ -517,10 +523,16 @@ public class Home extends Activity {
     void selectTab(int n) {
         if (n == tab) return;
         tab = n;
-        skipFocus = true;
-        build();
-        skipFocus = false;
+        // The pressed tab lights up and the old page goes at once; the new page is drawn on the next frame
+        styleTabs();
+        col.removeAllViews();
         page.scrollTo(0, 0);
+        col.post(() -> {
+            if (tab != n) return;
+            skipFocus = true;
+            build();
+            skipFocus = false;
+        });
     }
 
     @Override public void onBackPressed() {
@@ -844,7 +856,13 @@ public class Home extends Activity {
             more.setOnClickListener(v -> openIptv("fav", "", App.t(R.string.home_favorites), false));
             fr.addView(more);
         }
-        // Square tiles: 6 across on a TV, 3 on a phone; an emoji icon (flag for countries) over the name and count
+        // Categories and countries (a few hundred tiles) come a frame later, so the tab shows up at once
+        final int id = built;
+        col.post(() -> { if (id == built && tab == 5) iptvGroups(cols); });
+    }
+
+    void iptvGroups(int cols) {
+        // Square tiles; an emoji icon (flag for countries) over the name and count
         col.addView(heading(App.t(R.string.home_categories)));
         Grid cats = new Grid(col, cols);
         for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(iptvTile(cats.cell, Iptv.emoji(e.getKey()), groupName(e.getKey()), e.getValue().size(), "cat", e.getKey()));
@@ -1187,7 +1205,7 @@ public class Home extends Activity {
     }
 
     void settingsTab() {
-        section(App.t(R.string.home_tab_home), R.drawable.ic_home);
+        single(R.drawable.ic_home);
         TextView regionValue = new TextView(this);
         secBox.addView(settingRow(App.t(R.string.home_region), App.t(R.string.home_region_help), regionValue, v -> regionDialog()));
         String region = App.region();
@@ -1397,7 +1415,7 @@ public class Home extends Activity {
         // Which build is this? (the TV and phone APKs share a package, so say it on screen)
         String ver = "";
         try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) { }
-        section(App.t(R.string.home_donate), R.drawable.ic_heart);
+        section(App.t(R.string.home_donate), R.drawable.ic_heart, true);
         View why = note(App.t(R.string.home_donate_help));
         why.setPadding(u(52, 50), 0, dp(14), dp(8));
         why.setVisibility(secOpen ? View.VISIBLE : View.GONE);
@@ -1405,7 +1423,7 @@ public class Home extends Activity {
         secBox.addView(settingRow("Buy Me a Coffee", "buymeacoffee.com/rohit267", null, v -> openLink("https://buymeacoffee.com/rohit267")));
         secBox.addView(settingRow("PayPal", "paypal.me/champdev", null, v -> openLink("https://paypal.me/champdev")));
 
-        section(App.t(R.string.home_about), R.drawable.ic_info);
+        section(App.t(R.string.home_about), R.drawable.ic_info, true);
         secBox.addView(settingRow(App.t(R.string.home_about_site), "fmhyplay.github.io/android", null, v -> openLink("https://fmhyplay.github.io/android/")));
         secBox.addView(settingRow(App.t(R.string.home_about_source), "github.com/fmhyplay/android", null, v -> openLink("https://github.com/fmhyplay/android")));
         secBox.addView(settingRow(App.t(R.string.home_about_bug), "github.com/fmhyplay/android/issues", null, v -> openLink("https://github.com/fmhyplay/android/issues")));
@@ -1560,7 +1578,12 @@ public class Home extends Activity {
 
     /** A Settings group: one line that opens and closes its rows, so the tab starts as a short list. */
     void section(String title, int icon) {
-        secOpen = openSections.contains(title);
+        section(title, icon, false);
+    }
+
+    /** `fixed`: always open, its heading is a label and not a switch (Donate, About). */
+    void section(String title, int icon, boolean fixed) {
+        secOpen = fixed || openSections.contains(title);
         secBox = new LinearLayout(this);   // one card per group: its heading, then its rows with a hairline between them
         secBox.setOrientation(LinearLayout.VERTICAL);
         secBox.setBackground(rounded(CARD, dp(14)));
@@ -1577,6 +1600,8 @@ public class Home extends Activity {
         il.rightMargin = dp(14);
         row.addView(ic, il);
         row.addView(text(title, sp(16, 15), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
+        secBox.addView(row);
+        if (fixed) return;
         row.addView(text(secOpen ? "\u2212" : "+", sp(20, 19), MUTED, false));
         row.setBackground(rounded(0, dp(14)));
         focusable(row, dp(14));
@@ -1587,12 +1612,24 @@ public class Home extends Activity {
             build();
             skipFocus = false;
         });
-        secBox.addView(row);
         if (firstCard == null) firstCard = row;
         if (App.tv && title.equals(focusSection)) { focusSection = null; row.post(row::requestFocus); }
     }
 
     LinearLayout secBox;
+    int rowIcon;   // the next setting row stands alone in its own card, with this icon
+
+    /** A group of one: the setting itself is the card, nothing to open. */
+    void single(int icon) {
+        secOpen = true;
+        rowIcon = icon;
+        secBox = new LinearLayout(this);
+        secBox.setOrientation(LinearLayout.VERTICAL);
+        secBox.setBackground(rounded(CARD, dp(14)));
+        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(-1, -2);
+        bl.bottomMargin = dp(8);
+        col.addView(secBox, bl);
+    }
 
     /** A link: opened in the browser on a phone; a TV shows the address to open elsewhere. */
     void openLink(String url) {
@@ -1612,6 +1649,17 @@ public class Home extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(u(52, 50), u(9, 9), u(18, 14), u(9, 9));   // text under the heading's text, past its icon
+        boolean alone = rowIcon != 0;
+        if (alone) {
+            row.setPadding(u(16, 14), u(11, 11), u(18, 14), u(11, 11));
+            ImageView ic = new ImageView(this);
+            ic.setImageResource(rowIcon);
+            ic.setColorFilter(MUTED);
+            LinearLayout.LayoutParams il = new LinearLayout.LayoutParams(dp(22), dp(22));
+            il.rightMargin = dp(14);
+            row.addView(ic, il);
+            rowIcon = 0;
+        }
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
         left.addView(text(title, sp(15, 15), TEXT, true));
@@ -1638,7 +1686,7 @@ public class Home extends Activity {
         line.setBackgroundColor(0x14FFFFFF);
         LinearLayout.LayoutParams dl = new LinearLayout.LayoutParams(-1, 1);
         dl.setMargins(u(52, 50), 0, u(18, 14), 0);
-        both.addView(line, dl);
+        if (!alone) both.addView(line, dl);
         both.addView(row);
         both.setVisibility(secOpen ? View.VISIBLE : View.GONE);
         return both;

@@ -252,6 +252,18 @@ final class Catalog {
 
     /** The list if a fresh copy is already on disk (no network), else null: lets a row draw without waiting. */
     static List<Title> cached(String type, String extra) {
+        String key = type + "|" + extra;
+        Object[] hit = memo.get(key);
+        if (hit != null && System.currentTimeMillis() - (Long) hit[0] < 10 * 60000) { @SuppressWarnings("unchecked") List<Title> l = (List<Title>) hit[1]; return l; }
+        List<Title> list = fromDisk(type, extra);
+        if (list != null && !list.isEmpty()) memo.put(key, new Object[]{System.currentTimeMillis(), list});
+        return list;
+    }
+
+    // Lists already read and parsed, for ten minutes: a tab switch does not read and parse its files again
+    static final java.util.Map<String, Object[]> memo = new java.util.concurrent.ConcurrentHashMap<>();
+
+    static List<Title> fromDisk(String type, String extra) {
         if (extra.startsWith("local=")) return local(type, extra.substring(6), true);
         if (extra.startsWith("genre=" + LANG)) return language(type, extra.substring(6 + LANG.length()), true);
         if (extra.equals(NEW_ANIME)) return newAnime(true);

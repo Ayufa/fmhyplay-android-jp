@@ -25,6 +25,7 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 - The ad block switch is in Settings only; the top bar shows WARP's state as one icon (words appear when it is connecting or failed).
 
 - **Pictures load faster and stay loaded**: their own download threads, one download per picture however many cards show it, decoded at the card's size, and a memory cache sized to the device (it held about 17 posters before, so scrolling back loaded them again). A missing picture is not asked for again for ten minutes. The picture folder is capped at 200 MB.
+- **Tabs switch without the lag**: the pressed tab lights up at once, site lists and catalog pages are parsed once instead of on every switch, and the rows below the first screen are added a frame later.
 
 ### 🐞 Fixed
 - **Crash on pages with a long number after "episode"** in the address or title (ten digits or more): saving it to Continue watching overflowed. Such a number is now treated as an id, not an episode.
