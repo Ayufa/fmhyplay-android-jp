@@ -163,6 +163,7 @@ public class TitleActivity extends Home {
         android.widget.HorizontalScrollView scroller = new android.widget.HorizontalScrollView(this);
         scroller.setHorizontalScrollBarEnabled(false);
         scroller.setClipToPadding(false);
+        scroller.setClipChildren(false);
         LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1, -2);
         slp.setMargins(-slack, 0, -slack, 0);
         scroller.setLayoutParams(slp);
@@ -208,6 +209,7 @@ public class TitleActivity extends Home {
         android.widget.HorizontalScrollView sc = new android.widget.HorizontalScrollView(this);
         sc.setHorizontalScrollBarEnabled(false);
         sc.setClipToPadding(false);
+        sc.setClipChildren(false);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(-slack, 0, -slack, 0);
         sc.setLayoutParams(lp);

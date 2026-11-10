@@ -86,6 +86,7 @@ public class Home extends Activity {
         gapDp = App.tv ? 14 : 8;
         col.setPadding(side, App.tv ? (tabs() ? dp(18) : side) : dp(6), side, App.tv ? side : dp(12));
         col.setClipToPadding(false);
+        col.setClipChildren(false);   // grown cards and their rings draw past their rows
         sv.addView(col);
         if (tabs()) {
             // A TV has everything on a rail down the left side, one Left press from any row; a phone has a top bar and tabs at the bottom
@@ -644,6 +645,7 @@ public class Home extends Activity {
         HorizontalScrollView sc = new HorizontalScrollView(this);
         sc.setHorizontalScrollBarEnabled(false);
         sc.setClipToPadding(false);
+        sc.setClipChildren(false);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(-slack, 0, -slack, 0);
         sc.setLayoutParams(lp);
@@ -1661,6 +1663,7 @@ public class Home extends Activity {
         HorizontalScrollView hs = new HorizontalScrollView(this);
         hs.setHorizontalScrollBarEnabled(false);
         hs.setClipToPadding(false);
+        hs.setClipChildren(false);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(-slack, 0, -slack, 0);
         hs.setLayoutParams(lp);
@@ -1706,6 +1709,7 @@ public class Home extends Activity {
             if (row == null || inRow == cols) {
                 row = new LinearLayout(Home.this);
                 row.setClipChildren(false);
+                into.setClipChildren(false);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
                 lp.bottomMargin = gap;
                 row.setLayoutParams(lp);
