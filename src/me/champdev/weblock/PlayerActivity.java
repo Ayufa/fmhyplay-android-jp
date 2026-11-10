@@ -237,9 +237,11 @@ public class PlayerActivity extends Activity {
         LinearLayout p = new LinearLayout(this);
         p.setOrientation(LinearLayout.VERTICAL);
         p.setClickable(true);   // a tap on the strip is not a tap on the picture
-        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x4D000000, 0x8C000000}));   // see-through: the picture shows behind the cards
+        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x73000000, 0x99000000}));   // see-through: the picture shows behind the cards
         p.setPadding(0, dp(8), 0, dp(12));
         p.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> bottomBar.setTranslationY(t - b));   // the buttons ride on top of it
+        // One shade from the buttons down: the bar's fade ends where the strip's begins (no darker band between them)
+        bottomBar.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0x73000000}));
         TextView head = new TextView(this);
         head.setText(title);
         head.setTextColor(Color.WHITE);
@@ -1791,6 +1793,7 @@ public class PlayerActivity extends Activity {
         ((android.view.ViewGroup) panel.getParent()).removeView(panel);
         panel = null;
         bottomBar.setTranslationY(0);
+        bottomBar.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0xCC000000}));
         if (shelfOpen) { shelfOpen = false; showControls(); }   // the controls were held open for the strip: their timer runs again
     }
 
