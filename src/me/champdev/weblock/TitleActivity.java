@@ -306,7 +306,7 @@ public class TitleActivity extends Home {
 
     @Override void openSite(Sites.Site s) {
         App.prefs.edit().putString(siteKey(), s.url).apply();
-        startActivity(withTitle(titleIntent(s)));
+        watch(null);   // the same as Watch, on the site just picked: a series starts its first episode, with the loading screen
     }
 
     // The title's own page when the site is known (by TMDB id), else the site with a search for its name
