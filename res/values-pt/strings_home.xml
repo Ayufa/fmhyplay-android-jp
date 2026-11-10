@@ -217,4 +217,6 @@
     <string name="home_group_my_playlists">Minhas playlists</string>
     <string name="home_group_other">Outros</string>
     <string name="home_group_live">Ao vivo</string>
+    <string name="home_region">Seu país</string>
+    <string name="home_region_help">Filmes e séries do seu país aparecem primeiro no Início.</string>
 </resources>

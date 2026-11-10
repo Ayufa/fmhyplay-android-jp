@@ -27,6 +27,8 @@ public class TitleActivity extends Home {
         t.year = String.valueOf(getIntent().getStringExtra("year"));
         t.poster = String.valueOf(getIntent().getStringExtra("poster"));
         t.anime = getIntent().getBooleanExtra("anime", false);
+        if (getIntent().getStringExtra("tmdb") != null) t.tmdb = getIntent().getStringExtra("tmdb");
+        if (t.name == null) t.name = "";
         super.onCreate(state);
         App.io.execute(() -> {
             Catalog.fill(t);
@@ -53,7 +55,7 @@ public class TitleActivity extends Home {
         FrameLayout poster = new FrameLayout(this);
         poster.setBackground(rounded(colorFor(t.name), dp(12)));
         poster.setClipToOutline(true);
-        TextView letter = text(t.name.substring(0, 1).toUpperCase(), 40, 0x55FFFFFF, true);
+        TextView letter = text(t.name.isEmpty() ? "?" : t.name.substring(0, 1).toUpperCase(), 40, 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         poster.addView(letter, new FrameLayout.LayoutParams(-1, -1));
         ImageView img = new ImageView(this);
@@ -89,7 +91,25 @@ public class TitleActivity extends Home {
             info.addView(overview);
         }
         hero.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
-        col.addView(hero);
+        // The title's wide picture runs edge to edge behind the top of the page and fades into it
+        FrameLayout top = new FrameLayout(this);
+        String art = Catalog.backdrop(t);
+        if (!art.isEmpty()) {
+            ImageView back = new ImageView(this);
+            back.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            top.addView(back, new FrameLayout.LayoutParams(-1, u(330, 210)));
+            loadImage(back, art, null, 1280);
+            int clear = BG & 0xFFFFFF;
+            View fade = new View(this);
+            fade.setBackground(new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{clear | 0x80000000, clear | 0xB3000000, BG}));
+            top.addView(fade, new FrameLayout.LayoutParams(-1, u(330, 210)));
+        }
+        hero.setPadding(side, col.getPaddingTop() + (art.isEmpty() ? 0 : u(70, 90)), side, 0);
+        top.addView(hero);
+        LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(-1, -2);
+        tl.setMargins(-side, -col.getPaddingTop(), -side, 0);
+        col.addView(top, tl);
 
         if (!App.tv && !t.overview.isEmpty()) {
             TextView overview = text(t.overview, 13, TEXT, false);

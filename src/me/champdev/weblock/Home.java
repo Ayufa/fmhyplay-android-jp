@@ -41,7 +41,8 @@ import java.util.Map;
 
 /** Start screen: Continue watching, then FMHY's streaming sites by category, then the user's own sites. */
 public class Home extends Activity {
-    static final int BG = 0xFF120E1A, CARD = 0xFF1E1828, ACCENT = 0xFFFF3B5C, TEXT = 0xFFF2EDF7, MUTED = 0xFF9A90A8;
+    // One accent, kept for play and progress; everything else is ink, two card tones and two text tones
+    static final int BG = 0xFF0E0C13, CARD = 0xFF1A1721, CARD_HI = 0xFF282431, NAV = 0xFF131019, ACCENT = 0xFFFF3B5C, TEXT = 0xFFF4F2F7, MUTED = 0xFF9690A3;
     static final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
         @Override protected int sizeOf(String k, Bitmap b) { return b.getByteCount(); }
     };
@@ -54,7 +55,7 @@ public class Home extends Activity {
     /** TV value on a TV, tighter value on a phone (dp / sp). */
     int u(float tv, float phone) { return dp(App.tv ? tv : phone); }
     float sp(float tv, float phone) { return App.tv ? tv : phone; }
-    TextView warpChip, adChip;
+    TextView warpChip;
     View firstCard;
     final Runnable warpChanged = this::updateChips;
 
@@ -69,6 +70,7 @@ public class Home extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         GifView.prefetch();   // the loading backdrop's pictures, fetched once
+        if (state == null && getClass() == Home.class) App.io.execute(Home::trimImages);
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         ScrollView sv = page = new ScrollView(this);
@@ -92,10 +94,15 @@ public class Home extends Activity {
             root.setOrientation(LinearLayout.VERTICAL);
             root.setBackgroundColor(BG);
             tabBar = tabBar();
-            root.addView(topBar());
-            if (App.tv) root.addView(tabBar);
+            root.addView(topBar());   // a TV has the tabs inside it
             root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
-            if (!App.tv) root.addView(tabBar);
+            if (!App.tv) {
+                View line = new View(this);
+                line.setBackgroundColor(0x14FFFFFF);
+                root.addView(line, new LinearLayout.LayoutParams(-1, 1));
+                root.addView(tabBar);
+                getWindow().setNavigationBarColor(NAV);
+            }
             setContentView(root);
         } else setContentView(sv);
         Warp.listeners.add(warpChanged);
@@ -138,6 +145,7 @@ public class Home extends Activity {
     void build() {
         col.removeAllViews();
         firstCard = null;
+        heroBox = null;
         built++;
         cardW = App.tv ? 220 : 156;   // a site grid on another tab resizes the shared card width
         styleTabs();
@@ -155,7 +163,9 @@ public class Home extends Activity {
     }
 
     void buildHome() {
-        col.addView(header());
+        heroBox = new FrameLayout(this);   // filled by the first poster row that has titles
+        heroBox.setVisibility(View.GONE);
+        col.addView(heroBox);
         if (!Update.available().isEmpty()) col.addView(updateLine(Update.available()));
 
         List<History.Entry> history = History.list();
@@ -183,17 +193,23 @@ public class Home extends Activity {
             LinearLayout row = row();
             for (Catalog.Title t : mine) row.addView(posterCard(t, posterW()));
         }
+        String movies = App.t(R.string.home_tab_movies), shows = App.t(R.string.home_tab_tv), anime = App.t(R.string.home_tab_anime);
+        // The viewer's own country first (its languages' most popular titles), then the world's
+        String region = App.region();
+        heroFrom = Catalog.languages(region).length > 0 ? "local=" + region : "genre=" + Catalog.NEW;
+        if (Catalog.languages(region).length > 0) {
+            String country = new java.util.Locale("", region).getDisplayCountry();
+            titleRow(movies, country, "movie", "local=" + region, 1);
+            titleRow(shows, country, "series", "local=" + region, 2);
+        }
         // Each kind: what just came out, then what everyone watches (anime: Kitsu's trending)
         String fresh = App.t(R.string.home_new), popular = App.t(R.string.home_popular);
-        col.addView(section(App.t(R.string.home_tab_movies)));
-        titleRow(fresh, "movie", "genre=" + Catalog.NEW, 1);
-        titleRow(popular, "movie", "", 1);
-        col.addView(section(App.t(R.string.home_tab_tv)));
-        titleRow(fresh, "series", "genre=" + Catalog.NEW, 2);
-        titleRow(popular, "series", "", 2);
-        col.addView(section(App.t(R.string.home_tab_anime)));
-        titleRow(fresh, "series", Catalog.NEW_ANIME, 4);
-        titleRow(popular, "series", Catalog.TRENDING_ANIME, 4);
+        titleRow(movies, fresh, "movie", "genre=" + Catalog.NEW, 1);
+        titleRow(movies, popular, "movie", "", 1);
+        titleRow(shows, fresh, "series", "genre=" + Catalog.NEW, 2);
+        titleRow(shows, popular, "series", "", 2);
+        titleRow(anime, fresh, "series", Catalog.NEW_ANIME, 4);
+        titleRow(anime, popular, "series", Catalog.TRENDING_ANIME, 4);
 
         List<Sites.Site> more = Sites.load().get(Cats.MORE);
         if (more != null) {
@@ -207,6 +223,85 @@ public class Home extends Activity {
             LinearLayout row = row();
             for (Map.Entry<String, List<Sites.Site>> l : langs.entrySet()) row.addView(languageCard(l.getKey(), l.getValue().size()));
         }
+    }
+
+    FrameLayout heroBox;
+    String heroFrom = "";   // the row whose titles the opening picture comes from: the local movies when there are any, else the new ones
+
+    /** Home's opening picture: one of the first row's titles (another each day), wide, with its name and a way in. Shown once its picture is here. */
+    void fillHero(List<Catalog.Title> list) {
+        if (heroBox == null || heroBox.getChildCount() > 0 || list.isEmpty()) return;
+        Catalog.Title t = list.get((int) (java.time.LocalDate.now().toEpochDay() % Math.min(5, list.size())));
+        String art = Catalog.backdrop(t);
+        if (art.isEmpty()) return;
+        FrameLayout box = heroBox;
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, u(250, 220));
+        lp.setMargins(-side, -col.getPaddingTop(), -side, 0);   // edge to edge, up to the bar
+        box.setLayoutParams(lp);
+        ImageView img = new ImageView(this);
+        img.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        box.addView(img, new FrameLayout.LayoutParams(-1, -1));
+        int clear = BG & 0xFFFFFF;
+        View fade = new View(this);
+        fade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{clear | 0x66000000, clear | 0x33000000, BG}));
+        box.addView(fade, new FrameLayout.LayoutParams(-1, -1));
+        if (App.tv) {   // wide screen: the words sit on a darker left side
+            View left = new View(this);
+            left.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, new int[]{clear | 0xD9000000, clear | 0x59000000, clear}));
+            box.addView(left, new FrameLayout.LayoutParams(-1, -1));
+        }
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        info.setPadding(side, 0, side, u(6, 4));
+        TextView name = text(t.name, sp(30, 24), Color.WHITE, true);
+        name.setMaxLines(2);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setShadowLayer(dp(6), 0, dp(1), 0x99000000);
+        info.addView(name);
+        List<String> meta = new ArrayList<>();
+        if (!t.year.isEmpty()) meta.add(t.year);
+        if (!t.rating.isEmpty()) meta.add("\u2605 " + t.rating);
+        if (!t.genres.isEmpty()) meta.add(t.genres);
+        TextView line = text(TextUtils.join("    ", meta), sp(14, 12), 0xFFDAD5E3, false);
+        line.setSingleLine();
+        line.setEllipsize(TextUtils.TruncateAt.END);
+        line.setPadding(0, dp(4), 0, 0);
+        info.addView(line);
+        if (App.tv && !t.overview.isEmpty()) {
+            TextView about = text(t.overview, 14, 0xFFDAD5E3, false);
+            about.setMaxLines(2);
+            about.setEllipsize(TextUtils.TruncateAt.END);
+            about.setMaxWidth(dp(520));
+            about.setPadding(0, dp(6), 0, 0);
+            info.addView(about, new LinearLayout.LayoutParams(-2, -2));
+        }
+        ImageView play = new ImageView(this);
+        play.setImageResource(R.drawable.ic_pb_play);
+        play.setColorFilter(Color.WHITE);
+        play.setContentDescription(t.name);
+        int pad = u(11, 10);
+        play.setPadding(pad, pad, pad, pad);
+        play.setBackground(rounded(ACCENT, dp(24)));
+        focusable(play, dp(24));
+        play.setOnClickListener(v -> openTitle(t));
+        LinearLayout.LayoutParams pl = new LinearLayout.LayoutParams(u(46, 42), u(46, 42));
+        pl.topMargin = u(12, 10);
+        info.addView(play, pl);
+        box.addView(info, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
+        box.setOnClickListener(v -> openTitle(t));
+        Bitmap hit = images.get(art);
+        if (hit != null) { img.setImageBitmap(hit); box.setVisibility(View.VISIBLE); return; }
+        App.io.execute(() -> {
+            Bitmap b = fetch(art, 1280);
+            if (b == null) return;
+            images.put(art, b);
+            runOnUiThread(() -> { img.setImageBitmap(b); box.setVisibility(View.VISIBLE); });
+        });
+    }
+
+    void openTitle(Catalog.Title t) {
+        startActivity(new Intent(this, TitleActivity.class).putExtra("id", t.id).putExtra("type", t.type).putExtra("name", t.name).putExtra("year", t.year)
+            .putExtra("poster", t.poster).putExtra("anime", t.anime).putExtra("tmdb", t.tmdb));
     }
 
     /** One row of site cards. Picks come first; a long category shows its first batch and an "All" card for the rest. */
@@ -274,6 +369,7 @@ public class Home extends Activity {
     static final Map<Integer, String> genres = new HashMap<>();
     static String focusGenre;
     LinearLayout tabBar;
+    ImageView gear;
     int built;
     boolean skipFocus;
 
@@ -286,34 +382,32 @@ public class Home extends Activity {
     LinearLayout tabBar() {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        if (App.tv) bar.setPadding(side - slack, dp(6), side - slack, dp(2));
-        else bar.setBackgroundColor(CARD);
-        for (int i = 0; i < TABS.length; i++) {
+        if (!App.tv) bar.setBackgroundColor(NAV);
+        for (int i = 0; i < SETTINGS; i++) {   // Settings is the gear in the top bar
             final int n = i;
-            TextView t = text(App.t(TABS[i]), App.tv ? 16 : 11, MUTED, true);
+            TextView t = text(App.t(TABS[i]), App.tv ? 15 : 11, MUTED, true);
             t.setContentDescription(t.getText());
             tabViews.add(t);
             t.setGravity(Gravity.CENTER);
+            t.setSingleLine(true);
             if (App.tv) {
-                t.setPadding(dp(12), dp(9), dp(12), dp(9));
-                t.setSingleLine(true);
-                // Each tab as wide as its label, the spare room shared evenly: spread across the row and "Settings" never wraps
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2, 1);
-                lp.setMargins(slack, 0, slack, 0);
+                t.setPadding(dp(12), dp(8), dp(12), dp(8));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+                lp.setMargins(dp(2), dp(4), dp(2), dp(4));
                 t.setLayoutParams(lp);
-                t.setBackground(rounded(CARD, dp(22)));
-                focusable(t, dp(22));
+                t.setBackground(rounded(0, dp(20)));
+                focusable(t, dp(20));
+                t.setForeground(null);   // the focus ring is in the background (styleTabs): the shared one does not draw on these
             } else {
                 t.setPadding(0, dp(8), 0, dp(7));
                 t.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-                // One line: a long name ("Einstellungen", "Configuración") gets a smaller font instead of wrapping
-                t.setSingleLine(true);
+                // One line: a long name ("Configuración") gets a smaller font instead of wrapping
                 t.addOnLayoutChangeListener((v, l, top, r, b, ol, ot, or, ob) -> {
                     float room = r - l - dp(14);   // clear of the neighbours and of a rounded screen corner
                     if (room > 0 && t.getPaint().measureText(t.getText().toString()) > room && t.getTextSize() > dp(8))
                         t.post(() -> t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, t.getTextSize() * room / t.getPaint().measureText(t.getText().toString())));
                 });
-                t.setBackground(rounded(CARD, dp(12)));
+                t.setBackground(rounded(0, dp(12)));
                 focusable(t, dp(12));
             }
             t.setOnClickListener(v -> selectTab(n));
@@ -322,30 +416,28 @@ public class Home extends Activity {
         return bar;
     }
 
-    /** Selected tab = accent colour; the others stay quiet. */
+    /** The open tab is bright (on a TV, on a raised pill); the others stay quiet. */
     void styleTabs() {
         if (tabBar == null) return;
+        if (gear != null) {
+            gear.setColorFilter(tab == SETTINGS ? TEXT : MUTED);
+            gear.setBackground(rounded(tab == SETTINGS ? CARD_HI : CARD, dp(22)));
+        }
         for (int i = 0; i < tabViews.size(); i++) {
             TextView t = tabViews.get(i);
             boolean on = i == tab;
-            android.graphics.drawable.Drawable d = getDrawable(TAB_ICONS[i]).mutate();
-            int size = dp(App.tv ? 20 : 22);
-            d.setBounds(0, 0, size, size);
-            int color = App.tv ? (on ? Color.WHITE : TEXT) : (on ? ACCENT : MUTED);
-            d.setTint(color);
-            t.setTextColor(color);
+            t.setTextColor(on ? TEXT : MUTED);
             if (App.tv) {
-                t.setCompoundDrawablesRelative(d, null, null, null);
-                t.setCompoundDrawablePadding(dp(8));
-                // Focus shows as a ring in the background itself (the shared foreground ring did not draw on these tabs):
-                // red on a quiet tab, white on the selected red one
-                GradientDrawable idle = rounded(on ? ACCENT : CARD, dp(22)), focused = rounded(on ? ACCENT : 0xFF2A2236, dp(22));
-                focused.setStroke(dp(3), on ? Color.WHITE : ACCENT);
+                GradientDrawable idle = rounded(on ? CARD_HI : 0, dp(20)), focused = rounded(CARD_HI, dp(20));
+                focused.setStroke(dp(2), Color.WHITE);
                 StateListDrawable bg = new StateListDrawable();
                 bg.addState(new int[]{android.R.attr.state_focused}, focused);
                 bg.addState(new int[0], idle);
                 t.setBackground(bg);
             } else {
+                android.graphics.drawable.Drawable d = getDrawable(TAB_ICONS[i]).mutate();
+                d.setBounds(0, 0, dp(22), dp(22));
+                d.setTint(on ? TEXT : MUTED);
                 t.setCompoundDrawablesRelative(null, d, null, null);
                 t.setCompoundDrawablePadding(dp(3));
             }
@@ -375,108 +467,129 @@ public class Home extends Activity {
         return t;
     }
 
-    View tabHeader(String title) {
-        LinearLayout h = new LinearLayout(this);
-        h.setGravity(Gravity.CENTER_VERTICAL);
-        TextView name = text(title, sp(26, 20), TEXT, true);
-        h.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
-        return h;   // Search and voice are in the top bar
-    }
-
-    /** On every tab: the logo (and name on a TV), WARP and ad block, then Search filling the rest, and voice. The tabs (with Settings) sit below it on a TV, at the bottom on a phone. */
+    /** On every tab: the logo, the tabs (TV; a phone has them at the bottom), Search, voice, WARP's state and Settings. */
     View topBar() {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackgroundColor(BG);
-        if (App.tv) bar.setPadding(side, dp(10), side - slack, 0);
-        else bar.setPadding(dp(12), dp(6), dp(6), dp(2));
+        if (App.tv) bar.setPadding(side, dp(12), side - dp(10), dp(4));
+        else bar.setPadding(dp(12), dp(6), dp(2), dp(4));
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_logo);
         logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        bar.addView(logo, new LinearLayout.LayoutParams(u(40, 28), u(40, 28)));
-        TextView name = text("FMHYPlay", sp(24, 18), TEXT, true);
-        // Written like the project banner: FMHY in white, Play in the accent red
-        android.text.SpannableString brand = new android.text.SpannableString("FMHYPlay");
-        brand.setSpan(new android.text.style.ForegroundColorSpan(ACCENT), 4, 8, 0);
-        name.setText(brand);
-        name.setPadding(dp(4), 0, u(24, 10), 0);
-        // A phone shows the logo alone, so Search gets the room; a TV has width for the name
-        if (App.tv) bar.addView(name);
-        else ((LinearLayout.LayoutParams) logo.getLayoutParams()).rightMargin = dp(8);
-        // WARP and ad block state left of Search on every tab (icons only on a phone, where the row is narrow)
+        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(u(34, 28), u(34, 28));
+        ll.rightMargin = dp(8);
+        bar.addView(logo, ll);
+        // One search for everything, from every tab: movies, series, IPTV channels and sites
+        TextView search = chip(v -> startActivity(new Intent(this, SearchActivity.class)));
+        search.setText(App.t(R.string.home_search));
+        search.setSingleLine(true);
+        search.setEllipsize(TextUtils.TruncateAt.END);
+        iconize(search, R.drawable.ic_search, MUTED);
+        if (App.tv) {
+            // Written like the project banner: FMHY in white, Play in the accent red
+            TextView name = text("", 21, TEXT, true);
+            android.text.SpannableString brand = new android.text.SpannableString("FMHYPlay");
+            brand.setSpan(new android.text.style.ForegroundColorSpan(ACCENT), 4, 8, 0);
+            name.setText(brand);
+            name.setPadding(0, 0, dp(12), 0);
+            bar.addView(name);
+            HorizontalScrollView tabs = new HorizontalScrollView(this);   // scrolls if a language's tab names run long
+            tabs.setHorizontalScrollBarEnabled(false);
+            tabs.addView(tabBar);
+            LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1);
+            tl.rightMargin = dp(12);
+            bar.addView(tabs, tl);
+        } else {
+            LinearLayout.LayoutParams sl = (LinearLayout.LayoutParams) search.getLayoutParams();
+            sl.width = 0;
+            sl.weight = 1;   // fills whatever the screen leaves
+        }
+        bar.addView(search);
+        bar.addView(voiceChip(v -> startActivity(new Intent(this, SearchActivity.class).putExtra("voice", true))));
         warpChip = chip(v -> {
             boolean on = Warp.state == Warp.State.ON || Warp.state == Warp.State.CONNECTING;
             App.prefs.edit().putBoolean("warp", !on).apply();
             if (on) Warp.stop(); else Warp.start();
         });
-        adChip = chip(v -> {
-            App.prefs.edit().putBoolean("adblock", !AdBlock.enabled()).apply();
-            updateChips();
-        });
         bar.addView(warpChip);
-        bar.addView(adChip);
         updateChips();
-        // One search for everything, from every tab: movies, series, IPTV channels and sites
-        TextView search = chip(v -> startActivity(new Intent(this, SearchActivity.class)));
-        search.setText(App.t(App.tv ? R.string.home_search_hint : R.string.home_search));
-        search.setTextColor(MUTED);
-        search.setSingleLine(true);
-        search.setEllipsize(TextUtils.TruncateAt.END);
-        iconize(search, R.drawable.ic_search, TEXT);
-        LinearLayout.LayoutParams sl = (LinearLayout.LayoutParams) search.getLayoutParams();
-        sl.width = 0;
-        sl.weight = 1;   // fills whatever the screen leaves
-        bar.addView(search);
-        bar.addView(voiceChip(v -> startActivity(new Intent(this, SearchActivity.class).putExtra("voice", true))));
+        gear = iconButton(R.drawable.ic_settings, App.t(R.string.home_tab_settings), v -> selectTab(SETTINGS));
+        LinearLayout.LayoutParams gl = (LinearLayout.LayoutParams) gear.getLayoutParams();
+        gl.topMargin = 0;
+        gl.rightMargin = u(10, 6);
+        bar.addView(gear);
         return bar;
     }
 
     /** A poster row that draws at once from disk if it can, else fills in when the catalog answers. */
-    void titleRow(String head, String type, String extra, int moreTab) {
-        col.addView(heading(head));
+    void titleRow(String head, String sub, String type, String extra, int moreTab) {
+        View h = heading(head, sub);
+        col.addView(h);
         LinearLayout row = row();
         final int id = built;
+        boolean local = extra.startsWith("local=");   // a bonus row: gone when its source is down, no error line
         List<Catalog.Title> hit = Catalog.cached(type, extra);
-        if (hit != null) { fillPosters(row, hit, extra, moreTab); return; }
-        row.addView(note(App.t(R.string.home_loading)));
+        if (hit != null && !(local && hit.isEmpty())) { fillPosters(row, hit, extra, moreTab); return; }
+        skeleton(row, posterW());
         App.io.execute(() -> {
             List<Catalog.Title> list = Catalog.list(type, extra);
             runOnUiThread(() -> {
                 if (id != built) return;
                 row.removeAllViews();
-                if (list == null || list.isEmpty()) row.addView(note(App.t(R.string.home_catalog_offline)));
-                else fillPosters(row, list, extra, moreTab);
+                if (list != null && !list.isEmpty()) fillPosters(row, list, extra, moreTab);
+                else if (local) {
+                    col.removeView(h);
+                    col.removeView((View) row.getParent());
+                    List<Catalog.Title> world = Catalog.cached("movie", "genre=" + Catalog.NEW);
+                    if (extra.equals(heroFrom) && moreTab == 1 && world != null) fillHero(world);
+                }
+                else row.addView(note(App.t(R.string.home_catalog_offline)));
             });
         });
     }
 
+    /** Quiet blocks where a row's posters will be, so the page does not jump when they arrive. */
+    void skeleton(LinearLayout row, int w) {
+        for (int i = 0; i < 8; i++) {
+            View v = new View(this);
+            LinearLayout.LayoutParams lp = cardParams(w, w * 3 / 2);
+            lp.bottomMargin = u(40, 36);   // the caption's room
+            v.setLayoutParams(lp);
+            v.setBackground(rounded(CARD, dp(10)));
+            row.addView(v);
+        }
+    }
+
     /** `extra` "genre=X": More opens the tab on that genre chip. moreTab -1: no More (the row is on that tab already). */
     void fillPosters(LinearLayout row, List<Catalog.Title> list, String extra, int moreTab) {
+        if (extra.equals(heroFrom) && moreTab == 1) fillHero(list);   // the movies row
         for (Catalog.Title t : list.subList(0, Math.min(14, list.size()))) row.addView(posterCard(t, posterW()));
         if (moreTab < 0) return;
         TextView more = text(App.t(R.string.home_more_arrow), sp(17, 15), TEXT, true);
         more.setGravity(Gravity.CENTER);
         more.setLayoutParams(cardParams(posterW(), posterW() * 3 / 2));
-        more.setBackground(rounded(0xFF2A2236, dp(12)));
-        focusable(more, dp(12));
-        more.setOnClickListener(v -> { if (extra.isEmpty() || extra.startsWith("genre=")) genres.put(moreTab, extra.replaceFirst("^genre=", "")); selectTab(moreTab); });
+        more.setBackground(rounded(CARD, dp(10)));
+        focusable(more, dp(10));
+        more.setOnClickListener(v -> {
+            if (extra.isEmpty() || extra.startsWith("genre=")) genres.put(moreTab, extra.replaceFirst("^genre=", ""));
+            else if (extra.startsWith("local=")) genres.put(moreTab, Catalog.LANG + Catalog.languages(extra.substring(6))[0]);
+            selectTab(moreTab);
+        });
         row.addView(more);
     }
 
     /** Movies, TV and Anime: the sites that carry them, then the native catalog (genre chips, posters, load more). */
     void catalogTab(String type, String category, String fixedGenre) {
-        col.addView(tabHeader(App.t(TABS[tab])));
         List<Sites.Site> sites = Sites.load().get(category);
         if (sites != null) {
             col.addView(heading(App.t(R.string.home_sites)));
             siteRow(category, sites);
         }
-        if (category.equals(Cats.ANIME)) titleRow(App.t(R.string.home_new_anime), "series", Catalog.NEW_ANIME, -1);
+        if (category.equals(Cats.ANIME)) titleRow(App.t(R.string.home_new_anime), "", "series", Catalog.NEW_ANIME, -1);
         String genre = fixedGenre.isEmpty() ? genres.getOrDefault(tab, Catalog.NEW) : fixedGenre;
-        // Genre names are Cinemeta's own keys and stay as they are; only the Anime tab fixes one (Animation)
-        col.addView(heading(fixedGenre.isEmpty() ? (genre.isEmpty() ? App.t(R.string.home_popular) : genre.equals(Catalog.NEW) ? App.t(R.string.home_newly_released)
-            : genre) : App.t(R.string.home_popular_animation)));
-        if (fixedGenre.isEmpty()) col.addView(genreChips());
+        // The chips say which list this is; only the Anime tab has one fixed list, under its own heading
+        col.addView(fixedGenre.isEmpty() ? genreChips() : heading(App.t(R.string.home_popular_animation)));
         LinearLayout holder = new LinearLayout(this);
         holder.setOrientation(LinearLayout.VERTICAL);
         col.addView(holder);
@@ -487,15 +600,17 @@ public class Home extends Activity {
         LinearLayout chips = new LinearLayout(this);
         chips.setClipChildren(false);
         String now = genres.getOrDefault(tab, Catalog.NEW);
-        String[] all = new String[Catalog.GENRES.length + 2];
-        System.arraycopy(Catalog.GENRES, 0, all, 2, Catalog.GENRES.length);
-        all[0] = Catalog.NEW;
-        all[1] = "";
+        // The viewer's own languages first, then New, Popular and the genres (Cinemeta's own keys, as they are)
+        List<String> all = new ArrayList<>();
+        for (String l : Catalog.languages(App.region())) all.add(Catalog.LANG + l);
+        all.add(Catalog.NEW);
+        all.add("");
+        all.addAll(java.util.Arrays.asList(Catalog.GENRES));
         for (String g : all) {
             TextView c = chip(v -> { genres.put(tab, g); focusGenre = g; build(); });
-            c.setText(g.isEmpty() ? App.t(R.string.home_popular) : g.equals(Catalog.NEW) ? App.t(R.string.home_new) : g);
-            c.setTextColor(g.equals(now) ? Color.WHITE : TEXT);
-            c.setBackground(rounded(g.equals(now) ? ACCENT : CARD, dp(22)));
+            c.setText(g.isEmpty() ? App.t(R.string.home_popular) : g.equals(Catalog.NEW) ? App.t(R.string.home_new) : g.startsWith(Catalog.LANG) ? g.substring(Catalog.LANG.length()) : g);
+            c.setTextColor(g.equals(now) ? BG : TEXT);
+            c.setBackground(rounded(g.equals(now) ? TEXT : CARD, dp(22)));
             focusable(c, dp(22));
             if (App.tv && g.equals(focusGenre)) { focusGenre = null; c.post(c::requestFocus); }
             chips.addView(c);
@@ -506,7 +621,7 @@ public class Home extends Activity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(-slack, 0, -slack, 0);
         sc.setLayoutParams(lp);
-        sc.setPadding(slack, 0, slack, dp(6));
+        sc.setPadding(slack, u(16, 8), slack, dp(8));
         sc.addView(chips);
         return sc;
     }
@@ -545,14 +660,13 @@ public class Home extends Activity {
         TextView more = text(App.t(R.string.home_load_more), sp(16, 14), TEXT, true);
         more.setGravity(Gravity.CENTER);
         more.setPadding(0, dp(14), 0, dp(14));
-        more.setBackground(rounded(0xFF2A2236, dp(14)));
+        more.setBackground(rounded(CARD_HI, dp(14)));
         focusable(more, dp(14));
         more.setOnClickListener(v -> { holder.removeView(more); loadPage(type, genre, skip + (anime ? 20 : list.size()), holder, grid, id); });
         holder.addView(more);
     }
 
     void sportsTab() {
-        col.addView(tabHeader(App.t(R.string.home_tab_sports)));
         for (String cat : new String[]{Cats.SPORTS, Cats.LIVE}) {
             List<Sites.Site> sites = Sites.load().get(cat);
             if (sites == null) continue;
@@ -565,7 +679,7 @@ public class Home extends Activity {
     void iptvTab() {
         LinearLayout h = new LinearLayout(this);
         h.setGravity(Gravity.CENTER_VERTICAL);
-        h.addView(text("IPTV", sp(26, 20), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
+        h.addView(text("IPTV", sp(20, 17), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
         TextView add = chip(v -> addPlaylistDialog());   // channels are in the top bar's Search, with movies and sites
         add.setText(App.t(R.string.home_add_playlist_chip));
         h.addView(add);
@@ -601,7 +715,7 @@ public class Home extends Activity {
                 TextView more = text(App.t(R.string.home_all_count, own.size()), sp(17, 15), TEXT, true);
                 more.setGravity(Gravity.CENTER);
                 more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-                more.setBackground(rounded(0xFF2A2236, dp(14)));
+                more.setBackground(rounded(CARD_HI, dp(14)));
                 focusable(more, dp(14));
                 more.setOnClickListener(v -> openIptv("mine", key, title, false));
                 mr.addView(more);
@@ -618,7 +732,7 @@ public class Home extends Activity {
             TextView allTile = text(App.t(R.string.home_all_count, in.size()), sp(17, 15), TEXT, true);
             allTile.setGravity(Gravity.CENTER);
             allTile.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-            allTile.setBackground(rounded(0xFF2A2236, dp(14)));
+            allTile.setBackground(rounded(CARD_HI, dp(14)));
             focusable(allTile, dp(14));
             allTile.setOnClickListener(v -> startActivity(new Intent(this, IptvActivity.class).putExtra("type", p.type).putExtra("key", p.key)
                 .putExtra("title", p.title).putExtra("cat", p.cat).putExtra("lang", p.lang)));
@@ -645,7 +759,7 @@ public class Home extends Activity {
             TextView more = text(App.t(R.string.home_all_count, works.size()), sp(17, 15), TEXT, true);
             more.setGravity(Gravity.CENTER);
             more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-            more.setBackground(rounded(0xFF2A2236, dp(14)));
+            more.setBackground(rounded(CARD_HI, dp(14)));
             focusable(more, dp(14));
             more.setOnClickListener(v -> openIptv("working", "", App.t(R.string.home_working_channels), false));
             wr.addView(more);
@@ -658,7 +772,7 @@ public class Home extends Activity {
             TextView more = text(App.t(R.string.home_more_arrow), sp(17, 15), TEXT, true);
             more.setGravity(Gravity.CENTER);
             more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-            more.setBackground(rounded(0xFF2A2236, dp(14)));
+            more.setBackground(rounded(CARD_HI, dp(14)));
             focusable(more, dp(14));
             more.setOnClickListener(v -> openIptv("fav", "", App.t(R.string.home_favorites), false));
             fr.addView(more);
@@ -1004,7 +1118,13 @@ public class Home extends Activity {
     }
 
     void settingsTab() {
-        col.addView(tabHeader(App.t(R.string.home_tab_settings)));
+        col.addView(heading(App.t(R.string.home_tab_home)));
+        TextView regionValue = new TextView(this);
+        col.addView(settingRow(App.t(R.string.home_region), App.t(R.string.home_region_help), regionValue, v -> regionDialog()));
+        String region = App.region();
+        boolean local = Catalog.languages(region).length > 0;
+        regionValue.setText(local ? new java.util.Locale("", region).getDisplayCountry() : App.t(App.prefs.getString("region", "").equals("-") ? R.string.home_off : R.string.warp_dns_auto));
+        regionValue.setTextColor(local ? GREEN : MUTED);
         col.addView(heading(App.t(R.string.home_connection)));
         warpValue = new TextView(this);
         col.addView(settingRow("WARP", App.t(R.string.home_warp_help), warpValue, v -> {
@@ -1216,6 +1336,20 @@ public class Home extends Activity {
         updateChips();
     }
 
+    /** Whose movies and series lead Home: found by itself, picked from the countries we have lists for, or off. */
+    void regionDialog() {
+        List<String> codes = new ArrayList<>(), names = new ArrayList<>();
+        for (String row : Catalog.LOCAL) codes.add(row.substring(0, 2));
+        codes.sort(java.util.Comparator.comparing(c -> new java.util.Locale("", c).getDisplayCountry()));
+        codes.add(0, "");
+        codes.add(1, "-");
+        for (String c : codes) names.add(c.isEmpty() ? App.t(R.string.warp_dns_auto) : c.equals("-") ? App.t(R.string.home_off) : new java.util.Locale("", c).getDisplayCountry());
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.home_region)).setItems(names.toArray(new String[0]), (d, i) -> {
+            App.prefs.edit().putString("region", codes.get(i)).apply();
+            build();
+        }).show();
+    }
+
     /** Shows a code to enter at simkl.com/pin (where you can also make the free account) and waits for it. */
     void simklDialog() {
         TextView steps = text(App.t(R.string.home_getting_code), sp(17, 15), TEXT, false), code = text("", sp(40, 32), TEXT, true);
@@ -1366,59 +1500,49 @@ public class Home extends Activity {
         return row;
     }
 
+    /** A poster with its name and year under it. The picture is the part that takes focus and clicks. */
     View posterCard(Catalog.Title t, int w) {
-        FrameLayout card = new FrameLayout(this);
-        card.setLayoutParams(cardParams(w, w * 3 / 2));
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setClipChildren(false);
+        card.setLayoutParams(cardParams(w, 0));
+        FrameLayout art = new FrameLayout(this);
         ImageView img = new ImageView(this);
         img.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        card.addView(img, new FrameLayout.LayoutParams(-1, -1));
-        TextView letter = text(t.name.substring(0, 1).toUpperCase(), sp(40, 30), 0x55FFFFFF, true);
+        art.addView(img, new FrameLayout.LayoutParams(-1, -1));
+        TextView letter = text(t.name.isEmpty() ? "?" : t.name.substring(0, 1).toUpperCase(), sp(40, 30), 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
-        card.addView(letter, new FrameLayout.LayoutParams(-1, -1));
+        art.addView(letter, new FrameLayout.LayoutParams(-1, -1));
         if (!t.poster.isEmpty()) loadImage(img, t.poster, letter);
-
-        View shade = new View(this);
-        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0x00000000, 0xE6000000}));
-        card.addView(shade, new FrameLayout.LayoutParams(-1, -1));
-        LinearLayout info = new LinearLayout(this);
-        info.setOrientation(LinearLayout.VERTICAL);
-        info.setPadding(u(9, 7), 0, u(9, 7), u(8, 6));
-        TextView name = text(t.name, sp(14, 12), Color.WHITE, true);
-        name.setMaxLines(2);
-        name.setEllipsize(TextUtils.TruncateAt.END);
-        info.addView(name);
-        String meta = (t.year.isEmpty() ? "" : t.year) + (t.rating.isEmpty() ? "" : (t.year.isEmpty() ? "" : "  ·  ") + "★ " + t.rating);
-        if (!meta.isEmpty()) info.addView(text(meta, sp(12, 10), 0xFFD8D0E2, false));
-        card.addView(info, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         if (kindBadges()) {
             TextView kind = text(App.t(t.anime ? R.string.home_tab_anime : t.series() ? R.string.home_kind_series : R.string.home_kind_movie), sp(11, 10), Color.WHITE, true);
             kind.setPadding(u(8, 6), u(3, 2), u(8, 6), u(3, 2));
-            kind.setBackground(rounded(t.anime ? ACCENT : t.series() ? 0xE62E8B60 : 0xE63B5BCC, dp(8)));
+            kind.setBackground(rounded(0xCC0E0C13, dp(6)));
             FrameLayout.LayoutParams kp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START);
             kp.setMargins(u(7, 5), u(7, 5), 0, 0);
-            card.addView(kind, kp);
+            art.addView(kind, kp);
         }
-
-        card.setBackground(rounded(colorFor(t.name), dp(12)));
-        card.setClipToOutline(true);
-        focusable(card, dp(12));
-        card.setOnClickListener(v -> startActivity(new Intent(this, TitleActivity.class)
-            .putExtra("id", t.id).putExtra("type", t.type).putExtra("name", t.name).putExtra("year", t.year).putExtra("poster", t.poster).putExtra("anime", t.anime)));
-        card.setOnLongClickListener(v -> {
+        art.setBackground(rounded(colorFor(t.name), dp(10)));
+        art.setClipToOutline(true);
+        art.setContentDescription(t.name);
+        focusable(art, dp(10));
+        art.setOnClickListener(v -> openTitle(t));
+        art.setOnLongClickListener(v -> {
             toast(App.t(Catalog.toggleMine(t) ? R.string.home_added_mylist : R.string.home_removed_mylist));
             if (tab == 0 && tabs()) build();
             return true;
         });
-        if (firstCard == null) firstCard = card;
+        card.addView(art, new LinearLayout.LayoutParams(-1, dp(w * 3 / 2)));
+        TextView name = text(t.name, sp(13, 12), TEXT, false);
+        name.setSingleLine();
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setPadding(dp(2), u(8, 6), dp(2), 0);
+        card.addView(name);
+        // always there, also empty, so every card in a row is the same height
+        card.addView(text((t.year.isEmpty() ? "" : t.year) + (t.rating.isEmpty() ? "" : (t.year.isEmpty() ? "" : "    ") + "\u2605 " + t.rating), sp(11, 10), MUTED, false));
+        ((TextView) card.getChildAt(2)).setPadding(dp(2), dp(1), dp(2), 0);
+        if (firstCard == null) firstCard = art;
         return card;
-    }
-
-    /** Home's first line on a TV: the hold-OK hint (WARP and ad block are in the top bar). */
-    View header() {
-        if (!App.tv) return new View(this);
-        TextView hint = text(App.t(R.string.home_hint_hold_site), 13, MUTED, false);
-        hint.setPadding(dp(6), dp(2), 0, 0);
-        return hint;
     }
 
     /** Refreshes the WARP and ad block state shown on the Home chips and in Settings (whichever is on screen). */
@@ -1433,20 +1557,14 @@ public class Home extends Activity {
             default: label = App.t(R.string.home_warp_off); word = App.t(R.string.home_off); color = MUTED;
         }
         boolean ads = AdBlock.enabled();
-        String adLabel = App.t(ads ? R.string.home_ad_block_on : R.string.home_ad_block_off);
         if (warpChip != null) {
-            warpChip.setText(App.tv ? label : "");
+            // The icon's colour says on or off; trouble is spelled out where there is room
+            boolean words = App.tv && (Warp.state == Warp.State.CONNECTING || Warp.state == Warp.State.FAILED);
+            warpChip.setText(words ? label : "");
             warpChip.setTooltipText(label);
             warpChip.setContentDescription(label);
             iconize(warpChip, icon, color);
-            if (!App.tv) warpChip.setCompoundDrawablePadding(0);
-        }
-        if (adChip != null) {
-            adChip.setText(App.tv ? adLabel : "");
-            adChip.setTooltipText(adLabel);
-            adChip.setContentDescription(adLabel);
-            iconize(adChip, R.drawable.ic_block, ads ? GREEN : MUTED);
-            if (!App.tv) adChip.setCompoundDrawablePadding(0);
+            if (!words) warpChip.setCompoundDrawablePadding(0);
         }
         if (warpValue != null) { warpValue.setText(word); warpValue.setTextColor(color); }
         if (adValue != null) { adValue.setText(App.t(ads ? R.string.home_on : R.string.home_off)); adValue.setTextColor(ads ? GREEN : MUTED); }
@@ -1490,16 +1608,20 @@ public class Home extends Activity {
         return t;
     }
 
-    /** A kind's block on Home (Movies, TV, Anime): bigger than a row's heading. */
-    TextView section(String s) {
-        TextView t = text(s, sp(26, 20), TEXT, true);
-        t.setPadding(0, u(34, 18), 0, 0);
-        return t;
+    TextView heading(String s) {
+        return heading(s, "");
     }
 
-    TextView heading(String s) {
-        TextView t = text(s, sp(20, 16), TEXT, true);
-        t.setPadding(0, u(22, 10), 0, u(6, 6));   // a gap before the cards, also on a phone (tile grids have none of their own)
+    /** A row's name, with what narrows it ("Movies  New", "TV  India") quieter beside it. */
+    TextView heading(String s, String sub) {
+        TextView t = text(s, sp(18, 16), TEXT, true);
+        if (!sub.isEmpty()) {
+            android.text.SpannableString both = new android.text.SpannableString(s + "   " + sub);
+            both.setSpan(new android.text.style.ForegroundColorSpan(MUTED), s.length(), both.length(), 0);
+            both.setSpan(new android.text.style.RelativeSizeSpan(0.82f), s.length(), both.length(), 0);
+            t.setText(both);
+        }
+        t.setPadding(0, u(20, 14), 0, u(4, 6));   // a gap before the cards, also on a phone (tile grids have none of their own)
         return t;
     }
 
@@ -1574,7 +1696,7 @@ public class Home extends Activity {
         ImageView img = new ImageView(this);
         img.setScaleType(ImageView.ScaleType.CENTER_CROP);
         card.addView(img, new FrameLayout.LayoutParams(-1, -1));
-        TextView letter = text(e.title.substring(0, 1).toUpperCase(), sp(44, 32), 0x55FFFFFF, true);
+        TextView letter = text(e.title.isEmpty() ? "?" : e.title.substring(0, 1).toUpperCase(), sp(44, 32), 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         card.addView(letter, new FrameLayout.LayoutParams(-1, -1));
         if (!e.image.isEmpty()) loadImage(img, e.image, letter);
@@ -1594,20 +1716,23 @@ public class Home extends Activity {
         info.addView(text((e.episode.isEmpty() ? "" : e.episode + "  ·  ") + e.site + "  ·  " + ago, 12, 0xFFD8D0E2, false));
         card.addView(info, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         if (e.pos > 0 && e.dur > 0) {   // how much is watched: the player carries on from there
-            info.setPadding(u(12, 9), 0, u(12, 9), u(15, 11));
+            info.setPadding(u(12, 9), 0, u(12, 9), u(18, 14));
             float done = (float) Math.min(1.0, (double) e.pos / e.dur);
-            LinearLayout track = new LinearLayout(this);   // the card's full width, along its bottom edge
-            track.setBackgroundColor(0x55FFFFFF);
+            LinearLayout track = new LinearLayout(this);
+            track.setBackground(rounded(0x55FFFFFF, dp(2)));
+            track.setClipToOutline(true);
             View fill = new View(this);
             fill.setBackgroundColor(ACCENT);
             track.addView(fill, new LinearLayout.LayoutParams(0, -1, done));
             track.addView(new View(this), new LinearLayout.LayoutParams(0, -1, 1 - done));
-            card.addView(track, new FrameLayout.LayoutParams(-1, dp(5), Gravity.BOTTOM));
+            FrameLayout.LayoutParams tp = new FrameLayout.LayoutParams(-1, dp(3), Gravity.BOTTOM);
+            tp.setMargins(u(12, 9), 0, u(12, 9), u(9, 7));
+            card.addView(track, tp);
         }
 
-        card.setBackground(rounded(colorFor(e.site), 0));   // square, so the watched line runs straight edge to edge
+        card.setBackground(rounded(colorFor(e.site), dp(12)));
         card.setClipToOutline(true);
-        focusable(card, 0);
+        focusable(card, dp(12));
         // Resume: the episode's own page, with the backdrop up while the app presses play and hands over to the player
         card.setOnClickListener(v -> startActivity(WebActivity.open(this, e.site, e.siteUrl, e.url).putExtra("play", true).putExtra("name", e.title)));
         card.setOnLongClickListener(v -> {
@@ -1707,7 +1832,7 @@ public class Home extends Activity {
         TextView card = text(App.t(R.string.home_all_count, count), sp(17, 15), TEXT, true);
         card.setGravity(Gravity.CENTER);
         card.setLayoutParams(cardParams(cardW, cardH));
-        card.setBackground(rounded(0xFF2A2236, dp(14)));
+        card.setBackground(rounded(CARD_HI, dp(14)));
         focusable(card, dp(14));
         card.setOnClickListener(v -> startActivity(new Intent(this, CategoryActivity.class).putExtra("category", category)));
         return card;
@@ -1717,7 +1842,7 @@ public class Home extends Activity {
         TextView card = text(App.t(R.string.home_add_site_card), sp(17, 15), TEXT, true);
         card.setGravity(Gravity.CENTER);
         card.setLayoutParams(cardParams(cardW, cardH));
-        card.setBackground(rounded(0xFF2A2236, dp(14)));
+        card.setBackground(rounded(CARD_HI, dp(14)));
         focusable(card, dp(14));
         card.setOnClickListener(v -> addSiteDialog());
         return card;
@@ -1736,23 +1861,24 @@ public class Home extends Activity {
     }
 
     LinearLayout.LayoutParams cardParams(int w, int h) {
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(w), dp(h));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(w), h > 0 ? dp(h) : -2);   // h 0: as tall as its content
         lp.setMargins(0, 0, dp(gapDp), 0);
         return lp;
     }
 
-    // Focus = accent ring inside the card plus a lift; nothing grows, so nothing clips at the margins
+    // Focus = a white ring and a lift; cards also grow a little (rows keep slack for it), wide rows only get the ring
     void focusable(View v, int radius) {
         v.setFocusable(true);
         v.setClickable(true);
         GradientDrawable ring = new GradientDrawable();
         ring.setCornerRadius(radius);
-        ring.setStroke(dp(3), ACCENT);
+        ring.setStroke(dp(App.tv ? 3 : 2), Color.WHITE);
         StateListDrawable states = new StateListDrawable();
         states.addState(new int[]{android.R.attr.state_focused}, ring);
         v.setForeground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), states, rounded(Color.WHITE, radius)));
         v.setOnFocusChangeListener((view, has) -> {
-            view.animate().translationZ(has ? dp(8) : 0).setDuration(120).start();
+            float s = has && view.getWidth() < dp(330) ? 1.05f : 1f;
+            view.animate().scaleX(s).scaleY(s).translationZ(has ? dp(8) : 0).setDuration(120).start();
             if (has) view.post(() -> reveal(view));
         });
         if (!(v.getBackground() instanceof GradientDrawable) && !(v instanceof FrameLayout)) v.setBackground(rounded(CARD, radius));
@@ -1760,13 +1886,16 @@ public class Home extends Activity {
 
     // Keep the focused card (grown + ring) fully on screen with a margin, and its row heading visible
     void reveal(View v) {
-        // A delayed focus callback can outlive its card when the rows are rebuilt
+        // A delayed focus callback can outlive its card when the rows are rebuilt; the top bar is not part of the page
         View up = v;
-        while (up != null && up != page) up = up.getParent() instanceof View ? (View) up.getParent() : null;
+        HorizontalScrollView hs = null;
+        while (up != null && up != page) {
+            up = up.getParent() instanceof View ? (View) up.getParent() : null;
+            if (hs == null && up instanceof HorizontalScrollView) hs = (HorizontalScrollView) up;
+        }
         if (up == null) return;
         Rect r = new Rect();
-        if (v.getParent() != null && v.getParent().getParent() instanceof HorizontalScrollView) {
-            HorizontalScrollView hs = (HorizontalScrollView) v.getParent().getParent();
+        if (hs != null) {
             v.getDrawingRect(r);
             hs.offsetDescendantRectToMyCoords(v, r);
             int x = hs.getScrollX(), w = hs.getWidth();
@@ -1777,7 +1906,7 @@ public class Home extends Activity {
         page.offsetDescendantRectToMyCoords(v, r);
         int y = page.getScrollY(), h = page.getHeight();
         if (r.top - dp(64) < y) page.smoothScrollTo(0, Math.max(0, r.top - dp(64)));
-        else if (r.bottom + dp(24) > y + h) page.smoothScrollTo(0, r.bottom + dp(24) - h);
+        else if (r.bottom + dp(48) > y + h) page.smoothScrollTo(0, r.bottom + dp(48) - h);
     }
 
     static GradientDrawable rounded(int color, int radius) {
@@ -1803,14 +1932,24 @@ public class Home extends Activity {
 
     // Small image loader: memory + disk cache, fetched through WARP
     void loadImage(ImageView into, String url, View placeholder) {
+        loadImage(into, url, placeholder, 480);
+    }
+
+    /** `min`: the least width in pixels the picture is kept at (posters 480, backdrops more). */
+    void loadImage(ImageView into, String url, View placeholder, int min) {
         into.setTag(url);
         Bitmap hit = images.get(url);
         if (hit != null) { show(into, hit, placeholder); return; }
         App.io.execute(() -> {
-            Bitmap b = fetch(url);
+            Bitmap b = fetch(url, min);
             if (b == null) return;
             images.put(url, b);
-            runOnUiThread(() -> { if (url.equals(into.getTag())) show(into, b, placeholder); });
+            runOnUiThread(() -> {
+                if (!url.equals(into.getTag())) return;
+                show(into, b, placeholder);
+                into.setAlpha(0f);
+                into.animate().alpha(1).setDuration(180).start();
+            });
         });
     }
 
@@ -1820,6 +1959,18 @@ public class Home extends Activity {
     }
 
     static Bitmap fetch(String url) {
+        return fetch(url, 480);
+    }
+
+    /** Pictures nobody has looked at for 60 days leave the disk (reading one counts as looking). */
+    static void trimImages() {
+        File[] all = new File(App.app.getFilesDir(), "img").listFiles();
+        if (all == null) return;
+        long old = System.currentTimeMillis() - 60L * 24 * 3600 * 1000;
+        for (File f : all) if (f.lastModified() < old) f.delete();
+    }
+
+    static Bitmap fetch(String url, int min) {
         try {
             byte[] sha = MessageDigest.getInstance("SHA-1").digest(url.getBytes("UTF-8"));
             StringBuilder name = new StringBuilder();
@@ -1835,12 +1986,12 @@ public class Home extends Activity {
                     for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
                 }
                 if (!tmp.renameTo(f)) return null;
-            }
+            } else if (System.currentTimeMillis() - f.lastModified() > 24L * 3600 * 1000) f.setLastModified(System.currentTimeMillis());
             BitmapFactory.Options o = new BitmapFactory.Options();
             o.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(f.getPath(), o);
             o.inSampleSize = 1;
-            while (o.outWidth / (o.inSampleSize * 2) >= 480) o.inSampleSize *= 2;
+            while (o.outWidth / (o.inSampleSize * 2) >= min) o.inSampleSize *= 2;
             o.inJustDecodeBounds = false;
             return BitmapFactory.decodeFile(f.getPath(), o);
         } catch (Exception e) {

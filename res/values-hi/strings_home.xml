@@ -217,4 +217,6 @@
     <string name="home_group_my_playlists">मेरी प्लेलिस्ट</string>
     <string name="home_group_other">अन्य</string>
     <string name="home_group_live">लाइव</string>
+    <string name="home_region">आपका देश</string>
+    <string name="home_region_help">आपके देश की फ़िल्में और सीरीज़ होम पर सबसे पहले आती हैं।</string>
 </resources>

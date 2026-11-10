@@ -217,4 +217,6 @@
     <string name="home_group_my_playlists">قوائم التشغيل الخاصة بي</string>
     <string name="home_group_other">أخرى</string>
     <string name="home_group_live">مباشر</string>
+    <string name="home_region">بلدك</string>
+    <string name="home_region_help">أفلام ومسلسلات بلدك تظهر أولاً في الرئيسية.</string>
 </resources>

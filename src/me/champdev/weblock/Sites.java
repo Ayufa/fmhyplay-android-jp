@@ -246,11 +246,12 @@ final class Sites {
     }
 
     static String readAll(InputStream in) throws IOException {
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        byte[] b = new byte[16384];
-        for (int n; (n = in.read(b)) > 0; ) buf.write(b, 0, n);
-        in.close();
-        return buf.toString("UTF-8");
+        try (InputStream src = in) {   // closed also when the read fails half way
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            byte[] b = new byte[16384];
+            for (int n; (n = src.read(b)) > 0; ) buf.write(b, 0, n);
+            return buf.toString("UTF-8");
+        }
     }
 
     /** A site the user typed in; it lands in Favorites. */
