@@ -362,7 +362,11 @@ public class Home extends Activity {
         View arrived = new View(this) {
             @Override public void setVisibility(int v) { box.setVisibility(View.VISIBLE); }
         };
-        loadImage(img, art, arrived, 1280);
+        // loaded at once, not when "near the screen": the box is hidden until this very picture is here
+        String key = art + "@1280";
+        img.setTag(key);
+        Bitmap hit = images.get(key);
+        if (hit != null) show(img, hit, arrived); else startLoad(img, art, arrived, 1280, key);
     }
 
     void openTitle(Catalog.Title t) {
