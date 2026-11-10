@@ -237,7 +237,7 @@ public class PlayerActivity extends Activity {
         LinearLayout p = new LinearLayout(this);
         p.setOrientation(LinearLayout.VERTICAL);
         p.setClickable(true);   // a tap on the strip is not a tap on the picture
-        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xE6000000, 0xF5000000}));
+        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x4D000000, 0x8C000000}));   // see-through: the picture shows behind the cards
         p.setPadding(0, dp(8), 0, dp(12));
         p.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> bottomBar.setTranslationY(t - b));   // the buttons ride on top of it
         TextView head = new TextView(this);
@@ -246,6 +246,7 @@ public class PlayerActivity extends Activity {
         head.setTextSize(15);
         head.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
         head.setPadding(dp(24), 0, dp(24), dp(6));
+        head.setShadowLayer(dp(3), 0, dp(1), 0xCC000000);
         p.addView(head);
         android.widget.HorizontalScrollView hs = new android.widget.HorizontalScrollView(this);
         hs.setHorizontalScrollBarEnabled(false);
@@ -276,6 +277,7 @@ public class PlayerActivity extends Activity {
             name.setSingleLine();
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
             name.setPadding(dp(2), dp(5), dp(2), 0);
+            name.setShadowLayer(dp(3), 0, dp(1), 0xCC000000);   // readable over a bright picture
             card.addView(name, new LinearLayout.LayoutParams(w, -2));
             GradientDrawable ring = Home.rounded(0, dp(10));
             ring.setStroke(dp(i == current ? 2 : 3), i == current ? Home.ACCENT : Color.WHITE);
