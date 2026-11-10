@@ -111,27 +111,8 @@ public class Home extends Activity {
                 return false;
             });
         }
-        if (tabs()) {
-            // A TV has everything on a rail down the left side, one Left press from any row; a phone has a top bar and tabs at the bottom
-            if (state == null) tab = 0;
-            tabBar = tabBar();
-            LinearLayout root = new LinearLayout(this);
-            root.setBackgroundColor(BG);
-            if (App.tv) {
-                root.addView(rail(), new LinearLayout.LayoutParams(dp(RAIL), -1));
-                root.addView(sv, new LinearLayout.LayoutParams(0, -1, 1));
-            } else {
-                root.setOrientation(LinearLayout.VERTICAL);
-                root.addView(topBar());
-                root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
-                View line = new View(this);
-                line.setBackgroundColor(0x14FFFFFF);
-                root.addView(line, new LinearLayout.LayoutParams(-1, 1));
-                root.addView(tabBar);
-                getWindow().setNavigationBarColor(NAV);
-            }
-            setContentView(root);
-        } else setContentView(sv);
+        if (tabs() && state == null) tab = 0;
+        setContentView(withNav(sv));
         Warp.listeners.add(warpChanged);
 
         // Site lists and IPTV channels refresh whenever the app starts and they are older than 12 hours
@@ -191,6 +172,32 @@ public class Home extends Activity {
             if (t == 5) Iptv.refresh(); else Sites.refresh();
             runOnUiThread(() -> { refreshing = false; if (tab == t) build(); });
         });
+    }
+
+    /**
+     * A screen's content with the navigation around it, on every screen: a TV has the rail down the left side (one Left press from any row),
+     * a phone the tabs along the bottom, and on the tab screens the top bar. A page on top of the tabs (title, search, a list) goes Home on a tab press.
+     */
+    View withNav(View content) {
+        tabViews.clear();
+        tabBar = tabBar();
+        LinearLayout root = new LinearLayout(this);
+        root.setBackgroundColor(BG);
+        if (App.tv) {
+            root.addView(rail(), new LinearLayout.LayoutParams(dp(RAIL), -1));
+            root.addView(content, new LinearLayout.LayoutParams(0, -1, 1));
+        } else {
+            root.setOrientation(LinearLayout.VERTICAL);
+            if (tabs()) root.addView(topBar());
+            root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
+            View line = new View(this);
+            line.setBackgroundColor(0x14FFFFFF);
+            root.addView(line, new LinearLayout.LayoutParams(-1, 1));
+            root.addView(tabBar);
+            getWindow().setNavigationBarColor(NAV);
+        }
+        styleTabs();
+        return root;
     }
 
     /** Draws the selected tab. Subclasses (search, category, title) replace this whole method. */
@@ -563,6 +570,11 @@ public class Home extends Activity {
     }
 
     void selectTab(int n) {
+        if (!tabs()) {   // from a page on top of the tabs: Home, on that tab
+            tab = n;
+            goHome(this);
+            return;
+        }
         if (n == tab) return;
         tab = n;
         // The pressed tab lights up and the old page goes at once; the new page is drawn on the next frame
@@ -868,19 +880,32 @@ public class Home extends Activity {
         r.addView(more);
     }
 
-    /** Every category, then every country (the viewer's first), as slim cards: icon, name, how many. */
+    /** The viewer's country by category (under its channel row), then every country, then every category, as slim cards: icon, name, how many. */
     void iptvGroups(String own) {
         int cols = App.tv ? 5 : 2;
+        Map<String, List<Iptv.Channel>> byCat = Iptv.groups("cat"), by = Iptv.groups("country");
+        List<Iptv.Channel> mine = by.get(own);
+        if (mine != null) {
+            Grid local = new Grid(col, cols);
+            for (String cat : byCat.keySet()) {   // the categories' own order
+                int n = 0;
+                for (Iptv.Channel c : mine) if (java.util.Arrays.asList(c.cats).contains(cat)) n++;
+                if (n == 0) continue;
+                View card = groupCard(local.cell, Iptv.emoji(cat), groupName(cat), n, "country", own);
+                card.setOnClickListener(v -> startActivity(new Intent(this, IptvActivity.class).putExtra("type", "country").putExtra("key", own)
+                    .putExtra("title", own).putExtra("cat", cat)));
+                local.add(card);
+            }
+        }
+        col.addView(heading(App.t(R.string.home_countries)));
+        Grid countries = new Grid(col, cols);
+        if (mine != null) countries.add(groupCard(countries.cell, Iptv.flag(own), own, mine.size(), "country", own));
+        for (Map.Entry<String, List<Iptv.Channel>> e : by.entrySet()) if (!e.getKey().equals(own)) countries.add(groupCard(countries.cell, Iptv.flag(e.getKey()), e.getKey(), e.getValue().size(), "country", e.getKey()));
         col.addView(heading(App.t(R.string.home_categories)));
         Grid cats = new Grid(col, cols);
         int working = Iptv.working().size();
         if (working > 0) cats.add(groupCard(cats.cell, "\u2705", App.t(R.string.home_working_channels), working, "working", ""));
-        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(groupCard(cats.cell, Iptv.emoji(e.getKey()), groupName(e.getKey()), e.getValue().size(), "cat", e.getKey()));
-        col.addView(heading(App.t(R.string.home_countries)));
-        Grid countries = new Grid(col, cols);
-        Map<String, List<Iptv.Channel>> by = Iptv.groups("country");
-        if (by.containsKey(own)) countries.add(groupCard(countries.cell, Iptv.flag(own), own, by.get(own).size(), "country", own));
-        for (Map.Entry<String, List<Iptv.Channel>> e : by.entrySet()) if (!e.getKey().equals(own)) countries.add(groupCard(countries.cell, Iptv.flag(e.getKey()), e.getKey(), e.getValue().size(), "country", e.getKey()));
+        for (Map.Entry<String, List<Iptv.Channel>> e : byCat.entrySet()) cats.add(groupCard(cats.cell, Iptv.emoji(e.getKey()), groupName(e.getKey()), e.getValue().size(), "cat", e.getKey()));
     }
 
     View groupCard(int w, String icon, String label, int n, String type, String key) {
@@ -909,10 +934,10 @@ public class Home extends Activity {
 
     int builtW;   // the window width the tiles were last sized for
 
-    /** The width the page has: the window's, less the rail on a TV's tab screens. */
+    /** The width the page has: the window's, less the rail on a TV. */
     int winW() {
         builtW = getResources().getDisplayMetrics().widthPixels;
-        return builtW - (App.tv && tabs() ? dp(RAIL) : 0);
+        return builtW - (App.tv ? dp(RAIL) : 0);
     }
 
     /**

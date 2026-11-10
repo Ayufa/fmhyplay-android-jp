@@ -19,7 +19,8 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 - The app's name is on the TV rail and the phone's top bar.
 - **Smaller tiles on a TV**: eight posters across in grids, more in every row.
 - **Pull down to refresh** on a phone: reloads the open tab (catalog lists, sites on Sports, channels on IPTV).
-- **IPTV tab redone**: what you watched and your favorites first, then your playlists and pins, then your country's channels, then categories and countries as compact cards (your country first). Channel logos sit on one quiet tone.
+- **IPTV tab redone**: what you watched and your favorites first, then your playlists and pins, then your country's channels with its own categories (India: News, Movies, Kids...), then all countries and all categories as compact cards. Channel logos sit on one quiet tone.
+- **Navigation on every screen**: title pages, search and lists keep the tabs (bottom bar on a phone, rail on a TV); pressing one goes Home on that tab.
 - Rows show grey placeholders while they load, so the page does not jump.
 
 ### 🔧 Changed

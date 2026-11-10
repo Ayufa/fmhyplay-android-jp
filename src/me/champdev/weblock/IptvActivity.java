@@ -93,7 +93,7 @@ public class IptvActivity extends Home {
 
         // Square tiles, 6 across on a TV and 3 on a phone
         int cols = App.tv ? 8 : 3, gap = dp(gapDp);
-        cell = (getResources().getDisplayMetrics().widthPixels - 2 * side - gap * (cols - 1)) / cols - 1;
+        cell = (winW() - 2 * side - gap * (cols - 1)) / cols - 1;
         list = new GridView(this);
         list.setNumColumns(cols);
         list.setHorizontalSpacing(gap);
@@ -123,7 +123,7 @@ public class IptvActivity extends Home {
         list.setOnItemClickListener((a, v, i, id) -> Iptv.play(this, shown.get(i)));
         list.setOnItemLongClickListener((a, v, i, id) -> { star(shown.get(i)); return true; });
         root.addView(list, new LinearLayout.LayoutParams(-1, 0, 1));
-        setContentView(root);
+        setContentView(withNav(root));
 
         if (getIntent().hasExtra("cat")) category = getIntent().getStringExtra("cat");   // opened from a pinned row
         if (getIntent().hasExtra("lang")) language = getIntent().getStringExtra("lang");
