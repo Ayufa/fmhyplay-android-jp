@@ -11,11 +11,20 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 - **Title pages** have the title's wide picture behind the top.
 - **More on one screen**: smaller margins, a slim line of sites on the Movies, TV and Anime tabs, smaller Continue watching cards on a TV.
 - **Phone title page**: the sites to watch on are a two-across grid instead of a sideways row.
+- **Trailer** button on title pages (YouTube).
+- **Settings in sections** that open and close (Home, Connection, Your data, IPTV, Player, Updates, Sites, Donate, About), so the tab starts as a short list.
+- **Donate and About**: ways to support the app, the website, source code and where to report a problem.
+- **Clear website data** (Settings, Your data): cookies, logins, cache and saved data of every site.
+- **Turning WARP off asks first**, so a stray press does not show sites your real address.
+- The app's name is on the TV rail and the phone's top bar.
+- **Smaller tiles on a TV**: eight posters across in grids, more in every row.
 - Rows show grey placeholders while they load, so the page does not jump.
 
 ### 🔧 Changed
 - **Search waits until you pause typing** (about half a second) before it searches and redraws. Pressing Search on the keyboard searches at once.
 - The ad block switch is in Settings only; the top bar shows WARP's state as one icon (words appear when it is connecting or failed).
+
+- **Pictures load faster and stay loaded**: their own download threads, one download per picture however many cards show it, decoded at the card's size, and a memory cache sized to the device (it held about 17 posters before, so scrolling back loaded them again). A missing picture is not asked for again for ten minutes. The picture folder is capped at 200 MB.
 
 ### 🐞 Fixed
 - **Crash on pages with a long number after "episode"** in the address or title (ten digits or more): saving it to Continue watching overflowed. Such a number is now treated as an id, not an episode.
