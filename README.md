@@ -120,7 +120,7 @@ Streaming sites are built for a desktop browser with a mouse. On a TV remote the
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/phone-episodes.jpg" alt="Episodes list in the player" height="420">
+  <img src="docs/screenshots/phone-iptv.jpg" alt="IPTV on a phone" height="420">
 </p>
 
 ## Install
