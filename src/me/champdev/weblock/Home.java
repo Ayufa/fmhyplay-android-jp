@@ -668,9 +668,7 @@ public class Home extends Activity {
         page.scrollTo(0, 0);
         col.post(() -> {
             if (tab != n) return;
-            skipFocus = true;
-            build();
-            skipFocus = false;
+            build();   // on a TV the remote lands on the tab's first card (build does it), not left behind on the rail
         });
     }
 
@@ -1008,6 +1006,7 @@ public class Home extends Activity {
         card.setBackground(rounded(CARD, dp(12)));
         focusable(card, dp(12));
         card.setTag("g" + type + key);
+        if (firstCard == null) firstCard = card;
         card.setOnClickListener(v -> openIptv(type, key, label, false));
         return card;
     }
@@ -1072,6 +1071,7 @@ public class Home extends Activity {
         t.setLayoutParams(lp);
         focusable(t, dp(14));
         t.setTag("c" + c.url);
+        if (firstCard == null) firstCard = t;
         t.setOnClickListener(v -> Iptv.play(this, c));
         // Hold OK (or press Menu): take it off this row, or star it
         t.setOnLongClickListener(v -> {
