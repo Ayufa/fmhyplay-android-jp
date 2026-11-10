@@ -95,7 +95,7 @@ public class TitleActivity extends Home {
         FrameLayout top = new FrameLayout(this);
         String art = Catalog.backdrop(t);
         int lead = col.getPaddingTop() + (art.isEmpty() ? 0 : u(10, 10));   // room above the poster
-        int tall = lead + dp(w * 3 / 2) + u(14, 12);   // the picture is as tall as the poster and its margins, no more
+        int tall = lead + dp(w * 3 / 2) + u(8, 6);   // the picture is as tall as the poster and its margins, no more
         if (!art.isEmpty()) {
             ImageView back = new ImageView(this);
             back.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -115,7 +115,7 @@ public class TitleActivity extends Home {
 
         if (!App.tv && !t.overview.isEmpty()) {
             TextView overview = text(t.overview, 13, TEXT, false);
-            overview.setPadding(0, dp(12), 0, 0);
+            overview.setPadding(0, dp(6), 0, dp(2));
             col.addView(overview);
         }
         // Who made it and who is in it, where it is from, awards, and for a series whether it still runs and how much there is
@@ -149,7 +149,7 @@ public class TitleActivity extends Home {
         }
 
         LinearLayout buttons = new LinearLayout(this);
-        buttons.setPadding(0, u(18, 12), 0, u(4, 2));
+        buttons.setPadding(0, u(4, 2), 0, 0);
         Sites.Site site = chosen();
         TextView watch = chip(v -> watch(null));
         watch.setText(site == null ? App.t(R.string.title_no_site) : App.t(R.string.title_watch_on, site.name));
