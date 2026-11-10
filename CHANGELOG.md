@@ -5,10 +5,12 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 ## Unreleased
 
 ### ✨ New
-- **New look on every screen**: darker, calmer colours; one bar on top with the tabs, Search, voice, WARP and Settings (a phone keeps its tabs at the bottom, now six, with Settings as the gear on top); posters with their name and year underneath instead of on the picture; a white focus ring with a slight grow on a TV; app-coloured pop-ups.
+- **New look on every screen**: darker, calmer colours; on a TV a rail down the left side with Search, the tabs, WARP and Settings, one Left press from any row; on a phone a top bar with Search, voice, WARP and Settings, and six tabs at the bottom; posters with their name and year underneath instead of on the picture; a white focus ring with a slight grow on a TV; app-coloured pop-ups.
 - **A big picture on top of Home**: one of the first row's titles, a different one each day. Press play to open it.
-- **Your country first**: Home starts with Movies and TV rows from your country (India: Hindi, Tamil, Telugu, Malayalam, Kannada taken in turns), and the Movies and TV tabs get a chip per language. The country is found from the mobile network or the time zone; change it or switch it off in Settings, Your country. Lists come from TMDB through the public Stremio TMDB addon.
+- **Your country first**: Home starts with Movies and TV rows from your country (India: Hindi, Tamil, Telugu, Malayalam, Kannada taken in turns), and the Movies and TV tabs open on your first language, with a chip per language. The country is found from the mobile network or the time zone; change it or switch it off in Settings, Your country. Lists come from TMDB through the public Stremio TMDB addon.
 - **Title pages** have the title's wide picture behind the top.
+- **More on one screen**: smaller margins, a slim line of sites on the Movies, TV and Anime tabs, smaller Continue watching cards on a TV.
+- **Phone title page**: the sites to watch on are a two-across grid instead of a sideways row.
 - Rows show grey placeholders while they load, so the page does not jump.
 
 ### 🔧 Changed

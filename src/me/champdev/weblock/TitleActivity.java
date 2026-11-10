@@ -177,8 +177,15 @@ public class TitleActivity extends Home {
         if (!sites.isEmpty()) {
             // one row that scrolls sideways, so the episodes below are a short move away
             col.addView(heading(App.t(R.string.title_watch_heading, t.name)));
-            LinearLayout row = row();
-            for (Sites.Site s : sites) row.addView(siteCard(s, true));
+            if (App.tv) {
+                LinearLayout row = row();
+                for (Sites.Site s : sites) row.addView(siteCard(s, true));
+            } else {
+                // A phone scrolls down, not sideways: two across. A series keeps it to three rows, its episodes come next
+                Grid grid = new Grid(col);
+                for (Sites.Site s : t.series() && sites.size() > 6 ? sites.subList(0, 6) : sites) grid.add(s);
+                cardW = 156;
+            }
         }
         if (t.series() && !t.episodes.isEmpty()) episodes();
         if (App.tv && refocus) col.postDelayed(watch::requestFocus, 60);

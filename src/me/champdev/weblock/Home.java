@@ -79,24 +79,27 @@ public class Home extends Activity {
         col = new LinearLayout(this);
         col.setOrientation(LinearLayout.VERTICAL);
         // One margin on every side; rows get a little slack past it so the grown focus ring never clips
-        side = u(40, 12);
+        side = u(28, 10);
         slack = u(10, 6);
         cardW = App.tv ? 220 : 156;
         cardH = App.tv ? 92 : 62;
         gapDp = App.tv ? 14 : 8;
-        col.setPadding(side, App.tv ? (tabs() ? dp(8) : side) : dp(6), side, App.tv ? side : dp(12));   // tabs: the top and tab bars sit above
+        col.setPadding(side, App.tv ? (tabs() ? dp(18) : side) : dp(6), side, App.tv ? side : dp(12));
         col.setClipToPadding(false);
         sv.addView(col);
         if (tabs()) {
-            // Tabs sit on top on a TV (D-pad up from the first row) and at the bottom on a phone (thumb reach)
+            // A TV has everything on a rail down the left side, one Left press from any row; a phone has a top bar and tabs at the bottom
             if (state == null) tab = 0;
-            LinearLayout root = new LinearLayout(this);
-            root.setOrientation(LinearLayout.VERTICAL);
-            root.setBackgroundColor(BG);
             tabBar = tabBar();
-            root.addView(topBar());   // a TV has the tabs inside it
-            root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
-            if (!App.tv) {
+            LinearLayout root = new LinearLayout(this);
+            root.setBackgroundColor(BG);
+            if (App.tv) {
+                root.addView(rail(), new LinearLayout.LayoutParams(dp(RAIL), -1));
+                root.addView(sv, new LinearLayout.LayoutParams(0, -1, 1));
+            } else {
+                root.setOrientation(LinearLayout.VERTICAL);
+                root.addView(topBar());
+                root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
                 View line = new View(this);
                 line.setBackgroundColor(0x14FFFFFF);
                 root.addView(line, new LinearLayout.LayoutParams(-1, 1));
@@ -148,6 +151,7 @@ public class Home extends Activity {
         heroBox = null;
         built++;
         cardW = App.tv ? 220 : 156;   // a site grid on another tab resizes the shared card width
+        cardH = App.tv ? 92 : 62;
         styleTabs();
         switch (tab) {
             case 0: buildHome(); break;
@@ -235,7 +239,7 @@ public class Home extends Activity {
         String art = Catalog.backdrop(t);
         if (art.isEmpty()) return;
         FrameLayout box = heroBox;
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, u(250, 220));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, u(205, 200));
         lp.setMargins(-side, -col.getPaddingTop(), -side, 0);   // edge to edge, up to the bar
         box.setLayoutParams(lp);
         ImageView img = new ImageView(this);
@@ -381,42 +385,77 @@ public class Home extends Activity {
 
     LinearLayout tabBar() {
         LinearLayout bar = new LinearLayout(this);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        if (!App.tv) bar.setBackgroundColor(NAV);
-        for (int i = 0; i < SETTINGS; i++) {   // Settings is the gear in the top bar
+        bar.setGravity(Gravity.CENTER);
+        if (App.tv) bar.setOrientation(LinearLayout.VERTICAL);
+        else bar.setBackgroundColor(NAV);
+        for (int i = 0; i < SETTINGS; i++) {   // Settings is the gear (top bar on a phone, foot of the rail on a TV)
             final int n = i;
-            TextView t = text(App.t(TABS[i]), App.tv ? 15 : 11, MUTED, true);
+            TextView t = text(App.t(TABS[i]), 11, MUTED, true);
             t.setContentDescription(t.getText());
             tabViews.add(t);
             t.setGravity(Gravity.CENTER);
             t.setSingleLine(true);
-            if (App.tv) {
-                t.setPadding(dp(12), dp(8), dp(12), dp(8));
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
-                lp.setMargins(dp(2), dp(4), dp(2), dp(4));
-                t.setLayoutParams(lp);
-                t.setBackground(rounded(0, dp(20)));
-                focusable(t, dp(20));
-                t.setForeground(null);   // the focus ring is in the background (styleTabs): the shared one does not draw on these
-            } else {
-                t.setPadding(0, dp(8), 0, dp(7));
-                t.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
-                // One line: a long name ("Configuración") gets a smaller font instead of wrapping
-                t.addOnLayoutChangeListener((v, l, top, r, b, ol, ot, or, ob) -> {
-                    float room = r - l - dp(14);   // clear of the neighbours and of a rounded screen corner
-                    if (room > 0 && t.getPaint().measureText(t.getText().toString()) > room && t.getTextSize() > dp(8))
-                        t.post(() -> t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, t.getTextSize() * room / t.getPaint().measureText(t.getText().toString())));
-                });
-                t.setBackground(rounded(0, dp(12)));
-                focusable(t, dp(12));
-            }
+            t.setPadding(0, dp(App.tv ? 6 : 8), 0, dp(App.tv ? 5 : 7));
+            LinearLayout.LayoutParams lp = App.tv ? new LinearLayout.LayoutParams(-1, -2) : new LinearLayout.LayoutParams(0, -2, 1);
+            if (App.tv) lp.setMargins(0, dp(1), 0, dp(1));
+            t.setLayoutParams(lp);
+            // One line: a long name ("Configuración") gets a smaller font instead of wrapping
+            t.addOnLayoutChangeListener((v, l, top, r, b, ol, ot, or, ob) -> {
+                float room = r - l - dp(App.tv ? 6 : 14);   // clear of the neighbours and of a rounded screen corner
+                if (room > 0 && t.getPaint().measureText(t.getText().toString()) > room && t.getTextSize() > dp(8))
+                    t.post(() -> t.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, t.getTextSize() * room / t.getPaint().measureText(t.getText().toString())));
+            });
+            t.setBackground(rounded(0, dp(12)));
+            focusable(t, dp(12));
+            if (App.tv) t.setForeground(null);   // the focus ring is in the background (styleTabs): the shared one does not draw on these
             t.setOnClickListener(v -> selectTab(n));
             bar.addView(t);
         }
         return bar;
     }
 
-    /** The open tab is bright (on a TV, on a raised pill); the others stay quiet. */
+    static final int RAIL = 72;   // dp
+
+    /** TV: logo, Search, the tabs, and at the foot WARP's state and Settings, down the left edge of every tab. */
+    View rail() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.VERTICAL);
+        r.setGravity(Gravity.CENTER_HORIZONTAL);
+        r.setPadding(dp(7), dp(14), dp(7), dp(10));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.ic_logo);
+        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(30), dp(30));
+        ll.bottomMargin = dp(8);
+        r.addView(logo, ll);
+        ImageView search = iconButton(R.drawable.ic_search, App.t(R.string.home_search), v -> startActivity(new Intent(this, SearchActivity.class)));
+        search.setColorFilter(TEXT);
+        search.setBackground(rounded(CARD, dp(22)));
+        ((LinearLayout.LayoutParams) search.getLayoutParams()).setMargins(0, 0, 0, dp(6));
+        r.addView(search);
+        r.addView(tabBar, new LinearLayout.LayoutParams(-1, -2));
+        r.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
+        warpChip = chip(v -> toggleWarp());
+        warpChip.setLayoutParams(new LinearLayout.LayoutParams(-2, -2));
+        r.addView(warpChip);
+        updateChips();
+        gear = iconButton(R.drawable.ic_settings, App.t(R.string.home_tab_settings), v -> selectTab(SETTINGS));
+        ((LinearLayout.LayoutParams) gear.getLayoutParams()).setMargins(0, dp(6), 0, 0);
+        r.addView(gear);
+        ScrollView fit = new ScrollView(this);   // a short screen or big fonts: the rail scrolls instead of losing its foot
+        fit.setFillViewport(true);
+        fit.setVerticalScrollBarEnabled(false);
+        fit.setBackgroundColor(NAV);
+        fit.addView(r);
+        return fit;
+    }
+
+    void toggleWarp() {
+        boolean on = Warp.state == Warp.State.ON || Warp.state == Warp.State.CONNECTING;
+        App.prefs.edit().putBoolean("warp", !on).apply();
+        if (on) Warp.stop(); else Warp.start();
+    }
+
+    /** The open tab is bright; the others stay quiet. */
     void styleTabs() {
         if (tabBar == null) return;
         if (gear != null) {
@@ -427,19 +466,18 @@ public class Home extends Activity {
             TextView t = tabViews.get(i);
             boolean on = i == tab;
             t.setTextColor(on ? TEXT : MUTED);
+            android.graphics.drawable.Drawable d = getDrawable(TAB_ICONS[i]).mutate();
+            d.setBounds(0, 0, dp(22), dp(22));
+            d.setTint(on ? TEXT : MUTED);
+            t.setCompoundDrawablesRelative(null, d, null, null);
+            t.setCompoundDrawablePadding(dp(3));
             if (App.tv) {
-                GradientDrawable idle = rounded(on ? CARD_HI : 0, dp(20)), focused = rounded(CARD_HI, dp(20));
+                GradientDrawable idle = rounded(on ? CARD_HI : 0, dp(12)), focused = rounded(CARD_HI, dp(12));
                 focused.setStroke(dp(2), Color.WHITE);
                 StateListDrawable bg = new StateListDrawable();
                 bg.addState(new int[]{android.R.attr.state_focused}, focused);
                 bg.addState(new int[0], idle);
                 t.setBackground(bg);
-            } else {
-                android.graphics.drawable.Drawable d = getDrawable(TAB_ICONS[i]).mutate();
-                d.setBounds(0, 0, dp(22), dp(22));
-                d.setTint(on ? TEXT : MUTED);
-                t.setCompoundDrawablesRelative(null, d, null, null);
-                t.setCompoundDrawablePadding(dp(3));
             }
         }
     }
@@ -467,17 +505,15 @@ public class Home extends Activity {
         return t;
     }
 
-    /** On every tab: the logo, the tabs (TV; a phone has them at the bottom), Search, voice, WARP's state and Settings. */
+    /** A phone's top bar on every tab: the logo, Search filling the middle, voice, WARP's state and Settings. Nothing in it can grow past the screen. */
     View topBar() {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackgroundColor(BG);
-        if (App.tv) bar.setPadding(side, dp(12), side - dp(10), dp(4));
-        else bar.setPadding(dp(12), dp(6), dp(2), dp(4));
+        bar.setPadding(dp(10), dp(4), dp(4), dp(2));
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(u(34, 28), u(34, 28));
+        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(28), dp(28));
         ll.rightMargin = dp(8);
         bar.addView(logo, ll);
         // One search for everything, from every tab: movies, series, IPTV channels and sites
@@ -486,38 +522,16 @@ public class Home extends Activity {
         search.setSingleLine(true);
         search.setEllipsize(TextUtils.TruncateAt.END);
         iconize(search, R.drawable.ic_search, MUTED);
-        if (App.tv) {
-            // Written like the project banner: FMHY in white, Play in the accent red
-            TextView name = text("", 21, TEXT, true);
-            android.text.SpannableString brand = new android.text.SpannableString("FMHYPlay");
-            brand.setSpan(new android.text.style.ForegroundColorSpan(ACCENT), 4, 8, 0);
-            name.setText(brand);
-            name.setPadding(0, 0, dp(12), 0);
-            bar.addView(name);
-            HorizontalScrollView tabs = new HorizontalScrollView(this);   // scrolls if a language's tab names run long
-            tabs.setHorizontalScrollBarEnabled(false);
-            tabs.addView(tabBar);
-            LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, -2, 1);
-            tl.rightMargin = dp(12);
-            bar.addView(tabs, tl);
-        } else {
-            LinearLayout.LayoutParams sl = (LinearLayout.LayoutParams) search.getLayoutParams();
-            sl.width = 0;
-            sl.weight = 1;   // fills whatever the screen leaves
-        }
+        LinearLayout.LayoutParams sl = (LinearLayout.LayoutParams) search.getLayoutParams();
+        sl.width = 0;
+        sl.weight = 1;   // whatever the icons leave
         bar.addView(search);
         bar.addView(voiceChip(v -> startActivity(new Intent(this, SearchActivity.class).putExtra("voice", true))));
-        warpChip = chip(v -> {
-            boolean on = Warp.state == Warp.State.ON || Warp.state == Warp.State.CONNECTING;
-            App.prefs.edit().putBoolean("warp", !on).apply();
-            if (on) Warp.stop(); else Warp.start();
-        });
+        warpChip = chip(v -> toggleWarp());
         bar.addView(warpChip);
         updateChips();
         gear = iconButton(R.drawable.ic_settings, App.t(R.string.home_tab_settings), v -> selectTab(SETTINGS));
-        LinearLayout.LayoutParams gl = (LinearLayout.LayoutParams) gear.getLayoutParams();
-        gl.topMargin = 0;
-        gl.rightMargin = u(10, 6);
+        ((LinearLayout.LayoutParams) gear.getLayoutParams()).setMargins(0, 0, dp(6), 0);
         bar.addView(gear);
         return bar;
     }
@@ -583,11 +597,15 @@ public class Home extends Activity {
     void catalogTab(String type, String category, String fixedGenre) {
         List<Sites.Site> sites = Sites.load().get(category);
         if (sites != null) {
-            col.addView(heading(App.t(R.string.home_sites)));
+            // One slim line of sites (icon and name), so the posters start high on the screen
+            cardW = App.tv ? 176 : 138;
+            cardH = App.tv ? 50 : 42;
             siteRow(category, sites);
+            cardW = App.tv ? 220 : 156;
+            cardH = App.tv ? 92 : 62;
         }
         if (category.equals(Cats.ANIME)) titleRow(App.t(R.string.home_new_anime), "", "series", Catalog.NEW_ANIME, -1);
-        String genre = fixedGenre.isEmpty() ? genres.getOrDefault(tab, Catalog.NEW) : fixedGenre;
+        String genre = fixedGenre.isEmpty() ? genres.getOrDefault(tab, firstList()) : fixedGenre;
         // The chips say which list this is; only the Anime tab has one fixed list, under its own heading
         col.addView(fixedGenre.isEmpty() ? genreChips() : heading(App.t(R.string.home_popular_animation)));
         LinearLayout holder = new LinearLayout(this);
@@ -596,10 +614,18 @@ public class Home extends Activity {
         loadPage(type, genre, 0, holder, new Grid(holder, App.tv ? 6 : 3), built);
     }
 
+    /** What Movies and TV open on: the viewer's own first language when their country has lists, else New. */
+    static String firstList() {
+        String[] langs = Catalog.languages(App.region());
+        return langs.length > 0 && !localDown ? Catalog.LANG + langs[0] : Catalog.NEW;
+    }
+
+    static boolean localDown;   // the language lists could not be reached: open on New until the app restarts
+
     View genreChips() {
         LinearLayout chips = new LinearLayout(this);
         chips.setClipChildren(false);
-        String now = genres.getOrDefault(tab, Catalog.NEW);
+        String now = genres.getOrDefault(tab, firstList());
         // The viewer's own languages first, then New, Popular and the genres (Cinemeta's own keys, as they are)
         List<String> all = new ArrayList<>();
         for (String l : Catalog.languages(App.region())) all.add(Catalog.LANG + l);
@@ -621,7 +647,7 @@ public class Home extends Activity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(-slack, 0, -slack, 0);
         sc.setLayoutParams(lp);
-        sc.setPadding(slack, u(16, 8), slack, dp(8));
+        sc.setPadding(slack, u(12, 6), slack, u(6, 4));
         sc.addView(chips);
         return sc;
     }
@@ -638,6 +664,11 @@ public class Home extends Activity {
             runOnUiThread(() -> {
                 if (id != built) return;
                 holder.removeView(loading);
+                if (list == null && genre.startsWith(Catalog.LANG) && !genres.containsKey(tab) && !localDown) {
+                    localDown = true;   // the default list is down: New instead of an error on the tab's first screen
+                    build();
+                    return;
+                }
                 if (list == null || list.isEmpty()) {
                     TextView retry = text(App.t(list == null ? R.string.home_catalog_retry : R.string.home_nothing_here), sp(15, 13), TEXT, true);
                     retry.setPadding(dp(14), dp(12), dp(14), dp(12));
@@ -794,8 +825,10 @@ public class Home extends Activity {
 
     int builtW;   // the window width the tiles were last sized for
 
+    /** The width the page has: the window's, less the rail on a TV's tab screens. */
     int winW() {
-        return builtW = getResources().getDisplayMetrics().widthPixels;
+        builtW = getResources().getDisplayMetrics().widthPixels;
+        return builtW - (App.tv && tabs() ? dp(RAIL) : 0);
     }
 
     /**
@@ -1127,11 +1160,7 @@ public class Home extends Activity {
         regionValue.setTextColor(local ? GREEN : MUTED);
         col.addView(heading(App.t(R.string.home_connection)));
         warpValue = new TextView(this);
-        col.addView(settingRow("WARP", App.t(R.string.home_warp_help), warpValue, v -> {
-            boolean on = Warp.state == Warp.State.ON || Warp.state == Warp.State.CONNECTING;
-            App.prefs.edit().putBoolean("warp", !on).apply();
-            if (on) Warp.stop(); else Warp.start();
-        }));
+        col.addView(settingRow("WARP", App.t(R.string.home_warp_help), warpValue, v -> toggleWarp()));
         TextView dnsValue = new TextView(this);
         String savedDns = App.prefs.getString("warpDns", "");
         col.addView(settingRow(App.t(R.string.warp_dns_title), App.t(R.string.warp_dns_help), dnsValue, v -> warpDnsDialog()));
@@ -1558,13 +1587,12 @@ public class Home extends Activity {
         }
         boolean ads = AdBlock.enabled();
         if (warpChip != null) {
-            // The icon's colour says on or off; trouble is spelled out where there is room
-            boolean words = App.tv && (Warp.state == Warp.State.CONNECTING || Warp.state == Warp.State.FAILED);
-            warpChip.setText(words ? label : "");
+            warpChip.setText("");   // the icon's colour says it; words would push the bar's other buttons off the screen
             warpChip.setTooltipText(label);
             warpChip.setContentDescription(label);
             iconize(warpChip, icon, color);
-            if (!words) warpChip.setCompoundDrawablePadding(0);
+            warpChip.setCompoundDrawablePadding(0);
+            if (App.tv) warpChip.setPadding(dp(12), dp(10), dp(12), dp(10));
         }
         if (warpValue != null) { warpValue.setText(word); warpValue.setTextColor(color); }
         if (adValue != null) { adValue.setText(App.t(ads ? R.string.home_on : R.string.home_off)); adValue.setTextColor(ads ? GREEN : MUTED); }
@@ -1621,7 +1649,7 @@ public class Home extends Activity {
             both.setSpan(new android.text.style.RelativeSizeSpan(0.82f), s.length(), both.length(), 0);
             t.setText(both);
         }
-        t.setPadding(0, u(20, 14), 0, u(4, 6));   // a gap before the cards, also on a phone (tile grids have none of their own)
+        t.setPadding(0, u(12, 10), 0, u(2, 4));   // a gap before the cards, also on a phone (tile grids have none of their own)
         return t;
     }
 
@@ -1636,7 +1664,7 @@ public class Home extends Activity {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
         lp.setMargins(-slack, 0, -slack, 0);
         hs.setLayoutParams(lp);
-        hs.setPadding(slack, u(10, 4), slack, u(12, 4));
+        hs.setPadding(slack, u(8, 3), slack, u(8, 3));
         LinearLayout row = new LinearLayout(this);
         row.setClipChildren(false);
         hs.addView(row);
@@ -1692,7 +1720,7 @@ public class Home extends Activity {
 
     View historyCard(History.Entry e) {
         FrameLayout card = new FrameLayout(this);
-        card.setLayoutParams(cardParams(App.tv ? 260 : 190, App.tv ? 146 : 108));
+        card.setLayoutParams(cardParams(App.tv ? 196 : 190, App.tv ? 110 : 108));
         ImageView img = new ImageView(this);
         img.setScaleType(ImageView.ScaleType.CENTER_CROP);
         card.addView(img, new FrameLayout.LayoutParams(-1, -1));
@@ -1707,8 +1735,8 @@ public class Home extends Activity {
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(u(12, 9), 0, u(12, 9), u(10, 7));
-        TextView title = text(e.title, sp(16, 14), Color.WHITE, true);
-        title.setMaxLines(2);
+        TextView title = text(e.title, sp(14, 14), Color.WHITE, true);
+        title.setMaxLines(App.tv ? 1 : 2);
         title.setEllipsize(TextUtils.TruncateAt.END);
         info.addView(title);
         long now = System.currentTimeMillis();   // under a minute reads "1 minute ago", not "0 minutes ago"
@@ -1781,7 +1809,7 @@ public class Home extends Activity {
         tags.setSingleLine();
         tags.setEllipsize(TextUtils.TruncateAt.END);
         tags.setPadding(0, u(6, 2), 0, 0);
-        card.addView(tags);
+        if (cardH >= 60) card.addView(tags);   // the slim card is icon and name only
 
         card.setBackground(rounded(CARD, dp(14)));
         focusable(card, dp(14));
