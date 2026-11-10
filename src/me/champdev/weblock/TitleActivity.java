@@ -192,7 +192,8 @@ public class TitleActivity extends Home {
         List<Sites.Site> sites = options();
         if (!sites.isEmpty()) {
             // one row that scrolls sideways, so the episodes below are a short move away
-            col.addView(heading(App.t(R.string.title_watch_heading, t.name)));
+            // Just "Watch on": the old line also spelled out "tap a site to open <title>", which ran long and wrapped
+            col.addView(heading(App.t(R.string.title_watch_heading, "").split("\u00B7")[0].trim()));
             if (App.tv || t.series()) {   // a series keeps the sites to one sideways row: its episodes come right after
                 LinearLayout row = row();
                 for (Sites.Site s : sites) row.addView(siteCard(s, true));
