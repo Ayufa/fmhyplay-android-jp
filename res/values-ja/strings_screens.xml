@@ -87,6 +87,14 @@
     <string name="title_season">シーズン %1$d</string>
     <string name="title_episode">エピソード %1$d</string>
     <string name="title_no_site_toast">視聴できるサイトがありません</string>
+    <string name="web_opening_episode">S%1$d E%2$d を開いています…</string>
+    <string name="web_opening_hint">ページを見るにはタップするか、戻るを押してください</string>
+    <string name="web_step_loading">ページを読み込んでいます…</string>
+    <string name="web_step_search">タイトルを検索しています…</string>
+    <string name="web_step_play">動画を開始しています…</string>
+    <string name="web_step_done">見つかりました！プレイヤーを開始します…</string>
+    <string name="web_step_failed">開始できませんでした。あとはお任せします。</string>
+    <string name="home_going">ホームへ移動しています…</string>
     <string name="web_pick_episode">S%1$d E%2$d：ページ側で選択してください</string>
     <string name="category_hint_tv">サイトでOKを長押しすると、お気に入りとミラーが表示されます</string>
     <string name="category_hint_touch">サイトを長押しすると、お気に入りとミラーが表示されます</string>

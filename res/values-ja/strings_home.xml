@@ -169,8 +169,8 @@
     <string name="home_check_updates_help">FMHYPlay %1$s。GitHubで新しいリリースを確認し、あなたの指示でインストールします。</string>
     <string name="home_up_to_date">最新です</string>
     <string name="home_version_available">%1$s が利用可能</string>
-    <string name="home_check_at_start">起動時に確認</string>
-    <string name="home_check_at_start_help">12時間に1回、アップデートを確認します。</string>
+    <string name="home_check_at_start">自動で確認</string>
+    <string name="home_check_at_start_help">1時間ごとと、起動のたびにアップデートを確認します。</string>
     <string name="home_add_site">サイトを追加</string>
     <string name="home_add_site_help">アドレスを指定してストリーミングサイトを追加します。ホームのお気に入りに追加されます。</string>
     <string name="home_refresh_fmhy">FMHYリストを更新</string>

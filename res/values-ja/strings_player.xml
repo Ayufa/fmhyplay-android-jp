@@ -27,6 +27,7 @@
     <string name="player_zoom_16_9">16:9</string>
     <string name="player_zoom_4_3">4:3</string>
     <string name="player_zoom_now">ズーム · %1$s</string>
+    <string name="player_debug_now">デバッグオーバーレイ: %1$s</string>
     <string name="player_zoom_say">ズーム: %1$s</string>
     <string name="player_restart">最初から再生</string>
     <string name="player_portrait">縦画面</string>
@@ -117,5 +118,6 @@
     <string name="player_play">再生</string>
     <string name="player_pause">一時停止</string>
     <string name="player_sub_dub">字幕 / 吹替: %1$s</string>
+    <string name="player_home">ホーム</string>
     <string name="player_more">その他</string>
 </resources>
