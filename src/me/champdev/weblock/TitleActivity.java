@@ -320,7 +320,8 @@ public class TitleActivity extends Home {
         Sites.Site s = chosen();
         if (s == null) { toast(App.t(R.string.title_no_site_toast)); return; }
         // A site that has episode pages but no page for the show (most anime sites): Watch starts the first episode
-        if (e == null && t.series() && Sites.deeplink(s.url, t) == null && Sites.hasLink(s.url, t.anime ? "anime" : "episode"))
+        // Watch on a series starts its first episode (with the loading screen while the app finds and plays it), on every site
+        if (e == null && t.series())
             for (Catalog.Episode x : t.episodes) if (e == null || x.season < e.season || (x.season == e.season && x.number < e.number)) e = x;
         startActivity(withTitle(titleIntent(s))
             .putExtra("season", e == null ? 0 : e.season).putExtra("episode", e == null ? 0 : e.number));

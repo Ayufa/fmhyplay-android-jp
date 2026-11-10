@@ -90,6 +90,7 @@ public class PlayerActivity extends Activity {
     LinearLayout chipCast, chipRotate, chipEpisodes, chipPrev, chipNext, chipDub, chipServers, chipQuality, chipAudio, chipSubs, chipMore;
     Catalog.Title seriesInfo;   // the series playing, with its episodes (for Episodes and Next)
     View panel;                 // the Episodes list, over the video
+    boolean shelfOpen;          // the panel is the strip of cards along the bottom (the controls stay on with it)
     TextView skipBtn;           // Skip intro / Skip recap / Next episode, over the picture
     TextView tip;               // the name of the button the remote is on (icons only otherwise)
     View tipFor;                // the button the label above is showing the name of
@@ -186,21 +187,32 @@ public class PlayerActivity extends Activity {
         int from = Math.max(0, Math.min(at - 30, sibs.size() - 120));
         List<Iptv.Channel> list = sibs.subList(from, Math.min(sibs.size(), from + 120));
         Iptv.Channel me = sibs.get(at);
-        shelf(App.t(R.string.player_channels) + "  \u00B7  " + Home.groupName(me.cats[0]) + (me.country.isEmpty() ? "" : "  \u00B7  " + me.country), list.size(), false,
+        shelf(App.t(R.string.player_channels) + "  \u00B7  " + Home.groupName(me.cats[0]) + (me.country.isEmpty() ? "" : "  \u00B7  " + me.country), list.size(), 0,
             i -> new String[]{list.get(i).name, list.get(i).logo}, i -> { if (list.get(i) != me) playChannel(list.get(i)); }, at - from);
     }
 
     /** A movie: other movies to go to (the viewer's country's when there are, else the new ones), as the same strip. Picking one opens its page. */
     void moreShelf() {
         String region = App.region();
-        List<Catalog.Title> l = Catalog.languages(region).length > 0 ? Catalog.cached("movie", "local=" + region) : null;
-        if (l == null || l.isEmpty()) l = Catalog.cached("movie", "genre=" + Catalog.NEW);
-        if (l == null || l.isEmpty()) l = Catalog.cached("movie", "");
-        if (l == null || l.isEmpty()) { say(App.t(R.string.home_nothing_here)); return; }
+        List<Catalog.Title> hit = Catalog.languages(region).length > 0 ? Catalog.cached("movie", "local=" + region) : null;
+        if (hit == null || hit.isEmpty()) hit = Catalog.cached("movie", "genre=" + Catalog.NEW);
+        if (hit == null || hit.isEmpty()) hit = Catalog.cached("movie", "");
+        if (hit == null || hit.isEmpty()) {   // nothing on disk (a first run, or the lists ran out): ask, then open
+            say(App.t(R.string.home_loading));
+            App.io.execute(() -> {
+                List<Catalog.Title> got = Catalog.list("movie", "");
+                runOnUiThread(() -> { if (isFinishing()) return; if (got == null || got.isEmpty()) say(App.t(R.string.home_catalog_offline)); else moreShelf(got); });
+            });
+            return;
+        }
+        moreShelf(hit);
+    }
+
+    void moreShelf(List<Catalog.Title> l) {
         String playing = String.valueOf(getIntent().getStringExtra("imdb"));
         List<Catalog.Title> list = new ArrayList<>();
         for (Catalog.Title t : l) if (!t.id.equals(playing)) list.add(t);
-        shelf(App.t(R.string.player_more_watch), list.size(), true, i -> new String[]{list.get(i).name, list.get(i).poster}, i -> {
+        shelf(App.t(R.string.player_more_watch), list.size(), 1, i -> new String[]{list.get(i).name, list.get(i).poster}, i -> {
             Catalog.Title t = list.get(i);
             startActivity(new Intent(this, TitleActivity.class).putExtra("id", t.id).putExtra("type", t.type).putExtra("name", t.name)
                 .putExtra("year", t.year).putExtra("poster", t.poster).putExtra("tmdb", t.tmdb));
@@ -210,17 +222,24 @@ public class PlayerActivity extends Activity {
 
     /**
      * A strip of cards along the bottom, over the picture (the video keeps playing): `n` cards, each {name, picture} from `item`;
-     * `posters` = upright pictures, else wide tiles with a logo. Left/Right move, OK picks, Back or a tap outside closes. `current` is marked.
+     * `kind`: 0 = wide tiles with a logo, 1 = upright posters, 2 = wide pictures. The buttons move up and sit above it. Left/Right move, OK picks, Back or a tap outside closes. `current` is marked.
      */
-    void shelf(String title, int n, boolean posters, java.util.function.IntFunction<String[]> item, java.util.function.IntConsumer pick, int current) {
+    void shelf(String title, int n, int kind, java.util.function.IntFunction<String[]> item, java.util.function.IntConsumer pick, int current) {
+        boolean posters = kind == 1;
         FrameLayout root = (FrameLayout) controls.getParent();
         if (panel != null) root.removeView(panel);
-        hideControls();
+        // The title and the buttons (Previous, Next...) stay on screen: they move up and the strip takes the bottom edge
+        showControls();
+        rowFocus(false);
+        controls.setVisibility(View.VISIBLE);
+        tip.setVisibility(View.GONE);
+        hideAt = Long.MAX_VALUE;
         LinearLayout p = new LinearLayout(this);
         p.setOrientation(LinearLayout.VERTICAL);
         p.setClickable(true);   // a tap on the strip is not a tap on the picture
-        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0xD9000000, 0xF2000000}));
-        p.setPadding(0, dp(44), 0, dp(14));
+        p.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xE6000000, 0xF5000000}));
+        p.setPadding(0, dp(8), 0, dp(12));
+        p.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> bottomBar.setTranslationY(t - b));   // the buttons ride on top of it
         TextView head = new TextView(this);
         head.setText(title);
         head.setTextColor(Color.WHITE);
@@ -245,8 +264,8 @@ public class PlayerActivity extends Activity {
             art.setBackground(Home.rounded(0xFF282431, dp(10)));
             art.setClipToOutline(true);
             ImageView img = new ImageView(this);
-            img.setScaleType(posters ? ImageView.ScaleType.CENTER_CROP : ImageView.ScaleType.FIT_CENTER);
-            if (!posters) img.setPadding(dp(14), dp(10), dp(14), dp(10));
+            img.setScaleType(kind == 0 ? ImageView.ScaleType.FIT_CENTER : ImageView.ScaleType.CENTER_CROP);
+            if (kind == 0) img.setPadding(dp(14), dp(10), dp(14), dp(10));
             art.addView(img, new FrameLayout.LayoutParams(-1, -1));
             if (it[1] != null && it[1].startsWith("http")) loadStill(img, it[1]);
             card.addView(art, new LinearLayout.LayoutParams(w, h));
@@ -268,7 +287,6 @@ public class PlayerActivity extends Activity {
             white.setStroke(dp(3), Color.WHITE);
             card.setOnFocusChangeListener((v, has) -> {
                 art.setForeground(has ? white : at == current ? ring : null);
-                v.animate().scaleX(has ? 1.06f : 1f).scaleY(has ? 1.06f : 1f).setDuration(120).start();
                 if (has) hs.smoothScrollTo(Math.max(0, v.getLeft() - hs.getWidth() / 2 + w / 2), 0);
             });
             card.setOnClickListener(v -> { closePanel(); pick.accept(at); });
@@ -281,6 +299,7 @@ public class PlayerActivity extends Activity {
         p.addView(hs);
         root.addView(p, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         panel = p;
+        shelfOpen = true;
         if (start != null) { View f = start; f.post(() -> { hs.scrollTo(Math.max(0, f.getLeft() - hs.getWidth() / 2 + w / 2), 0); f.requestFocus(); }); }
     }
 
@@ -504,7 +523,10 @@ public class PlayerActivity extends Activity {
         // boosts, zoom, from the start), Cast, Full screen. What each is set to shows under the title. Down puts the remote on them.
         chipRow = new LinearLayout(this);
         chipRow.setGravity(Gravity.CENTER);
-        chipRow.setPadding(0, dp(4), 0, 0);
+        chipRow.setPadding(0, dp(4), 0, dp(4));   // room for the focus ring, top and bottom
+        chipRow.setClipChildren(false);
+        chipRow.setClipToPadding(false);
+        bar.setClipChildren(false);
         chipPrev = chip(R.drawable.ic_p_prev, () -> { int[] n = episodeStep(-1); if (n != null) playEpisode(n[0], n[1]); else playChannel(channelStep(-1)); });
         chipNext = chip(R.drawable.ic_p_next, () -> { int[] n = episodeStep(1); if (n != null) playEpisode(n[0], n[1]); else playChannel(channelStep(1)); });
         chipQuality = chip(R.drawable.ic_p_quality, this::pickQuality);
@@ -528,7 +550,7 @@ public class PlayerActivity extends Activity {
         tip.setPadding(dp(12), dp(6), dp(12), dp(6));
         GradientDrawable tbg = new GradientDrawable();
         tbg.setCornerRadius(dp(8));
-        tbg.setColor(0xE6000000);
+        tbg.setColor(0xFF16131C);   // solid: it can sit over the LIVE mark
         tip.setBackground(tbg);
         tip.setVisibility(View.GONE);
         overlay.addView(tip, new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START));
@@ -1296,7 +1318,7 @@ public class PlayerActivity extends Activity {
             // Up hands the remote back to play/seek
             if (k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_DPAD_DOWN) {
                 if (down) {
-                    View n = getCurrentFocus().focusSearch(k == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);
+                    View at = getCurrentFocus(), n = at == null ? null : at.focusSearch(k == KeyEvent.KEYCODE_DPAD_UP ? View.FOCUS_UP : View.FOCUS_DOWN);
                     if (n != null && chips.contains(n)) n.requestFocus();
                     else if (k == KeyEvent.KEYCODE_DPAD_UP) rowFocus(false);
                     else if (chipEpisodes.getVisibility() == View.VISIBLE && r == 0) chipEpisodes.performClick();   // Down again: the strip of channels / more to watch
@@ -1721,122 +1743,19 @@ public class PlayerActivity extends Activity {
 
     int panelSeason;
 
+    /** A series' episodes in the same strip as channels and movies: every season in order (a window of them around the one playing). */
     void episodesPanel() {
         if (seriesInfo == null) return;
+        List<Catalog.Episode> all = seriesInfo.episodes;
         int[] pe = pageEpisode();
-        panelSeason = pe != null && pe[0] > 0 ? pe[0] : seriesInfo.episodes.get(0).season;
-        hideControls();
-        buildPanel();
-    }
-
-    /** The Episodes list: seasons across the top, the season's episodes (still, number, name, summary) below; the one playing is marked. */
-    void buildPanel() {
-        FrameLayout root = (FrameLayout) controls.getParent();
-        if (panel != null) root.removeView(panel);
-        int[] pe = pageEpisode();
-        LinearLayout p = new LinearLayout(this);
-        p.setOrientation(LinearLayout.VERTICAL);
-        p.setClickable(true);   // taps on it never reach the video underneath
-        p.setBackgroundColor(0xF00E0E12);
-        p.setPadding(dp(16), dp(14) + cutTop, dp(12) + cutRight, 0);
-
-        LinearLayout head = new LinearLayout(this);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView h = new TextView(this);
-        h.setText(App.t(R.string.player_episodes));
-        h.setTextColor(Color.WHITE);
-        h.setTextSize(20);
-        h.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        head.addView(h, new LinearLayout.LayoutParams(0, -2, 1));
-        head.addView(circle(R.drawable.ic_p_close, 40, this::closePanel));
-        p.addView(head);
-
-        java.util.TreeSet<Integer> seasons = new java.util.TreeSet<>();
-        for (Catalog.Episode e : seriesInfo.episodes) seasons.add(e.season);
-        if (seasons.size() > 1) {
-            LinearLayout row = new LinearLayout(this);
-            row.setPadding(0, dp(8), 0, dp(8));
-            for (int n : seasons) {
-                TextView c = new TextView(this);
-                c.setText(App.t(R.string.title_season, n));
-                c.setTextSize(14);
-                c.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-                c.setTextColor(Color.WHITE);
-                c.setGravity(Gravity.CENTER);
-                c.setPadding(dp(14), 0, dp(14), 0);
-                c.setBackground(pill(n == panelSeason ? Home.ACCENT : 0x33FFFFFF));
-                c.setFocusable(true);
-                c.setOnClickListener(v -> { panelSeason = n; buildPanel(); });
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(36));
-                lp.rightMargin = dp(8);
-                row.addView(c, lp);
-            }
-            HorizontalScrollView sc = new HorizontalScrollView(this);
-            sc.setHorizontalScrollBarEnabled(false);
-            sc.addView(row);
-            p.addView(sc);
-        }
-
-        android.widget.ScrollView sv = new android.widget.ScrollView(this);
-        LinearLayout list = new LinearLayout(this);
-        list.setOrientation(LinearLayout.VERTICAL);
-        list.setPadding(0, dp(4), 0, dp(16));
-        View current = null;
-        for (Catalog.Episode e : seriesInfo.episodes) {
-            if (e.season != panelSeason) continue;
-            boolean playing = pe != null && Math.max(1, pe[0]) == e.season && pe[1] == e.number;
-            LinearLayout row = new LinearLayout(this);
-            row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(dp(8), dp(8), dp(8), dp(8));
-            ImageView still = new ImageView(this);
-            still.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            GradientDrawable sb = new GradientDrawable();
-            sb.setCornerRadius(dp(8));
-            sb.setColor(0x22FFFFFF);
-            still.setBackground(sb);
-            still.setClipToOutline(true);
-            if (!e.thumb.isEmpty()) loadStill(still, e.thumb);
-            row.addView(still, new LinearLayout.LayoutParams(dp(112), dp(63)));
-            LinearLayout text = new LinearLayout(this);
-            text.setOrientation(LinearLayout.VERTICAL);
-            text.setPadding(dp(12), 0, 0, 0);
-            TextView name = new TextView(this);
-            name.setText(e.number + "  " + (e.title.isEmpty() ? App.t(R.string.player_episode, e.number) : e.title));
-            name.setTextColor(playing ? Home.ACCENT : Color.WHITE);
-            name.setTextSize(15);
-            name.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-            name.setSingleLine();
-            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            text.addView(name);
-            if (!e.overview.isEmpty()) {
-                TextView o = new TextView(this);
-                o.setText(e.overview);
-                o.setTextColor(0xB3FFFFFF);
-                o.setTextSize(12);
-                o.setMaxLines(2);
-                o.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                text.addView(o);
-            }
-            row.addView(text, new LinearLayout.LayoutParams(0, -2, 1));
-            android.graphics.drawable.StateListDrawable bg = new android.graphics.drawable.StateListDrawable();
-            bg.addState(new int[]{android.R.attr.state_focused}, rounded(0x55FFFFFF));
-            bg.addState(new int[]{android.R.attr.state_pressed}, rounded(0x33FFFFFF));
-            bg.addState(new int[0], rounded(playing ? 0x26FFFFFF : 0x00000000));
-            row.setBackground(bg);
-            row.setFocusable(true);
-            row.setOnClickListener(v -> { closePanel(); if (!playing) playEpisode(e.season, e.number); });
-            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
-            rp.bottomMargin = dp(4);
-            list.addView(row, rp);
-            if (playing) current = row;
-        }
-        sv.addView(list);
-        p.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1));
-        int screenW = getResources().getDisplayMetrics().widthPixels;
-        root.addView(p, new FrameLayout.LayoutParams(landscape() || App.tv ? Math.min(dp(440), screenW / 2) : -1, -1, Gravity.END));
-        panel = p;
-        View first = current != null ? current : list.getChildCount() > 0 ? list.getChildAt(0) : null;
-        if (first != null) first.post(() -> { sv.scrollTo(0, Math.max(0, first.getTop() - dp(80))); first.requestFocus(); });
+        int at = -1;
+        for (int i = 0; i < all.size(); i++) if (pe != null && all.get(i).season == Math.max(1, pe[0]) && all.get(i).number == pe[1]) at = i;
+        int from = Math.max(0, Math.min(Math.max(at, 0) - 30, all.size() - 120)), now = at;
+        List<Catalog.Episode> list = all.subList(from, Math.min(all.size(), from + 120));
+        shelf(App.t(R.string.player_episodes), list.size(), 2, i -> {
+            Catalog.Episode e = list.get(i);
+            return new String[]{"S" + e.season + " E" + e.number + (e.title.isEmpty() ? "" : "  " + e.title), e.thumb};
+        }, i -> { if (i != now - from) playEpisode(list.get(i).season, list.get(i).number); }, at - from);
     }
 
     GradientDrawable pill(int color) {
@@ -1869,6 +1788,8 @@ public class PlayerActivity extends Activity {
         if (panel == null) return;
         ((android.view.ViewGroup) panel.getParent()).removeView(panel);
         panel = null;
+        bottomBar.setTranslationY(0);
+        if (shelfOpen) { shelfOpen = false; showControls(); }   // the controls were held open for the strip: their timer runs again
     }
 
     /** Sub / Dub: the page's own choice (a dropdown or toggle that frame.js found: label -> its key), else Sub and Dub by the site's address (key ""). */
