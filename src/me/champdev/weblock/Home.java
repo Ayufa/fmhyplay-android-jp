@@ -43,9 +43,15 @@ import java.util.Map;
 public class Home extends Activity {
     // One accent, kept for play and progress; everything else is ink, two card tones and two text tones
     static final int BG = 0xFF0E0C13, CARD = 0xFF1A1721, CARD_HI = 0xFF282431, NAV = 0xFF131019, ACCENT = 0xFFFF3B5C, TEXT = 0xFFF4F2F7, MUTED = 0xFF9690A3;
-    static final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
-        @Override protected int sizeOf(String k, Bitmap b) { return b.getByteCount(); }
+    // Decoded pictures: a fifth of the app's memory (it was a fixed 24 MB, about 17 posters, so scrolling back decoded them all again)
+    static final LruCache<String, Bitmap> images = new LruCache<String, Bitmap>((int) Math.min(Runtime.getRuntime().maxMemory() / 5, 96L << 20)) {
+        @Override protected int sizeOf(String k, Bitmap b) { return b.getAllocationByteCount(); }
     };
+    // Pictures load on their own threads (the shared pool is busy with catalogs and WARP), one download per picture however many cards ask
+    static final java.util.concurrent.ExecutorService imagePool = java.util.concurrent.Executors.newFixedThreadPool(6);
+    static final Map<String, List<java.util.function.Consumer<Bitmap>>> loading = new HashMap<>();
+    static final Map<String, Long> failed = new java.util.concurrent.ConcurrentHashMap<>();   // address -> when it failed: not asked again for a while
+    static final long IMAGE_DISK_MAX = 200L << 20;
 
     ScrollView page;
     LinearLayout col;
@@ -294,14 +300,11 @@ public class Home extends Activity {
         info.addView(play, pl);
         box.addView(info, new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
         box.setOnClickListener(v -> openTitle(t));
-        Bitmap hit = images.get(art);
-        if (hit != null) { img.setImageBitmap(hit); box.setVisibility(View.VISIBLE); return; }
-        App.io.execute(() -> {
-            Bitmap b = fetch(art, 1280);
-            if (b == null) return;
-            images.put(art, b);
-            runOnUiThread(() -> { img.setImageBitmap(b); box.setVisibility(View.VISIBLE); });
-        });
+        // shown once the picture is here (from memory at once): an empty band would only push the page down
+        View arrived = new View(this) {
+            @Override public void setVisibility(int v) { box.setVisibility(View.VISIBLE); }
+        };
+        loadImage(img, art, arrived, 1280);
     }
 
     void openTitle(Catalog.Title t) {
@@ -417,6 +420,16 @@ public class Home extends Activity {
 
     static final int RAIL = 72;   // dp
 
+    /** The app's name, written like the project banner: FMHY in white, Play in the accent red. */
+    TextView brand(float size) {
+        TextView name = text("", size, TEXT, true);
+        android.text.SpannableString s = new android.text.SpannableString("FMHYPlay");
+        s.setSpan(new android.text.style.ForegroundColorSpan(ACCENT), 4, 8, 0);
+        name.setText(s);
+        name.setSingleLine();
+        return name;
+    }
+
     /** TV: logo, Search, the tabs, and at the foot WARP's state and Settings, down the left edge of every tab. */
     View rail() {
         LinearLayout r = new LinearLayout(this);
@@ -426,8 +439,10 @@ public class Home extends Activity {
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_logo);
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(30), dp(30));
-        ll.bottomMargin = dp(8);
         r.addView(logo, ll);
+        TextView name = brand(10);
+        name.setPadding(0, dp(2), 0, dp(8));
+        r.addView(name);
         ImageView search = iconButton(R.drawable.ic_search, App.t(R.string.home_search), v -> startActivity(new Intent(this, SearchActivity.class)));
         search.setColorFilter(TEXT);
         search.setBackground(rounded(CARD, dp(22)));
@@ -450,10 +465,25 @@ public class Home extends Activity {
         return fit;
     }
 
+    /** On at once; off only after a yes (one stray press on the shield would show sites the real address). */
     void toggleWarp() {
-        boolean on = Warp.state == Warp.State.ON || Warp.state == Warp.State.CONNECTING;
-        App.prefs.edit().putBoolean("warp", !on).apply();
-        if (on) Warp.stop(); else Warp.start();
+        if (Warp.state != Warp.State.ON && Warp.state != Warp.State.CONNECTING) {
+            App.prefs.edit().putBoolean("warp", true).apply();
+            Warp.start();
+        } else confirm(App.t(R.string.home_warp_off_title), App.t(R.string.home_warp_off_msg), App.t(R.string.home_turn_off), () -> {
+            App.prefs.edit().putBoolean("warp", false).apply();
+            Warp.stop();
+        });
+    }
+
+    /** Every site's cookies (so logins), saved data and cached pages. */
+    void clearWebData() {
+        android.webkit.CookieManager.getInstance().removeAllCookies(null);
+        android.webkit.WebStorage.getInstance().deleteAllData();
+        android.webkit.WebView w = new android.webkit.WebView(getApplicationContext());   // the cache is cleared through any WebView
+        w.clearCache(true);
+        w.destroy();
+        toast(App.t(R.string.home_web_cleared));
     }
 
     /** The open tab is bright; the others stay quiet. */
@@ -498,7 +528,7 @@ public class Home extends Activity {
     }
 
     /** Poster width in dp for a row of posters. */
-    int posterW() { return App.tv ? 150 : 108; }
+    int posterW() { return App.tv ? 122 : 108; }
 
     View note(String s) {
         TextView t = text(s, sp(15, 13), MUTED, false);
@@ -515,8 +545,11 @@ public class Home extends Activity {
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_logo);
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(28), dp(28));
-        ll.rightMargin = dp(8);
+        ll.rightMargin = dp(6);
         bar.addView(logo, ll);
+        TextView name = brand(17);
+        name.setPadding(0, 0, dp(10), 0);
+        bar.addView(name);
         // One search for everything, from every tab: movies, series, IPTV channels and sites
         TextView search = chip(v -> startActivity(new Intent(this, SearchActivity.class)));
         search.setText(App.t(R.string.home_search));
@@ -612,7 +645,7 @@ public class Home extends Activity {
         LinearLayout holder = new LinearLayout(this);
         holder.setOrientation(LinearLayout.VERTICAL);
         col.addView(holder);
-        loadPage(type, genre, 0, holder, new Grid(holder, App.tv ? 6 : 3), built);
+        loadPage(type, genre, 0, holder, new Grid(holder, App.tv ? 8 : 3), built);
     }
 
     /** What Movies and TV open on: the viewer's own first language when their country has lists, else New. */
@@ -730,7 +763,7 @@ public class Home extends Activity {
         String status = Iptv.statusLine();
         if (!status.isEmpty()) col.addView(note(status));
         else if (App.tv && !Iptv.history().isEmpty()) col.addView(note(App.t(R.string.home_hint_hold_channel)));
-        int cols = App.tv ? 6 : 3;
+        int cols = App.tv ? 8 : 3;
         // What you added yourself comes first: a row per playlist under the name you gave it, single stream links together
         List<String> keys = new ArrayList<>(), titles = new ArrayList<>();
         for (String url : Iptv.mine()) { keys.add(url); titles.add(Iptv.playlistName(url)); }
@@ -939,7 +972,7 @@ public class Home extends Activity {
         letter.setVisibility(View.VISIBLE);
         logo.setImageDrawable(null);
         logo.setTag(null);
-        if (c.logo.startsWith("http")) loadImage(logo, c.logo, letter);
+        if (c.logo.startsWith("http")) loadImage(logo, c.logo, letter, 200);
         name.setText((Iptv.isFavorite(c) ? "\u2665 " : "") + c.name);
         List<String> cats = new ArrayList<>();
         for (String k : c.cats) cats.add(groupName(k));
@@ -1153,14 +1186,14 @@ public class Home extends Activity {
     }
 
     void settingsTab() {
-        col.addView(heading(App.t(R.string.home_tab_home)));
+        section(App.t(R.string.home_tab_home));
         TextView regionValue = new TextView(this);
         col.addView(settingRow(App.t(R.string.home_region), App.t(R.string.home_region_help), regionValue, v -> regionDialog()));
         String region = App.region();
         boolean local = Catalog.languages(region).length > 0;
         regionValue.setText(local ? new java.util.Locale("", region).getDisplayCountry() : App.t(App.prefs.getString("region", "").equals("-") ? R.string.home_off : R.string.warp_dns_auto));
         regionValue.setTextColor(local ? GREEN : MUTED);
-        col.addView(heading(App.t(R.string.home_connection)));
+        section(App.t(R.string.home_connection));
         warpValue = new TextView(this);
         col.addView(settingRow("WARP", App.t(R.string.home_warp_help), warpValue, v -> toggleWarp()));
         TextView dnsValue = new TextView(this);
@@ -1227,7 +1260,7 @@ public class Home extends Activity {
         }
         col.addView(settingRow(App.t(R.string.home_warp_log), App.t(R.string.home_warp_log_help), null, v -> warpLog()));
 
-        col.addView(heading(App.t(R.string.home_your_data)));
+        section(App.t(R.string.home_your_data));
         List<Sites.Site> favs = Sites.favorites();
         col.addView(settingRow(App.t(R.string.home_clear_favorites), App.t(favs.size() == 1 ? R.string.home_sites_one : R.string.home_sites_many, favs.size()), null, v -> confirmClearFavorites(favs.size())));
         int seen = History.list().size();
@@ -1236,11 +1269,13 @@ public class Home extends Activity {
         int watched = Iptv.history().size();
         col.addView(settingRow(App.t(R.string.home_clear_iptv_history), App.t(watched == 1 ? R.string.home_iptv_history_count_one : R.string.home_iptv_history_count_many, watched), null, v ->
             confirm(App.t(R.string.home_clear_iptv_history_title), App.t(R.string.home_clear_iptv_history_msg), App.t(R.string.home_clear), () -> { App.prefs.edit().remove("iptvhist").apply(); build(); toast(App.t(R.string.home_iptv_history_cleared)); })));
+        col.addView(settingRow(App.t(R.string.home_clear_web), App.t(R.string.home_clear_web_help), null, v ->
+            confirm(App.t(R.string.home_clear_web) + "?", App.t(R.string.home_clear_web_help), App.t(R.string.home_clear), this::clearWebData)));
         int listed = Catalog.mine().size();
         col.addView(settingRow(App.t(R.string.home_clear_mylist), App.t(listed == 1 ? R.string.home_titles_one : R.string.home_titles_many, listed), null, v ->
             confirm(App.t(R.string.home_clear_mylist_title), App.t(R.string.home_clear_mylist_msg, listed), App.t(R.string.home_clear), () -> { App.prefs.edit().remove("mylist").apply(); build(); toast(App.t(R.string.home_mylist_cleared)); })));
 
-        col.addView(heading("IPTV"));
+        section("IPTV");
         if (Iptv.adultAvailable()) {
             TextView adultValue = new TextView(this);
             col.addView(settingRow(App.t(R.string.home_adult), App.t(R.string.home_adult_help), adultValue, v -> {
@@ -1282,7 +1317,7 @@ public class Home extends Activity {
             });
         }));
 
-        col.addView(heading(App.t(R.string.home_player)));
+        section(App.t(R.string.home_player));
         TextView subValue = new TextView(this);
         col.addView(settingRow(App.t(R.string.home_subtitles), App.t(R.string.home_subtitles_help), subValue, v ->
             Subs.panel(this, false, () -> subValue.setText(Subs.sizeLabel() + " \u00B7 " + Subs.offsetLabel()), this::build)));
@@ -1334,7 +1369,7 @@ public class Home extends Activity {
         ppValue.setText(App.t(PunchPlay.signedIn() ? R.string.home_connected : R.string.home_connect));
         ppValue.setTextColor(PunchPlay.signedIn() ? GREEN : ACCENT);
 
-        col.addView(heading(App.t(R.string.home_updates)));
+        section(App.t(R.string.home_updates));
         String newer = Update.latest();
         TextView updValue = new TextView(this);
         col.addView(settingRow(App.t(R.string.home_check_updates), App.t(R.string.home_check_updates_help, Update.installed()), updValue, v -> checkUpdate(updValue)));
@@ -1348,7 +1383,7 @@ public class Home extends Activity {
         autoValue.setText(App.t(Update.auto() ? R.string.home_on : R.string.home_off));
         autoValue.setTextColor(Update.auto() ? GREEN : MUTED);
 
-        col.addView(heading(App.t(R.string.home_sites)));
+        section(App.t(R.string.home_sites));
         col.addView(settingRow(App.t(R.string.home_add_site), App.t(R.string.home_add_site_help), null, v -> addSiteDialog()));
         col.addView(settingRow(App.t(R.string.home_refresh_fmhy), App.t(R.string.home_refresh_fmhy_help), null, v -> {
             toast(App.t(R.string.home_checking_fmhy));
@@ -1361,9 +1396,22 @@ public class Home extends Activity {
         // Which build is this? (the TV and phone APKs share a package, so say it on screen)
         String ver = "";
         try { ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception ignored) { }
+        section(App.t(R.string.home_donate));
+        View why = note(App.t(R.string.home_donate_help));
+        why.setVisibility(secOpen ? View.VISIBLE : View.GONE);
+        col.addView(why);
+        col.addView(settingRow("Buy Me a Coffee", "buymeacoffee.com/rohit267", null, v -> openLink("https://buymeacoffee.com/rohit267")));
+        col.addView(settingRow("PayPal", "paypal.me/champdev", null, v -> openLink("https://paypal.me/champdev")));
+
+        section(App.t(R.string.home_about));
+        col.addView(settingRow(App.t(R.string.home_about_site), "fmhyplay.github.io/android", null, v -> openLink("https://fmhyplay.github.io/android/")));
+        col.addView(settingRow(App.t(R.string.home_about_source), "github.com/fmhyplay/android", null, v -> openLink("https://github.com/fmhyplay/android")));
+        col.addView(settingRow(App.t(R.string.home_about_bug), "github.com/fmhyplay/android/issues", null, v -> openLink("https://github.com/fmhyplay/android/issues")));
         TextView about = text(App.t(App.tv ? R.string.home_about_tv : R.string.home_about_phone, ver), sp(12, 11), MUTED, false);
-        about.setPadding(0, u(28, 14), 0, 0);
+        about.setPadding(u(14, 10), dp(6), 0, dp(8));
+        about.setVisibility(secOpen ? View.VISIBLE : View.GONE);
         col.addView(about);
+        secOpen = true;
         updateChips();
     }
 
@@ -1504,13 +1552,56 @@ public class Home extends Activity {
     TextView warpValue, adValue;
 
     /** A full-width settings row: title and a line of help on the left, current state on the right. */
+    static final java.util.Set<String> openSections = new java.util.HashSet<>();
+    static String focusSection;
+    boolean secOpen = true;   // whether the rows being added now are shown
+
+    /** A Settings group: one line that opens and closes its rows, so the tab starts as a short list. */
+    void section(String title) {
+        secOpen = openSections.contains(title);
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(u(16, 14), u(11, 11), u(18, 16), u(11, 11));
+        row.addView(text(title, sp(16, 15), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
+        row.addView(text(secOpen ? "\u2212" : "+", sp(20, 19), MUTED, false));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+        lp.bottomMargin = dp(6);
+        row.setLayoutParams(lp);
+        row.setBackground(rounded(secOpen ? CARD_HI : CARD, dp(12)));
+        focusable(row, dp(12));
+        row.setOnClickListener(v -> {
+            if (!openSections.remove(title)) openSections.add(title);
+            focusSection = title;
+            skipFocus = true;   // focus stays on this line, not back at the top
+            build();
+            skipFocus = false;
+        });
+        col.addView(row);
+        if (firstCard == null) firstCard = row;
+        if (App.tv && title.equals(focusSection)) { focusSection = null; row.post(row::requestFocus); }
+    }
+
+    /** A link: opened in the browser on a phone; a TV shows the address to open elsewhere. */
+    void openLink(String url) {
+        if (App.tv) {
+            new AlertDialog.Builder(this).setMessage(App.t(R.string.home_open_elsewhere) + "\n\n" + url.replaceFirst("^https://", ""))
+                .setPositiveButton(android.R.string.ok, null).show();
+            return;
+        }
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (android.content.ActivityNotFoundException e) {
+            startActivity(WebActivity.open(this, String.valueOf(Uri.parse(url).getHost()), url, url));
+        }
+    }
+
     View settingRow(String title, String help, TextView value, View.OnClickListener click) {
         LinearLayout row = new LinearLayout(this);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setPadding(u(18, 14), u(14, 11), u(18, 14), u(14, 11));
+        row.setPadding(u(16, 14), u(9, 9), u(18, 14), u(9, 9));
         LinearLayout left = new LinearLayout(this);
         left.setOrientation(LinearLayout.VERTICAL);
-        left.addView(text(title, sp(17, 15), TEXT, true));
+        left.addView(text(title, sp(15, 15), TEXT, true));
         TextView h = text(help, sp(13, 12), MUTED, false);
         h.setPadding(0, dp(2), 0, 0);
         left.addView(h);
@@ -1522,12 +1613,14 @@ public class Home extends Activity {
             row.addView(value);
         }
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
-        lp.bottomMargin = dp(8);
+        lp.bottomMargin = dp(6);
+        lp.leftMargin = u(14, 10);   // under its section's line
         row.setLayoutParams(lp);
-        row.setBackground(rounded(CARD, dp(14)));
-        focusable(row, dp(14));
+        row.setBackground(rounded(CARD, dp(12)));
+        focusable(row, dp(12));
         row.setOnClickListener(click);
-        if (firstCard == null) firstCard = row;
+        row.setVisibility(secOpen ? View.VISIBLE : View.GONE);
+        if (firstCard == null && secOpen) firstCard = row;
         return row;
     }
 
@@ -1544,7 +1637,7 @@ public class Home extends Activity {
         TextView letter = text(t.name.isEmpty() ? "?" : t.name.substring(0, 1).toUpperCase(), sp(40, 30), 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         art.addView(letter, new FrameLayout.LayoutParams(-1, -1));
-        if (!t.poster.isEmpty()) loadImage(img, t.poster, letter);
+        if (!t.poster.isEmpty()) loadImage(img, t.poster, letter, dp(w));
         if (kindBadges()) {
             TextView kind = text(App.t(t.anime ? R.string.home_tab_anime : t.series() ? R.string.home_kind_series : R.string.home_kind_movie), sp(11, 10), Color.WHITE, true);
             kind.setPadding(u(8, 6), u(3, 2), u(8, 6), u(3, 2));
@@ -1564,7 +1657,7 @@ public class Home extends Activity {
             return true;
         });
         card.addView(art, new LinearLayout.LayoutParams(-1, dp(w * 3 / 2)));
-        TextView name = text(t.name, sp(13, 12), TEXT, false);
+        TextView name = text(t.name, 12, TEXT, false);
         name.setSingleLine();
         name.setEllipsize(TextUtils.TruncateAt.END);
         name.setPadding(dp(2), u(8, 6), dp(2), 0);
@@ -1684,7 +1777,7 @@ public class Home extends Activity {
 
         /** Site cards: 4 across on a TV, 2 on a phone. */
         Grid(LinearLayout into) {
-            this(into, App.tv ? 4 : 2);
+            this(into, App.tv ? 5 : 2);
             cardW = cell;
         }
 
@@ -1724,14 +1817,14 @@ public class Home extends Activity {
 
     View historyCard(History.Entry e) {
         FrameLayout card = new FrameLayout(this);
-        card.setLayoutParams(cardParams(App.tv ? 196 : 190, App.tv ? 110 : 108));
+        card.setLayoutParams(cardParams(App.tv ? 168 : 190, App.tv ? 94 : 108));
         ImageView img = new ImageView(this);
         img.setScaleType(ImageView.ScaleType.CENTER_CROP);
         card.addView(img, new FrameLayout.LayoutParams(-1, -1));
         TextView letter = text(e.title.isEmpty() ? "?" : e.title.substring(0, 1).toUpperCase(), sp(44, 32), 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         card.addView(letter, new FrameLayout.LayoutParams(-1, -1));
-        if (!e.image.isEmpty()) loadImage(img, e.image, letter);
+        if (!e.image.isEmpty()) loadImage(img, e.image, letter, dp(196));
 
         View shade = new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x00000000, 0xE0000000}));
@@ -1971,21 +2064,29 @@ public class Home extends Activity {
         loadImage(into, url, placeholder, 480);
     }
 
-    /** `min`: the least width in pixels the picture is kept at (posters 480, backdrops more). */
+    /** `min`: the least width in pixels the picture is kept at (the card's own width; backdrops more). Decoded once per size, shared by every card that shows it. */
     void loadImage(ImageView into, String url, View placeholder, int min) {
-        into.setTag(url);
-        Bitmap hit = images.get(url);
+        String key = url + "@" + min;
+        into.setTag(key);
+        Bitmap hit = images.get(key);
         if (hit != null) { show(into, hit, placeholder); return; }
-        App.io.execute(() -> {
+        java.util.function.Consumer<Bitmap> done = b -> {
+            if (b == null || !key.equals(into.getTag())) return;   // failed, or the view shows something else by now
+            show(into, b, placeholder);
+            into.setAlpha(0f);
+            into.animate().alpha(1).setDuration(180).start();
+        };
+        synchronized (loading) {
+            List<java.util.function.Consumer<Bitmap>> waiting = loading.get(key);
+            if (waiting != null) { waiting.add(done); return; }   // already on its way
+            loading.put(key, new ArrayList<>(java.util.Collections.singletonList(done)));
+        }
+        imagePool.execute(() -> {
             Bitmap b = fetch(url, min);
-            if (b == null) return;
-            images.put(url, b);
-            runOnUiThread(() -> {
-                if (!url.equals(into.getTag())) return;
-                show(into, b, placeholder);
-                into.setAlpha(0f);
-                into.animate().alpha(1).setDuration(180).start();
-            });
+            if (b != null) images.put(key, b);
+            List<java.util.function.Consumer<Bitmap>> waiting;
+            synchronized (loading) { waiting = loading.remove(key); }
+            for (java.util.function.Consumer<Bitmap> c : waiting) App.main.post(() -> c.accept(b));
         });
     }
 
@@ -1998,15 +2099,22 @@ public class Home extends Activity {
         return fetch(url, 480);
     }
 
-    /** Pictures nobody has looked at for 60 days leave the disk (reading one counts as looking). */
+    /** Pictures nobody has looked at for 60 days leave the disk (reading one counts as looking), and the oldest go first when the folder passes 200 MB. */
     static void trimImages() {
         File[] all = new File(App.app.getFilesDir(), "img").listFiles();
         if (all == null) return;
-        long old = System.currentTimeMillis() - 60L * 24 * 3600 * 1000;
-        for (File f : all) if (f.lastModified() < old) f.delete();
+        long old = System.currentTimeMillis() - 60L * 24 * 3600 * 1000, total = 0;
+        java.util.Arrays.sort(all, java.util.Comparator.comparingLong(File::lastModified).reversed());   // newest first
+        for (File f : all) {
+            total += f.length();
+            boolean stale = f.getName().endsWith(".tmp") && System.currentTimeMillis() - f.lastModified() > 3600000;   // not one being written now
+            if (f.lastModified() < old || total > IMAGE_DISK_MAX || stale) f.delete();
+        }
     }
 
     static Bitmap fetch(String url, int min) {
+        Long bad = failed.get(url);
+        if (bad != null && System.currentTimeMillis() - bad < 10 * 60000) return null;   // a missing picture is not asked for on every redraw
         try {
             byte[] sha = MessageDigest.getInstance("SHA-1").digest(url.getBytes("UTF-8"));
             StringBuilder name = new StringBuilder();
@@ -2016,7 +2124,7 @@ public class Home extends Activity {
             dir.mkdirs();
             File f = new File(dir, name.toString());
             if (!f.exists()) {
-                File tmp = new File(dir, name + ".tmp");
+                File tmp = new File(dir, name + "." + Thread.currentThread().getId() + ".tmp");   // two sizes of one picture can load at once
                 try (InputStream in = Warp.openPublic(url, 6000, 20000); FileOutputStream out = new FileOutputStream(tmp)) {
                     byte[] buf = new byte[16384];
                     for (int n; (n = in.read(buf)) > 0; ) out.write(buf, 0, n);
@@ -2029,8 +2137,14 @@ public class Home extends Activity {
             o.inSampleSize = 1;
             while (o.outWidth / (o.inSampleSize * 2) >= min) o.inSampleSize *= 2;
             o.inJustDecodeBounds = false;
-            return BitmapFactory.decodeFile(f.getPath(), o);
+            Bitmap b = BitmapFactory.decodeFile(f.getPath(), o);
+            if (b == null) { f.delete(); failed.put(url, System.currentTimeMillis()); }   // not a picture (an error page): don't keep it
+            return b;
         } catch (Exception e) {
+            failed.put(url, System.currentTimeMillis());
+            return null;
+        } catch (OutOfMemoryError e) {
+            images.evictAll();
             return null;
         }
     }

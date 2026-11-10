@@ -167,7 +167,7 @@ public class SearchActivity extends Home {
         }
         if (!chans.isEmpty()) {
             results.addView(heading(App.t(R.string.search_channels_n, chans.size())));
-            int cols = App.tv ? 6 : 3;
+            int cols = App.tv ? 8 : 3;
             LinearLayout row = row(results);
             for (Iptv.Channel c : chans.subList(0, Math.min(14, chans.size()))) row.addView(channelCard(c, cols, "search"));
             if (chans.size() > 14) {

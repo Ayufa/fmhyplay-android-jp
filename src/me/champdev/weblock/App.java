@@ -44,6 +44,12 @@ public class App extends Application {
         return c.toUpperCase(java.util.Locale.ROOT);
     }
 
+    /** We are in the background and the system wants memory: decoded pictures go, they are on disk. */
+    @Override public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_BACKGROUND) Home.images.evictAll();
+    }
+
     @Override public void onCreate() {
         super.onCreate();
         app = this;

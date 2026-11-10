@@ -42,6 +42,7 @@ final class Catalog {
         String tmdb = "";   // TheMovieDB id (Cinemeta meta only): many sites key their pages by it
         String id = "", type = "movie", name = "", year = "", rating = "", poster = "", background = "", overview = "", runtime = "", genres = "";
         String cast = "", director = "", writer = "", country = "", awards = "", status = "";   // from the detail page
+        String trailer = "";   // YouTube id (detail page)
         String released = "";   // "2026-10-02T00:00:00.000Z": cinema release for a movie, first episode for a series
         boolean anime;   // set by search, from Kitsu's anime list
         final List<Episode> episodes = new ArrayList<>();
@@ -316,6 +317,7 @@ final class Catalog {
             t.country = full.country;
             t.awards = full.awards;
             t.status = full.status;
+            t.trailer = full.trailer;
             if (!full.tmdb.isEmpty()) t.tmdb = full.tmdb;
             if (!full.year.isEmpty()) t.year = full.year;
             if (!full.rating.isEmpty()) t.rating = full.rating;
@@ -369,6 +371,8 @@ final class Catalog {
         t.country = o.optString("country");
         t.awards = o.optString("awards");
         t.status = o.optString("status");
+        JSONArray trailers = o.optJSONArray("trailers");
+        if (trailers != null && trailers.length() > 0) t.trailer = trailers.getJSONObject(0).optString("source");
         JSONArray videos = o.optJSONArray("videos");
         for (int i = 0; videos != null && i < videos.length(); i++) {
             JSONObject v = videos.getJSONObject(i);

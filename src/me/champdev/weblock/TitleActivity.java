@@ -160,6 +160,18 @@ public class TitleActivity extends Home {
         list.setOnClickListener(v -> { toast(App.t(Catalog.toggleMine(t) ? R.string.title_added : R.string.title_removed)); build(); });
         buttons.addView(watch);
         buttons.addView(list);
+        if (t.trailer.matches("[\\w-]{6,20}")) {   // the YouTube app when there is one, else YouTube's page in the app
+            TextView trailer = chip(v -> {
+                String link = "https://www.youtube.com/watch?v=" + t.trailer;
+                try {
+                    startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(link)));
+                } catch (android.content.ActivityNotFoundException e) {
+                    startActivity(WebActivity.open(this, "YouTube", "https://www.youtube.com", link));
+                }
+            });
+            trailer.setText(App.t(R.string.title_trailer));
+            buttons.addView(trailer);
+        }
         android.widget.HorizontalScrollView scroller = new android.widget.HorizontalScrollView(this);
         scroller.setHorizontalScrollBarEnabled(false);
         scroller.setClipToPadding(false);
