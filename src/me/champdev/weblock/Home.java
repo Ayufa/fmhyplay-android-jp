@@ -94,6 +94,23 @@ public class Home extends Activity {
         col.setClipToPadding(false);
         col.setClipChildren(false);   // grown cards and their rings draw past their rows
         sv.addView(col);
+        if (!App.tv && tabs()) {
+            // Pull down at the top of a tab to load it again
+            float[] from = {-1};
+            sv.setOnTouchListener((v, e) -> {
+                int a = e.getActionMasked();
+                if (a == android.view.MotionEvent.ACTION_MOVE && sv.getScrollY() == 0 && !refreshing) {
+                    if (from[0] < 0) from[0] = e.getRawY();
+                    col.setTranslationY(Math.max(0, Math.min((e.getRawY() - from[0]) / 3, dp(64))));
+                } else if (a == android.view.MotionEvent.ACTION_UP || a == android.view.MotionEvent.ACTION_CANCEL) {
+                    boolean go = a == android.view.MotionEvent.ACTION_UP && col.getTranslationY() >= dp(48);
+                    col.animate().translationY(0).setDuration(150).start();
+                    from[0] = -1;
+                    if (go) refresh();
+                } else from[0] = -1;
+                return false;
+            });
+        }
         if (tabs()) {
             // A TV has everything on a rail down the left side, one Left press from any row; a phone has a top bar and tabs at the bottom
             if (state == null) tab = 0;
@@ -149,6 +166,31 @@ public class Home extends Activity {
     @Override protected void onDestroy() {
         Warp.listeners.remove(warpChanged);
         super.onDestroy();
+    }
+
+    boolean refreshing;
+
+    /** Loads the open tab again: catalog lists from the network, and the site lists (Sports, Home) or the channels (IPTV). */
+    void refresh() {
+        if (refreshing) return;
+        Catalog.expire();
+        final int t = tab;
+        if (t != 3 && t != 5) {   // poster rows show their placeholders while they load: that is the sign
+            build();
+            if (t == 0) App.io.execute(Sites::refresh);
+            return;
+        }
+        refreshing = true;
+        android.widget.ProgressBar spin = new android.widget.ProgressBar(this);
+        spin.setIndeterminateTintList(ColorStateList.valueOf(ACCENT));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(28), dp(28));
+        lp.gravity = Gravity.CENTER_HORIZONTAL;
+        lp.setMargins(0, dp(8), 0, dp(8));
+        col.addView(spin, 0, lp);
+        App.io.execute(() -> {
+            if (t == 5) Iptv.refresh(); else Sites.refresh();
+            runOnUiThread(() -> { refreshing = false; if (tab == t) build(); });
+        });
     }
 
     /** Draws the selected tab. Subclasses (search, category, title) replace this whole method. */
@@ -554,7 +596,7 @@ public class Home extends Activity {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackgroundColor(BG);
-        bar.setPadding(dp(10), dp(4), dp(4), dp(2));
+        bar.setPadding(dp(10), 0, dp(4), 0);   // the status bar above already leaves room
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_logo);
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(28), dp(28));
@@ -580,6 +622,10 @@ public class Home extends Activity {
         gear = iconButton(R.drawable.ic_settings, App.t(R.string.home_tab_settings), v -> selectTab(SETTINGS));
         ((LinearLayout.LayoutParams) gear.getLayoutParams()).setMargins(0, 0, dp(6), 0);
         bar.addView(gear);
+        for (int i = 0; i < bar.getChildCount(); i++) {   // chips keep 2 dp above and below here, not their usual 4
+            LinearLayout.LayoutParams p = (LinearLayout.LayoutParams) bar.getChildAt(i).getLayoutParams();
+            p.topMargin = p.bottomMargin = dp(2);
+        }
         return bar;
     }
 
@@ -755,120 +801,104 @@ public class Home extends Activity {
         }
     }
 
+    /**
+     * IPTV, in the order people reach for channels: what you watched, your stars, your own playlists and pins,
+     * your country's channels, then every category and country as a compact list.
+     */
     void iptvTab() {
         LinearLayout h = new LinearLayout(this);
         h.setGravity(Gravity.CENTER_VERTICAL);
-        h.addView(text("IPTV", sp(20, 17), TEXT, true), new LinearLayout.LayoutParams(0, -2, 1));
-        TextView add = chip(v -> addPlaylistDialog());   // channels are in the top bar's Search, with movies and sites
+        List<Iptv.Channel> all = Iptv.all();
+        String status = all.isEmpty() ? App.t(Iptv.loading ? R.string.home_loading_channels : R.string.home_no_channels) : Iptv.statusLine();
+        if (status.isEmpty() && App.tv && !Iptv.history().isEmpty()) status = App.t(R.string.home_hint_hold_channel);
+        TextView note = text(status, sp(13, 12), MUTED, false);
+        h.addView(note, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView add = chip(v -> addPlaylistDialog());   // channels are in Search, with movies and sites
         add.setText(App.t(R.string.home_add_playlist_chip));
+        add.setBackground(rounded(CARD, dp(22)));
         h.addView(add);
         col.addView(h);
-
-        List<Iptv.Channel> all = Iptv.all();
         if (all.isEmpty()) {
-            col.addView(note(App.t(Iptv.loading ? R.string.home_loading_channels : R.string.home_no_channels)));
             if (!Iptv.loading) Warp.whenSettled(() -> App.io.execute(() -> {
                 boolean ok = Iptv.refresh();
                 runOnUiThread(() -> { if (ok && tab == 5) build(); });
             }));
             return;
         }
-        String status = Iptv.statusLine();
-        if (!status.isEmpty()) col.addView(note(status));
-        else if (App.tv && !Iptv.history().isEmpty()) col.addView(note(App.t(R.string.home_hint_hold_channel)));
         int cols = App.tv ? 8 : 3;
-        // What you added yourself comes first: a row per playlist under the name you gave it, single stream links together
-        List<String> keys = new ArrayList<>(), titles = new ArrayList<>();
-        for (String url : Iptv.mine()) { keys.add(url); titles.add(Iptv.playlistName(url)); }
+        channelRow(App.t(R.string.home_continue_watching), Iptv.history(), cols, "history", 99, null);
+        channelRow(App.t(R.string.home_favorites), Iptv.favorites(), cols, "fav", 14, v -> openIptv("fav", "", App.t(R.string.home_favorites), false));
+        // What you added yourself: a row per playlist under the name you gave it, single stream links together
+        List<String> keys = new ArrayList<>(Iptv.mine());
         keys.add(Iptv.STREAMS);
-        titles.add(groupName(Iptv.STREAMS));
-        for (int k = 0; k < keys.size(); k++) {
-            String key = keys.get(k), title = titles.get(k);
+        for (String key : keys) {
+            String title = key.equals(Iptv.STREAMS) ? groupName(key) : Iptv.playlistName(key);
             List<Iptv.Channel> own = Iptv.list("mine", key);
             if (!key.equals(Iptv.STREAMS)) own.removeIf(c -> c.group.equals(Iptv.STREAMS));
-            if (own.isEmpty()) continue;
-            col.addView(heading(title + "  \u00B7  " + own.size()));
-            LinearLayout mr = row();
-            for (Iptv.Channel c : own.subList(0, Math.min(14, own.size()))) mr.addView(channelCard(c, cols, "mine"));
-            if (own.size() > 14) {
-                TextView more = text(App.t(R.string.home_all_count, own.size()), sp(17, 15), TEXT, true);
-                more.setGravity(Gravity.CENTER);
-                more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-                more.setBackground(rounded(CARD_HI, dp(14)));
-                focusable(more, dp(14));
-                more.setOnClickListener(v -> openIptv("mine", key, title, false));
-                mr.addView(more);
-            }
+            channelRow(title, own, cols, "mine", 14, v -> openIptv("mine", key, title, false));
         }
-        // Pinned lists (a country or category with its chips), each a row with an All tile that opens it filtered
+        // Pinned lists (a country or category with its chips), each with an All tile that opens it filtered
         for (Iptv.Pin p : Iptv.pins()) {
-            List<Iptv.Channel> in = Iptv.filter(Iptv.list(p.type, p.key), p.cat, p.lang);
-            if (in.isEmpty()) continue;
-            String title = p.title + (p.cat.isEmpty() ? "" : "  \u00B7  " + groupName(p.cat)) + (p.lang.isEmpty() ? "" : "  \u00B7  " + p.lang);
-            col.addView(heading("\uD83D\uDCCC  " + title + "  \u00B7  " + in.size()));
-            LinearLayout pr = row();
-            for (Iptv.Channel c : in.subList(0, Math.min(14, in.size()))) pr.addView(channelCard(c, cols, "pin"));
-            TextView allTile = text(App.t(R.string.home_all_count, in.size()), sp(17, 15), TEXT, true);
-            allTile.setGravity(Gravity.CENTER);
-            allTile.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-            allTile.setBackground(rounded(CARD_HI, dp(14)));
-            focusable(allTile, dp(14));
-            allTile.setOnClickListener(v -> startActivity(new Intent(this, IptvActivity.class).putExtra("type", p.type).putExtra("key", p.key)
-                .putExtra("title", p.title).putExtra("cat", p.cat).putExtra("lang", p.lang)));
-            pr.addView(allTile);
+            String title = p.title + (p.cat.isEmpty() ? "" : ", " + groupName(p.cat)) + (p.lang.isEmpty() ? "" : ", " + p.lang);
+            channelRow("\uD83D\uDCCC  " + title, Iptv.filter(Iptv.list(p.type, p.key), p.cat, p.lang), cols, "pin", 0,
+                v -> startActivity(new Intent(this, IptvActivity.class).putExtra("type", p.type).putExtra("key", p.key)
+                    .putExtra("title", p.title).putExtra("cat", p.cat).putExtra("lang", p.lang)));
         }
-        // Recently watched channels and stars, as rows like Continue watching on Home (movies stay on Home, channels stay here)
-        List<Iptv.Channel> recent = Iptv.history();
-        if (!recent.isEmpty()) {
-            col.addView(heading(App.t(R.string.home_continue_watching)));
-            LinearLayout rr = row();
-            for (Iptv.Channel c : recent) rr.addView(channelCard(c, cols, "history"));
-        }
-        // Channels that worked: what played fine for you, then what passed the background check
-        List<Iptv.Channel> works = Iptv.working();
-        if (!works.isEmpty()) {
-            col.addView(heading(App.t(R.string.home_working_count, works.size())));
-            LinearLayout wr = row();
-            int shown = 0;
-            for (Iptv.Channel c : works) {   // the first 14 in a row (ones that played for you lead), the rest behind All
-                if (shown == 14) break;
-                wr.addView(channelCard(c, cols, "working"));
-                shown++;
-            }
-            TextView more = text(App.t(R.string.home_all_count, works.size()), sp(17, 15), TEXT, true);
-            more.setGravity(Gravity.CENTER);
-            more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-            more.setBackground(rounded(CARD_HI, dp(14)));
-            focusable(more, dp(14));
-            more.setOnClickListener(v -> openIptv("working", "", App.t(R.string.home_working_channels), false));
-            wr.addView(more);
-        }
-        List<Iptv.Channel> stars = Iptv.favorites();
-        if (!stars.isEmpty()) {
-            col.addView(heading(App.t(R.string.home_favorites)));
-            LinearLayout fr = row();
-            for (Iptv.Channel c : stars.subList(0, Math.min(14, stars.size()))) fr.addView(channelCard(c, cols, "fav"));
-            TextView more = text(App.t(R.string.home_more_arrow), sp(17, 15), TEXT, true);
-            more.setGravity(Gravity.CENTER);
-            more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
-            more.setBackground(rounded(CARD_HI, dp(14)));
-            focusable(more, dp(14));
-            more.setOnClickListener(v -> openIptv("fav", "", App.t(R.string.home_favorites), false));
-            fr.addView(more);
-        }
-        // Categories and countries (a few hundred tiles) come a frame later, so the tab shows up at once
+        // The viewer's own country, as on Home
+        String region = App.region(), country = region.isEmpty() ? "" : Iptv.country(region.toLowerCase(java.util.Locale.ROOT));
+        if (!country.isEmpty()) channelRow(Iptv.flag(country) + "  " + country, Iptv.list("country", country), cols, "country", 0, v -> openIptv("country", country, country, false));
+        // Categories and countries (a few hundred cards) come a frame later, so the tab shows up at once
         final int id = built;
-        col.post(() -> { if (id == built && tab == 5) iptvGroups(cols); });
+        col.post(() -> { if (id == built && tab == 5) iptvGroups(country); });
     }
 
-    void iptvGroups(int cols) {
-        // Square tiles; an emoji icon (flag for countries) over the name and count
+    /** A row of channel tiles under its name and count. The All tile shows from `allFrom` channels up (0: always), when there is somewhere to go. */
+    void channelRow(String title, List<Iptv.Channel> list, int cols, String kind, int allFrom, View.OnClickListener all) {
+        if (list.isEmpty()) return;
+        col.addView(heading(title, String.valueOf(list.size())));
+        LinearLayout r = row();
+        for (Iptv.Channel c : list.subList(0, Math.min(kind.equals("history") ? list.size() : 14, list.size()))) r.addView(channelCard(c, cols, kind));
+        if (all == null || list.size() <= allFrom) return;
+        TextView more = text(App.t(R.string.home_all_count, list.size()), sp(14, 13), TEXT, true);
+        more.setGravity(Gravity.CENTER);
+        more.setLayoutParams(cardParams(squareDp(cols), squareDp(cols)));
+        more.setBackground(rounded(CARD, dp(14)));
+        focusable(more, dp(14));
+        more.setOnClickListener(all);
+        r.addView(more);
+    }
+
+    /** Every category, then every country (the viewer's first), as slim cards: icon, name, how many. */
+    void iptvGroups(String own) {
+        int cols = App.tv ? 5 : 2;
         col.addView(heading(App.t(R.string.home_categories)));
         Grid cats = new Grid(col, cols);
-        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(iptvTile(cats.cell, Iptv.emoji(e.getKey()), groupName(e.getKey()), e.getValue().size(), "cat", e.getKey()));
+        int working = Iptv.working().size();
+        if (working > 0) cats.add(groupCard(cats.cell, "\u2705", App.t(R.string.home_working_channels), working, "working", ""));
+        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("cat").entrySet()) cats.add(groupCard(cats.cell, Iptv.emoji(e.getKey()), groupName(e.getKey()), e.getValue().size(), "cat", e.getKey()));
         col.addView(heading(App.t(R.string.home_countries)));
         Grid countries = new Grid(col, cols);
-        for (Map.Entry<String, List<Iptv.Channel>> e : Iptv.groups("country").entrySet()) countries.add(iptvTile(countries.cell, Iptv.flag(e.getKey()), e.getKey(), e.getValue().size(), "country", e.getKey()));
+        Map<String, List<Iptv.Channel>> by = Iptv.groups("country");
+        if (by.containsKey(own)) countries.add(groupCard(countries.cell, Iptv.flag(own), own, by.get(own).size(), "country", own));
+        for (Map.Entry<String, List<Iptv.Channel>> e : by.entrySet()) if (!e.getKey().equals(own)) countries.add(groupCard(countries.cell, Iptv.flag(e.getKey()), e.getKey(), e.getValue().size(), "country", e.getKey()));
+    }
+
+    View groupCard(int w, String icon, String label, int n, String type, String key) {
+        LinearLayout card = new LinearLayout(this);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setLayoutParams(cardParams(w, App.tv ? 48 : 46));
+        card.setPadding(u(14, 12), 0, u(14, 12), 0);
+        card.addView(text(icon, sp(19, 18), TEXT, false));
+        TextView name = text(label, sp(14, 13), TEXT, true);
+        name.setSingleLine();
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setPadding(u(12, 10), 0, dp(8), 0);
+        card.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+        card.addView(text(String.valueOf(n), sp(12, 11), MUTED, false));
+        card.setBackground(rounded(CARD, dp(12)));
+        focusable(card, dp(12));
+        card.setOnClickListener(v -> openIptv(type, key, label, false));
+        return card;
     }
 
     /** Tile edge in dp for a row of `cols` square tiles. */
@@ -955,7 +985,7 @@ public class Home extends Activity {
             t = new FrameLayout(this);
             t.setBackground(rounded(CARD, dp(14)));
             box = new FrameLayout(this);
-            letter = text("", sp(34, 28), 0xCCFFFFFF, true);
+            letter = text("", sp(26, 24), MUTED, true);
             letter.setGravity(Gravity.CENTER);
             box.addView(letter, new FrameLayout.LayoutParams(-1, -1));
             logo = new ImageView(this);
@@ -986,7 +1016,7 @@ public class Home extends Activity {
             name = (TextView) info.getChildAt(0);
             sub = (TextView) info.getChildAt(1);
         }
-        box.setBackground(rounded(colorFor(c.name), dp(14)));
+        box.setBackground(rounded(CARD_HI, dp(14)));   // logos sit on one quiet tone, not a colour per channel
         letter.setText(c.name.substring(0, 1).toUpperCase(java.util.Locale.ROOT));
         letter.setVisibility(View.VISIBLE);
         logo.setImageDrawable(null);
@@ -1013,30 +1043,6 @@ public class Home extends Activity {
             case "Live": return App.t(R.string.home_group_live);
             default: return key;
         }
-    }
-
-    View iptvTile(int size, String icon, String label, int n, String type, String key) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER);
-        card.setLayoutParams(cardParams(size, size));
-        card.setPadding(dp(6), dp(6), dp(6), dp(6));
-        TextView ico = text(icon, sp(40, 30), TEXT, false);
-        ico.setGravity(Gravity.CENTER);
-        card.addView(ico);
-        TextView name = text(label, sp(16, 13), TEXT, true);
-        name.setSingleLine();
-        name.setEllipsize(TextUtils.TruncateAt.END);
-        name.setGravity(Gravity.CENTER);
-        name.setPadding(0, dp(6), 0, 0);
-        card.addView(name);
-        TextView sub = text(App.t(n == 1 ? R.string.home_channels_one : R.string.home_channels_many, n), sp(12, 11), MUTED, false);
-        sub.setGravity(Gravity.CENTER);
-        card.addView(sub);
-        card.setBackground(rounded(CARD, dp(14)));
-        focusable(card, dp(14));
-        card.setOnClickListener(v -> openIptv(type, key, label, false));
-        return card;
     }
 
     /** Set (or clear) the link to your own extra source list, then fetch it. */

@@ -18,6 +18,8 @@ Only the current version is kept here: each `vX.Y.Z` tag publishes the TV and An
 - **Turning WARP off asks first**, so a stray press does not show sites your real address.
 - The app's name is on the TV rail and the phone's top bar.
 - **Smaller tiles on a TV**: eight posters across in grids, more in every row.
+- **Pull down to refresh** on a phone: reloads the open tab (catalog lists, sites on Sports, channels on IPTV).
+- **IPTV tab redone**: what you watched and your favorites first, then your playlists and pins, then your country's channels, then categories and countries as compact cards (your country first). Channel logos sit on one quiet tone.
 - Rows show grey placeholders while they load, so the page does not jump.
 
 ### 🔧 Changed

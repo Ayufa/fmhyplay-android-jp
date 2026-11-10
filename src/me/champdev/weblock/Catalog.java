@@ -260,6 +260,13 @@ final class Catalog {
         return list;
     }
 
+    /** Everything cached counts as old from now: the next read asks the network (and still falls back to the old copy offline). */
+    static void expire() {
+        memo.clear();
+        File[] all = new File(App.app.getFilesDir(), "catalog").listFiles();
+        if (all != null) for (File f : all) f.setLastModified(1000);
+    }
+
     // Lists already read and parsed, for ten minutes: a tab switch does not read and parse its files again
     static final java.util.Map<String, Object[]> memo = new java.util.concurrent.ConcurrentHashMap<>();
 
