@@ -1905,7 +1905,8 @@ public class Home extends Activity {
         states.addState(new int[]{android.R.attr.state_focused}, ring);
         v.setForeground(new RippleDrawable(ColorStateList.valueOf(0x33FFFFFF), states, rounded(Color.WHITE, radius)));
         v.setOnFocusChangeListener((view, has) -> {
-            float s = has && view.getWidth() < dp(330) ? 1.05f : 1f;
+            // not a text box, and not a view focused before it has a size (width 0 passed as "small": the search box grew off the screen)
+            float s = has && !(view instanceof EditText) && view.getWidth() > 0 && view.getWidth() < dp(330) ? 1.05f : 1f;
             view.animate().scaleX(s).scaleY(s).translationZ(has ? dp(8) : 0).setDuration(120).start();
             if (has) view.post(() -> reveal(view));
         });
