@@ -76,6 +76,9 @@ public class Home extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
         GifView.prefetch();   // the loading backdrop's pictures, fetched once
+        android.view.ViewTreeObserver seen = getWindow().getDecorView().getViewTreeObserver();
+        seen.addOnScrollChangedListener(this::checkLazy);
+        seen.addOnGlobalLayoutListener(this::checkLazy);
         if (state == null && getClass() == Home.class) App.io.execute(Home::trimImages);
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
@@ -2169,6 +2172,38 @@ public class Home extends Activity {
         into.setTag(key);
         Bitmap hit = images.get(key);
         if (hit != null) { show(into, hit, placeholder); return; }
+        if (lazyImages()) {   // fetched and decoded when the card is on screen or close to it, not for a whole page of rows at once
+            lazy.add(new Object[]{into, (Runnable) () -> startLoad(into, url, placeholder, min, key)});
+            if (lazy.size() == 1) into.post(this::checkLazy);
+            return;
+        }
+        startLoad(into, url, placeholder, min, key);
+    }
+
+    /** Whether this screen loads pictures as they come near the screen (a recycling grid loads its own way). */
+    boolean lazyImages() { return true; }
+
+    final List<Object[]> lazy = new ArrayList<>();   // {the picture's view, what starts its load}
+
+    /** Starts the pictures whose views are on screen or within half a screen of it. Runs after every layout and scroll. */
+    void checkLazy() {
+        if (lazy.isEmpty()) return;
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        int[] at = new int[2];
+        for (java.util.Iterator<Object[]> it = lazy.iterator(); it.hasNext(); ) {
+            Object[] o = it.next();
+            ImageView v = (ImageView) o[0];
+            if (!v.isAttachedToWindow()) { it.remove(); continue; }   // its card is gone (the page was rebuilt)
+            if (v.getWidth() == 0 || !v.isShown()) continue;
+            v.getLocationOnScreen(at);
+            if (at[0] > dm.widthPixels * 3 / 2 || at[0] + v.getWidth() < -dm.widthPixels / 2
+                || at[1] > dm.heightPixels * 3 / 2 || at[1] + v.getHeight() < -dm.heightPixels / 2) continue;
+            it.remove();
+            ((Runnable) o[1]).run();
+        }
+    }
+
+    void startLoad(ImageView into, String url, View placeholder, int min, String key) {
         java.util.function.Consumer<Bitmap> done = b -> {
             if (b == null || !key.equals(into.getTag())) return;   // failed, or the view shows something else by now
             show(into, b, placeholder);
@@ -2236,7 +2271,13 @@ public class Home extends Activity {
             o.inSampleSize = 1;
             while (o.outWidth / (o.inSampleSize * 2) >= min) o.inSampleSize *= 2;
             o.inJustDecodeBounds = false;
+            // No bigger than it is shown: a 500 px poster on a 280 px card was four times the memory it needed
+            int w = o.outWidth / o.inSampleSize;
+            if (w > min * 1.2f) { o.inScaled = true; o.inDensity = w; o.inTargetDensity = min; }
+            // Photos on cards need no see-through layer: half the memory (big backdrops keep full colour for their soft shades)
+            if (min <= 400 && "image/jpeg".equals(o.outMimeType)) o.inPreferredConfig = Bitmap.Config.RGB_565;
             Bitmap b = BitmapFactory.decodeFile(f.getPath(), o);
+            if (b != null) b.setDensity(Bitmap.DENSITY_NONE);   // the scaling above was ours, not a screen density
             if (b == null) { f.delete(); failed.put(url, System.currentTimeMillis()); }   // not a picture (an error page): don't keep it
             return b;
         } catch (Exception e) {

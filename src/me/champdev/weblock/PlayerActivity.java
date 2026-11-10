@@ -184,8 +184,8 @@ public class PlayerActivity extends Activity {
     void channelsShelf() {
         int at = 0;
         for (int i = 0; i < sibs.size(); i++) if (sibs.get(i).url.equals(channel())) at = i;
-        int from = Math.max(0, Math.min(at - 30, sibs.size() - 120));
-        List<Iptv.Channel> list = sibs.subList(from, Math.min(sibs.size(), from + 120));
+        int from = Math.max(0, Math.min(at - 20, sibs.size() - 60));
+        List<Iptv.Channel> list = sibs.subList(from, Math.min(sibs.size(), from + 60));
         Iptv.Channel me = sibs.get(at);
         shelf(App.t(R.string.player_channels) + "  \u00B7  " + Home.groupName(me.cats[0]) + (me.country.isEmpty() ? "" : "  \u00B7  " + me.country), list.size(), 0,
             i -> new String[]{list.get(i).name, list.get(i).logo}, i -> { if (list.get(i) != me) playChannel(list.get(i)); }, at - from);
@@ -211,7 +211,7 @@ public class PlayerActivity extends Activity {
     void moreShelf(List<Catalog.Title> l) {
         String playing = String.valueOf(getIntent().getStringExtra("imdb"));
         List<Catalog.Title> list = new ArrayList<>();
-        for (Catalog.Title t : l) if (!t.id.equals(playing)) list.add(t);
+        for (Catalog.Title t : l) if (!t.id.equals(playing) && list.size() < 40) list.add(t);
         shelf(App.t(R.string.player_more_watch), list.size(), 1, i -> new String[]{list.get(i).name, list.get(i).poster}, i -> {
             Catalog.Title t = list.get(i);
             startActivity(new Intent(this, TitleActivity.class).putExtra("id", t.id).putExtra("type", t.type).putExtra("name", t.name)
@@ -270,7 +270,7 @@ public class PlayerActivity extends Activity {
             img.setScaleType(kind == 0 ? ImageView.ScaleType.FIT_CENTER : ImageView.ScaleType.CENTER_CROP);
             if (kind == 0) img.setPadding(dp(14), dp(10), dp(14), dp(10));
             art.addView(img, new FrameLayout.LayoutParams(-1, -1));
-            if (it[1] != null && it[1].startsWith("http")) loadStill(img, it[1]);
+            if (it[1] != null && it[1].startsWith("http")) loadStill(img, it[1], w);
             card.addView(art, new LinearLayout.LayoutParams(w, h));
             TextView name = new TextView(this);
             name.setText(it[0]);
@@ -536,7 +536,10 @@ public class PlayerActivity extends Activity {
         chipQuality = chip(R.drawable.ic_p_quality, this::pickQuality);
         chipAudio = chip(R.drawable.ic_p_language, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_AUDIO, App.t(R.string.player_audio), false));
         chipDub = chip(R.drawable.ic_p_language, this::pickSubDub);
-        chipEpisodes = chip(R.drawable.ic_p_episodes, () -> { if (sibs.size() > 1) channelsShelf(); else if (seriesInfo != null) episodesPanel(); else moreShelf(); });
+        chipEpisodes = chip(R.drawable.ic_p_episodes, () -> {
+            if (shelfOpen) { closePanel(); return; }   // pressed again: the strip closes
+            if (sibs.size() > 1) channelsShelf(); else if (seriesInfo != null) episodesPanel(); else moreShelf();
+        });
         chipServers = chip(R.drawable.ic_p_servers, () -> pickServer());
         chipSubs = chip(R.drawable.ic_p_subs, () -> pickTrack(player.getCurrentTracks(), C.TRACK_TYPE_TEXT, App.t(R.string.player_subtitles), true));
         chipMore = chip(R.drawable.ic_p_tune, this::more);
@@ -1754,8 +1757,8 @@ public class PlayerActivity extends Activity {
         int[] pe = pageEpisode();
         int at = -1;
         for (int i = 0; i < all.size(); i++) if (pe != null && all.get(i).season == Math.max(1, pe[0]) && all.get(i).number == pe[1]) at = i;
-        int from = Math.max(0, Math.min(Math.max(at, 0) - 30, all.size() - 120)), now = at;
-        List<Catalog.Episode> list = all.subList(from, Math.min(all.size(), from + 120));
+        int from = Math.max(0, Math.min(Math.max(at, 0) - 20, all.size() - 60)), now = at;
+        List<Catalog.Episode> list = all.subList(from, Math.min(all.size(), from + 60));
         shelf(App.t(R.string.player_episodes), list.size(), 2, i -> {
             Catalog.Episode e = list.get(i);
             return new String[]{"S" + e.season + " E" + e.number + (e.title.isEmpty() ? "" : "  " + e.title), e.thumb};
@@ -1776,15 +1779,17 @@ public class PlayerActivity extends Activity {
         return d;
     }
 
-    void loadStill(ImageView into, String url) {
-        into.setTag(url);
-        android.graphics.Bitmap hit = Home.images.get(url);
+    /** `min`: the card's width in pixels (the picture is kept no bigger). */
+    void loadStill(ImageView into, String url, int min) {
+        String key = url + "@" + min;
+        into.setTag(key);
+        android.graphics.Bitmap hit = Home.images.get(key);
         if (hit != null) { into.setImageBitmap(hit); return; }
-        App.io.execute(() -> {
-            android.graphics.Bitmap b = Home.fetch(url);
+        Home.imagePool.execute(() -> {
+            android.graphics.Bitmap b = Home.fetch(url, min);
             if (b == null) return;
-            Home.images.put(url, b);
-            runOnUiThread(() -> { if (url.equals(into.getTag())) into.setImageBitmap(b); });
+            Home.images.put(key, b);
+            runOnUiThread(() -> { if (key.equals(into.getTag())) into.setImageBitmap(b); });
         });
     }
 

@@ -38,6 +38,8 @@ public class IptvActivity extends Home {
 
     @Override boolean tabs() { return false; }
 
+    @Override boolean lazyImages() { return false; }   // the grid makes tiles only for what is on screen
+
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);   // Home draws its own page first; replaced below
         type = getIntent().getStringExtra("type");
