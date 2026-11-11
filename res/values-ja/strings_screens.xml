@@ -130,4 +130,5 @@
     <string name="iptv_unpin">ピン留めを解除</string>
     <string name="iptv_pinned">ピン留めしました: %1$s</string>
     <string name="iptv_unpinned">ピン留めを解除しました: %1$s</string>
+    <string name="title_trailer">予告編</string>
 </resources>

@@ -217,4 +217,18 @@
     <string name="home_group_my_playlists">マイプレイリスト</string>
     <string name="home_group_other">その他</string>
     <string name="home_group_live">ライブ</string>
+    <string name="home_region">あなたの国</string>
+    <string name="home_region_help">あなたの国の映画やシリーズがホームの先頭に表示されます。</string>
+    <string name="home_warp_off_title">WARPをオフにしますか？</string>
+    <string name="home_warp_off_msg">サイトにあなたの実際のアドレスが見えるようになり、プロバイダーがブロックしているサイトは読み込めなくなる場合があります。</string>
+    <string name="home_turn_off">オフにする</string>
+    <string name="home_clear_web">ウェブサイトデータを消去</string>
+    <string name="home_clear_web_help">すべてのサイトのCookie、ログイン情報、キャッシュ、保存データ</string>
+    <string name="home_web_cleared">ウェブサイトデータを消去しました</string>
+    <string name="home_donate">寄付</string>
+    <string name="home_donate_help">FMHYPlayは無料で、広告もアカウントもありません。お役に立てたなら、開発への支援をご検討ください。</string>
+    <string name="home_about">このアプリについて</string>
+    <string name="home_about_site">ウェブサイト</string>
+    <string name="home_about_source">ソースコード</string>
+    <string name="home_about_bug">問題を報告</string>
 </resources>

@@ -120,4 +120,6 @@
     <string name="player_sub_dub">字幕 / 吹替: %1$s</string>
     <string name="player_home">ホーム</string>
     <string name="player_more">その他</string>
+    <string name="player_channels">チャンネル</string>
+    <string name="player_more_watch">ほかの作品</string>
 </resources>
