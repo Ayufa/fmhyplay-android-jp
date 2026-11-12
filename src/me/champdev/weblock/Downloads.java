@@ -2,6 +2,10 @@ package me.champdev.weblock;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
+import android.media.MediaMuxer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -60,6 +64,8 @@ final class Downloads {
         String id, name, url, headers = "{}", kind = "", status = "queued", error = "", ext = "", out = "", path = "";   // path: where the file is, to show
         long total, done, created;           // total: bytes (an estimate for HLS)
         int segs, segDone;                   // HLS: segments in all / written
+        int asegs, aSegDone;                 // HLS with a separate audio playlist: its segments in all / written
+        long aDone;                          // ... and the bytes of them written
         long[] from = {}, pos = {}, to = {}; // a plain file: each connection's first byte, next byte and last byte (-1: until the end)
         long[] sizes = {};                   // fMP4 HLS: the bytes of each segment written so far (for the seek index)
         long pts0, sidxAt;                   // the first fragment's start time, and where the index box goes in the file
@@ -70,7 +76,7 @@ final class Downloads {
         Thread thread;
 
         long doneBytes() {
-            if (!kind.equals("file")) return done;
+            if (!kind.equals("file")) return done + aDone;
             long s = 0;
             for (int i = 0; i < pos.length; i++) s += pos[i] - from[i];
             return s;
@@ -78,7 +84,8 @@ final class Downloads {
 
         int percent() {
             if (kind.equals("file")) return total > 0 ? (int) Math.min(100, doneBytes() * 100 / total) : 0;
-            return segs > 0 ? segDone * 100 / segs : 0;
+            int p = segs > 0 ? (segDone + aSegDone) * 100 / (segs + asegs) : 0;
+            return asegs > 0 && !status.equals("done") ? Math.min(p, 99) : p;   // the last per cent is the merge of picture and sound
         }
 
         boolean active() {
@@ -107,6 +114,16 @@ final class Downloads {
         return App.prefs.getString("dlFolder", "Download/FMHYPlay");
     }
 
+    /** The device's own storage as a path (/storage/emulated/0): what the folders below it are really called on disk. */
+    static String root() {
+        return Environment.getExternalStorageDirectory().getAbsolutePath();
+    }
+
+    /** The folder with its whole path, for the screen: /storage/emulated/0/Download/FMHYPlay/ */
+    static String folderPath() {
+        return root() + "/" + folder().replaceAll("^/+|/+$", "") + "/";
+    }
+
     // ---- The list ----
 
     static synchronized List<Item> list() {
@@ -132,6 +149,9 @@ final class Downloads {
                     it.created = o.optLong("created");
                     it.segs = o.optInt("segs");
                     it.segDone = o.optInt("segDone");
+                    it.asegs = o.optInt("asegs");
+                    it.aSegDone = o.optInt("aSegDone");
+                    it.aDone = o.optLong("aDone");
                     it.from = longs(o.optJSONArray("from"));
                     it.pos = longs(o.optJSONArray("pos"));
                     it.to = longs(o.optJSONArray("to"));
@@ -165,8 +185,8 @@ final class Downloads {
         try {
             for (Item it : items) {
                 a.put(new JSONObject().put("id", it.id).put("name", it.name).put("url", it.url).put("headers", it.headers).put("kind", it.kind)
-                    .put("status", it.status).put("error", it.error).put("ext", it.ext).put("out", it.out).put("path", it.path).put("total", it.total).put("done", it.doneBytes())
-                    .put("created", it.created).put("segs", it.segs).put("segDone", it.segDone)
+                    .put("status", it.status).put("error", it.error).put("ext", it.ext).put("out", it.out).put("path", it.path).put("total", it.total).put("done", it.done)
+                    .put("created", it.created).put("segs", it.segs).put("segDone", it.segDone).put("asegs", it.asegs).put("aSegDone", it.aSegDone).put("aDone", it.aDone)
                     .put("from", array(it.from)).put("pos", array(it.pos)).put("to", array(it.to))
                     .put("sizes", array(it.sizes)).put("pts0", it.pts0).put("sidxAt", it.sidxAt).put("track", it.track).put("scale", it.scale));
             }
@@ -203,6 +223,7 @@ final class Downloads {
                 String[] best = bestVariant(text);
                 if (best == null) return p;
                 p.height = Integer.parseInt(best[1]);
+                if (audioUri(text, best[2]) != null) { p.ext = "mp4"; return p; }   // picture and sound come apart: they are joined into an MP4
                 text = fetchText(look, resolve(url, best[0]));
             }
             if (text.contains("#EXT-X-MAP:")) p.ext = "mp4";   // the pieces are fMP4: the file is an MP4
@@ -228,7 +249,7 @@ final class Downloads {
         list();
         Item it = new Item();
         it.id = Long.toString(System.nanoTime(), 36);
-        it.name = fileBase(name, plan.height);
+        it.name = safeName(name);   // the caller built it (fileBase) or the user typed it
         it.ext = plan.ext;
         it.url = url;
         it.headers = headers == null || headers.isEmpty() ? "{}" : headers;
@@ -451,55 +472,25 @@ final class Downloads {
     private static void hls(Item it) throws Exception {
         String text = fetchText(it, it.url);
         if (!text.startsWith("#EXTM3U")) { it.kind = "file"; file(it); return; }   // not a playlist after all: a plain file
-        String base = it.url;
+        String base = it.url, audioUrl = null;
         if (text.contains("#EXT-X-STREAM-INF")) {   // the main playlist: the best quality
             String[] best = bestVariant(text);
             if (best == null) throw new IOException("an empty playlist");
+            String au = audioUri(text, best[2]);   // the sound in a playlist of its own, not in the pieces of the picture
+            if (au != null) audioUrl = resolve(base, au);
             base = resolve(base, best[0]);
             text = fetchText(it, base);
         }
-        if (!text.contains("#EXT-X-ENDLIST")) throw new IOException(App.t(R.string.dl_live));
-        List<Seg> segs = new ArrayList<>();
-        String map = null, keyUri = null;
-        byte[] keyIv = null;
-        boolean aes = false;
-        long seq = 0;
-        double dur = 0;
-        for (String raw : text.split("\\r?\\n")) {
-            String l = raw.trim();
-            if (l.isEmpty()) continue;
-            if (l.startsWith("#EXTINF:")) {
-                String d = l.substring(8);
-                int comma = d.indexOf(',');
-                try { dur = Double.parseDouble((comma >= 0 ? d.substring(0, comma) : d).trim()); } catch (NumberFormatException e) { dur = 0; }
-            } else if (l.startsWith("#EXT-X-MEDIA-SEQUENCE:")) {
-                try { seq = Long.parseLong(l.substring(22).trim()); } catch (NumberFormatException ignored) { }
-            } else if (l.startsWith("#EXT-X-KEY:")) {
-                String method = attr(l, "METHOD");
-                if ("AES-128".equals(method)) {
-                    aes = true;
-                    keyUri = resolve(base, attr(l, "URI"));
-                    keyIv = ivFromHex(attr(l, "IV"));
-                } else if ("NONE".equals(method)) {
-                    aes = false;
-                } else {
-                    throw new IOException(App.t(R.string.dl_protected));
-                }
-            } else if (l.startsWith("#EXT-X-MAP:")) {
-                if (map == null) map = resolve(base, attr(l, "URI"));
-            } else if (l.charAt(0) != '#') {
-                Seg s = new Seg();
-                s.url = resolve(base, l);
-                s.dur = dur;
-                dur = 0;
-                if (aes) { s.key = keyUri; s.iv = keyIv != null ? keyIv : ivFromNumber(seq + segs.size()); }
-                segs.add(s);
-            }
-        }
-        if (segs.isEmpty()) throw new IOException("no segments in the playlist");
+        Track vt = track(text, base);
+        List<Seg> segs = vt.segs;
+        String map = vt.map;
         it.segs = segs.size();
-        it.ext = map != null ? "mp4" : "ts";   // pieces of an fMP4 stream put back to back are one MP4; the others are an MPEG-TS file
-        Sink sink = Sink.open(it);
+        Track at = null;
+        if (audioUrl != null) at = track(fetchText(it, audioUrl), audioUrl);
+        it.asegs = at == null ? 0 : at.segs.size();
+        it.ext = at != null || map != null ? "mp4" : "ts";   // pieces of an fMP4 stream put back to back are one MP4; the others are an MPEG-TS file; picture and sound are joined into an MP4
+        File vfile = tmp(it, "v");
+        Sink sink = at != null ? Sink.open(vfile) : Sink.open(it);   // with a separate sound the picture waits in a file of its own until it is joined
         ExecutorService pool = Executors.newFixedThreadPool(connections());
         try {
             long pos = it.segDone == 0 ? 0 : it.done;
@@ -507,7 +498,7 @@ final class Downloads {
                 byte[] init = get(it, map);
                 Sink.write(sink.ch, ByteBuffer.wrap(init), 0);
                 pos = init.length;
-                int[] tr = segs.size() <= 65535 ? videoTrack(init) : null;
+                int[] tr = segs.size() <= 65535 && at == null ? videoTrack(init) : null;
                 if (tr != null) {
                     // Room for the seek index, filled in once every piece is here (until then a "free" box, which players skip). Pieces put
                     // back to back have no index, and a player can only get to the middle by reading from the start: very slow on a big movie.
@@ -552,6 +543,14 @@ final class Downloads {
             }
             it.total = it.done;
             if (it.scale > 0) writeIndex(sink, it, segs);
+            if (at != null) {   // the sound next, then the two are joined into the file
+                File afile = tmp(it, "a");
+                fetchAudio(it, at, afile);
+                it.total = it.done + it.aDone;
+                merge(it, vfile, afile);
+                vfile.delete();
+                afile.delete();
+            }
             sink.finish();
         } finally {
             pool.shutdownNow();
@@ -559,9 +558,58 @@ final class Downloads {
         }
     }
 
-    /** The highest-bandwidth variant of a main playlist: {its address as written, its picture height or "0"}. Null when there is none. */
+    static final class Track {
+        final List<Seg> segs = new ArrayList<>();
+        String map;   // the init segment of an fMP4 stream
+    }
+
+    /** The pieces of a finished media playlist, with their keys, and the init segment of an fMP4 one. */
+    private static Track track(String text, String base) throws IOException {
+        if (!text.contains("#EXT-X-ENDLIST")) throw new IOException(App.t(R.string.dl_live));
+        Track t = new Track();
+        String keyUri = null;
+        byte[] keyIv = null;
+        boolean aes = false;
+        long seq = 0;
+        double dur = 0;
+        for (String raw : text.split("\\r?\\n")) {
+            String l = raw.trim();
+            if (l.isEmpty()) continue;
+            if (l.startsWith("#EXTINF:")) {
+                String d = l.substring(8);
+                int comma = d.indexOf(',');
+                try { dur = Double.parseDouble((comma >= 0 ? d.substring(0, comma) : d).trim()); } catch (NumberFormatException e) { dur = 0; }
+            } else if (l.startsWith("#EXT-X-MEDIA-SEQUENCE:")) {
+                try { seq = Long.parseLong(l.substring(22).trim()); } catch (NumberFormatException ignored) { }
+            } else if (l.startsWith("#EXT-X-KEY:")) {
+                String method = attr(l, "METHOD");
+                if ("AES-128".equals(method)) {
+                    aes = true;
+                    keyUri = resolve(base, attr(l, "URI"));
+                    keyIv = ivFromHex(attr(l, "IV"));
+                } else if ("NONE".equals(method)) {
+                    aes = false;
+                } else {
+                    throw new IOException(App.t(R.string.dl_protected));
+                }
+            } else if (l.startsWith("#EXT-X-MAP:")) {
+                if (t.map == null) t.map = resolve(base, attr(l, "URI"));
+            } else if (l.charAt(0) != '#') {
+                Seg s = new Seg();
+                s.url = resolve(base, l);
+                s.dur = dur;
+                dur = 0;
+                if (aes) { s.key = keyUri; s.iv = keyIv != null ? keyIv : ivFromNumber(seq + t.segs.size()); }
+                t.segs.add(s);
+            }
+        }
+        if (t.segs.isEmpty()) throw new IOException("no segments in the playlist");
+        return t;
+    }
+
+    /** The highest-bandwidth variant of a main playlist: {its address as written, its picture height or "0", its audio group or null}. Null when there is none. */
     private static String[] bestVariant(String text) {
-        String best = null;
+        String best = null, group = null;
         long bw = -1;
         int height = 0;
         String[] lines = text.split("\\r?\\n");
@@ -574,11 +622,137 @@ final class Downloads {
             if (uri == null || bandwidth <= bw) continue;
             bw = bandwidth;
             best = uri;
+            group = attr(lines[i], "AUDIO");
             String r = attr(lines[i], "RESOLUTION");   // 1920x1080
             height = 0;
             if (r != null && r.contains("x")) try { height = Integer.parseInt(r.substring(r.indexOf('x') + 1).trim()); } catch (NumberFormatException ignored) { }
         }
-        return best == null ? null : new String[]{best, String.valueOf(height)};
+        return best == null ? null : new String[]{best, String.valueOf(height), group};
+    }
+
+    /** The address (as written) of the audio playlist of a group in a main playlist: the default one, else the first. Null when the sound is in the picture's own pieces. */
+    private static String audioUri(String text, String group) {
+        if (group == null) return null;
+        String first = null;
+        for (String raw : text.split("\\r?\\n")) {
+            String l = raw.trim();
+            if (!l.startsWith("#EXT-X-MEDIA:") || !"AUDIO".equals(attr(l, "TYPE")) || !group.equals(attr(l, "GROUP-ID"))) continue;
+            String uri = attr(l, "URI");
+            if (uri == null) continue;
+            if ("YES".equalsIgnoreCase(attr(l, "DEFAULT"))) return uri;
+            if (first == null) first = uri;
+        }
+        return first;
+    }
+
+    /** Where a part of a download waits until it is whole (k: "v" the picture, "a" the sound): the app's own storage, not the cache the system empties. */
+    private static File tmp(Item it, String k) {
+        File base = App.app.getExternalFilesDir(null);
+        File dir = new File(base != null ? base : App.app.getFilesDir(), "downloading");
+        dir.mkdirs();
+        return new File(dir, it.id + "." + k);
+    }
+
+    /** The sound of a stream whose sound is a playlist of its own, written to `f` the way the picture is (in order, N pieces ahead), and resumable. */
+    private static void fetchAudio(Item it, Track t, File f) throws Exception {
+        if (it.aSegDone >= t.segs.size()) return;
+        Sink sink = Sink.open(f);
+        ExecutorService pool = Executors.newFixedThreadPool(connections());
+        try {
+            long pos = it.aSegDone == 0 ? 0 : it.aDone;
+            if (it.aSegDone == 0 && t.map != null) {
+                byte[] init = get(it, t.map);
+                Sink.write(sink.ch, ByteBuffer.wrap(init), 0);
+                pos = init.length;
+            }
+            Map<String, byte[]> keys = new ConcurrentHashMap<>();
+            ArrayDeque<Future<byte[]>> ahead = new ArrayDeque<>();
+            int next = it.aSegDone;
+            while (next < t.segs.size() || !ahead.isEmpty()) {
+                if (it.stop) throw new Stopped();
+                while (next < t.segs.size() && ahead.size() < connections() * 2) {
+                    final Seg s = t.segs.get(next++);
+                    ahead.add(pool.submit(() -> segment(it, s, keys)));
+                }
+                byte[] data;
+                try {
+                    data = ahead.poll().get();
+                } catch (ExecutionException e) {
+                    if (it.stop) throw new Stopped();
+                    throw e.getCause() instanceof Exception ? (Exception) e.getCause() : e;
+                }
+                Sink.write(sink.ch, ByteBuffer.wrap(data), pos);
+                pos += data.length;
+                it.aDone = pos;
+                it.aSegDone++;
+            }
+        } finally {
+            pool.shutdownNow();
+            sink.close();
+        }
+    }
+
+    private static int trackOf(MediaExtractor e, String kind) {
+        for (int i = 0; i < e.getTrackCount(); i++) {
+            String mime = e.getTrackFormat(i).getString(MediaFormat.KEY_MIME);
+            if (mime != null && mime.startsWith(kind)) return i;
+        }
+        return -1;
+    }
+
+    /** Joins the picture and the sound into one MP4 (the download's file), samples copied as they are, in time order. Safe to run again: it starts the file over. */
+    private static void merge(Item it, File video, File audio) throws Exception {
+        MediaExtractor v = new MediaExtractor(), a = new MediaExtractor();
+        Sink out = Sink.open(it);
+        MediaMuxer mux = null;
+        boolean started = false;
+        try {
+            v.setDataSource(video.getAbsolutePath());
+            a.setDataSource(audio.getAbsolutePath());
+            int vt = trackOf(v, "video/"), at = trackOf(a, "audio/");
+            if (vt < 0 || at < 0) throw new IOException(App.t(R.string.dl_merge_failed));
+            v.selectTrack(vt);
+            a.selectTrack(at);
+            long vs = v.getSampleTime(), as = a.getSampleTime();
+            if (vs < 0 || as < 0) throw new IOException(App.t(R.string.dl_merge_failed));
+            long base = Math.min(vs, as);   // both start near 0, keeping the gap between them
+            out.ch.truncate(0);
+            mux = new MediaMuxer(out.fd(), MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            int vi, ai;
+            try {
+                vi = mux.addTrack(v.getTrackFormat(vt));
+                ai = mux.addTrack(a.getTrackFormat(at));
+            } catch (IllegalArgumentException | IllegalStateException e) {
+                throw new IOException(App.t(R.string.dl_merge_failed), e);   // a sound format MP4 cannot hold
+            }
+            mux.start();
+            started = true;
+            ByteBuffer buf = ByteBuffer.allocate(4 << 20);
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            while (true) {
+                if (it.stop) throw new Stopped();
+                vs = v.getSampleTime();
+                as = a.getSampleTime();
+                if (vs < 0 && as < 0) break;
+                boolean pic = as < 0 || (vs >= 0 && vs <= as);
+                MediaExtractor e = pic ? v : a;
+                buf.clear();
+                int n = e.readSampleData(buf, 0);
+                if (n < 0) break;
+                info.set(0, n, e.getSampleTime() - base, (e.getSampleFlags() & MediaExtractor.SAMPLE_FLAG_SYNC) != 0 ? MediaCodec.BUFFER_FLAG_KEY_FRAME : 0);
+                mux.writeSampleData(pic ? vi : ai, buf, info);
+                e.advance();
+            }
+            mux.stop();
+            started = false;
+            out.finish();
+        } finally {
+            if (mux != null) try { if (started) mux.stop(); } catch (RuntimeException ignored) { }
+            if (mux != null) mux.release();
+            v.release();
+            a.release();
+            out.close();
+        }
     }
 
     private static byte[] segment(Item it, Seg s, Map<String, byte[]> keys) throws Exception {
@@ -789,13 +963,14 @@ final class Downloads {
         return m.find() ? m.group(1) : dash ? "mp4" : "ts";
     }
 
-    /** Where the file is, for the screen: /sdcard/Download/FMHYPlay/Name.ext (the name the system finally gave it). */
+    /** Where the file is, for the screen: /storage/emulated/0/Download/FMHYPlay/Name.ext (the name the system finally gave it). */
     static String pathOf(Item it) {
+        if (it.path.startsWith("/sdcard/")) it.path = root() + it.path.substring(7);   // an older entry: the real name of the same folder
         if (!it.path.isEmpty() || it.out.isEmpty()) return it.path;
         if (!it.out.startsWith("content://")) return it.path = it.out;
         try (android.database.Cursor c = App.app.getContentResolver().query(Uri.parse(it.out),
             new String[]{MediaStore.MediaColumns.RELATIVE_PATH, MediaStore.MediaColumns.DISPLAY_NAME}, null, null, null)) {
-            if (c != null && c.moveToFirst()) it.path = "/sdcard/" + c.getString(0) + c.getString(1);
+            if (c != null && c.moveToFirst()) it.path = root() + "/" + c.getString(0) + c.getString(1);
         } catch (RuntimeException ignored) { }
         return it.path;
     }
@@ -820,6 +995,17 @@ final class Downloads {
         private ParcelFileDescriptor pfd;
         private RandomAccessFile raf;
         private FileOutputStream fos;
+
+        static Sink open(File f) throws IOException {
+            Sink s = new Sink();
+            s.raf = new RandomAccessFile(f, "rw");
+            s.ch = s.raf.getChannel();
+            return s;
+        }
+
+        java.io.FileDescriptor fd() throws IOException {
+            return pfd != null ? pfd.getFileDescriptor() : raf.getFD();
+        }
 
         static Sink open(Item it) throws IOException {
             if (it.out.isEmpty()) create(it);
@@ -882,6 +1068,8 @@ final class Downloads {
         }
 
         static void delete(Item it) {
+            tmp(it, "v").delete();
+            tmp(it, "a").delete();
             if (it.out.isEmpty()) return;
             try {
                 if (it.out.startsWith("content://")) App.app.getContentResolver().delete(Uri.parse(it.out), null, null);

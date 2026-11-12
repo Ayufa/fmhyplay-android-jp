@@ -23,6 +23,7 @@
     <string name="dl_dash">This stream type (DASH) can\'t be downloaded yet</string>
     <string name="dl_live">A live stream can\'t be downloaded</string>
     <string name="dl_protected">This stream is protected and can\'t be downloaded</string>
+    <string name="dl_merge_failed">The picture and the sound of this stream can\'t be joined</string>
     <string name="dl_added">Downloading: %1$s</string>
     <string name="player_download">Download</string>
     <string name="dl_confirm_title">Download this video?</string>
@@ -35,6 +36,9 @@
     <string name="dl_connections_title">Download connections</string>
     <string name="dl_folder">Folder</string>
     <string name="dl_folder_help">Where downloads are saved: a folder under Download, Movies or Documents.</string>
+    <string name="dl_name_title">File name</string>
+    <string name="dl_name_change">Change file name</string>
+    <string name="dl_folder_change">Change folder</string>
     <string name="dl_folder_other">Other folder…</string>
     <string name="dl_folder_prompt">Folder (Download/…, Movies/… or Documents/…)</string>
     <string name="dl_folder_bad">The folder must start with Download/, Movies/ or Documents/</string>

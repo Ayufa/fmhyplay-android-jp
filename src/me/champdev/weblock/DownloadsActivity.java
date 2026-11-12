@@ -102,8 +102,8 @@ public class DownloadsActivity extends Home {
         top.addView(row.speed);
         mid.addView(top);
         TextView where = text(Downloads.pathOf(it), sp(10.5f, 10), MUTED, false);   // /sdcard/Download/FMHYPlay/Name.ext
-        where.setSingleLine();
-        where.setEllipsize(TextUtils.TruncateAt.MIDDLE);
+        where.setMaxLines(2);   // the whole path: a long one wraps instead of being cut in the middle
+        where.setEllipsize(TextUtils.TruncateAt.END);
         if (!where.getText().toString().isEmpty()) mid.addView(where);
 
         LinearLayout stats = new LinearLayout(this);

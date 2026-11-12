@@ -1326,6 +1326,14 @@ public class PlayerActivity extends Activity {
         if (Home.holdBack(this, e)) return true;
         if (player == null) return super.dispatchKeyEvent(e);
         if (panel != null) {   // the Episodes list: normal focus keys, Back closes it
+            if (shelfOpen && e.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP) {   // Up from the strip at the bottom closes it, the remote goes back to its button
+                if (e.getAction() == KeyEvent.ACTION_DOWN && e.getRepeatCount() == 0) {
+                    closePanel();
+                    rowFocus(true);
+                    if (chipEpisodes.getVisibility() == View.VISIBLE) chipEpisodes.requestFocus();
+                }
+                return true;
+            }
             if (e.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (e.getAction() == KeyEvent.ACTION_UP) closePanel(); return true; }
             return super.dispatchKeyEvent(e);
         }
@@ -1699,14 +1707,24 @@ public class PlayerActivity extends Activity {
         App.io.execute(() -> {
             Downloads.Plan plan = Downloads.plan(url, headers, dash);
             if (plan.height == 0) plan.height = playing;
-            runOnUiThread(() -> {
-                if (isFinishing()) return;
-                String file = Downloads.fileBase(base, plan.height) + "." + plan.ext;
-                Subs.ask(this, App.t(R.string.dl_confirm_title), new int[]{R.drawable.ic_movie, R.drawable.ic_folder, R.drawable.ic_p_speed},
-                    new String[]{file, Downloads.folder(), App.t(R.string.dl_connections_n, Downloads.connections())},
-                    R.drawable.ic_download, App.t(R.string.player_download), () -> download(base, plan));
-            });
+            runOnUiThread(() -> showConfirm(base, plan, null));
         });
+    }
+
+    /**
+     * The question itself. The file name and the folder lines can be pressed: each opens its choice and then asks again with the change.
+     * custom: the name the user typed (the extension is added), or null for the one made from the title.
+     */
+    void showConfirm(String base, Downloads.Plan plan, String custom) {
+        if (isFinishing()) return;
+        String name = custom != null ? custom : Downloads.fileBase(base, plan.height);
+        Runnable[] edits = {
+            () -> Subs.pickName(this, name, n -> showConfirm(base, plan, n)),
+            () -> Subs.pickFolder(this, () -> showConfirm(base, plan, custom))};
+        Subs.ask(this, App.t(R.string.dl_confirm_title), new int[]{R.drawable.ic_movie, R.drawable.ic_folder},
+            new String[]{name + "." + plan.ext, Downloads.folderPath()},
+            R.drawable.ic_download, App.t(R.string.player_download), () -> download(name, plan),
+            edits, new String[]{App.t(R.string.dl_name_change), App.t(R.string.dl_folder_change)});
     }
 
     void download(String base, Downloads.Plan plan) {

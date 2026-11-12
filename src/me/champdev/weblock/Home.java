@@ -1725,7 +1725,7 @@ public class Home extends Activity {
         connValue.setTextColor(TEXT);
         TextView folderValue = new TextView(this);
         secBox.addView(settingRow(R.drawable.ic_folder, App.t(R.string.dl_folder), App.t(R.string.dl_folder_help), folderValue, v -> folderDialog()));
-        folderValue.setText(Downloads.folder());
+        folderValue.setText(Downloads.folderPath());
         folderValue.setTextColor(TEXT);
 
         section(App.t(R.string.home_updates), R.drawable.ic_refresh);
@@ -1788,22 +1788,7 @@ public class Home extends Activity {
 
     /** Settings, Downloads: the folder (under Download, Movies or Documents): a preset, or one of your own. */
     void folderDialog() {
-        String[] presets = {"Download/FMHYPlay", "Movies/FMHYPlay", "Documents/FMHYPlay"};
-        String[] items = {presets[0], presets[1], presets[2], App.t(R.string.dl_folder_other)};
-        new AlertDialog.Builder(this).setTitle(App.t(R.string.dl_folder)).setItems(items, (d, i) -> {
-            if (i < presets.length) { App.prefs.edit().putString("dlFolder", presets[i]).apply(); rebuild(); return; }
-            EditText in = WebActivity.field(this, Downloads.folder(), InputType.TYPE_CLASS_TEXT);
-            in.setText(Downloads.folder());
-            new AlertDialog.Builder(this).setTitle(App.t(R.string.dl_folder_prompt)).setView(WebActivity.box(this, in))
-                .setPositiveButton(android.R.string.ok, (d2, w) -> {
-                    String f = in.getText().toString().trim().replaceAll("[\\\\:*?\"<>|]", "").replaceAll("^/+|/+$", "");
-                    if (!f.matches("(?i)(Download|Movies|Documents)(/.*)?")) { toast(App.t(R.string.dl_folder_bad)); return; }
-                    String root = f.split("/")[0];
-                    f = root.substring(0, 1).toUpperCase() + root.substring(1).toLowerCase() + f.substring(root.length());   // Android wants Download, Movies, Documents
-                    App.prefs.edit().putString("dlFolder", f).apply();
-                    rebuild();
-                }).setNegativeButton(android.R.string.cancel, null).show();
-        }).show();
+        Subs.pickFolder(this, this::rebuild);
     }
 
     /** Settings: Volume boost and Dialog boost, 0-20 each; every video starts with them. */
