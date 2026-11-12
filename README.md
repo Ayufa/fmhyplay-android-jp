@@ -68,7 +68,7 @@ Streaming sites are built for a desktop browser with a mouse. On a TV remote the
 **Downloads**
 - A **Download** button in the player saves the movie, series or anime you are watching: it asks first (file name, folder), names the file like `Title.2024.1080p.FMHYPlay.mp4`, and keeps going in the background with progress in a notification
 - **Several connections** at once (4 by default, 1 to 8 in *Settings, Downloads*), pause and resume, a **Downloads** screen with each file's path, and a folder of your choice under Download, Movies or Documents
-- Plain files and HLS streams (including encrypted ones); HLS saves get a seek index so the video can be skipped through. DASH, live and protected streams are not downloaded
+- Plain files and HLS streams (including encrypted ones, and ones whose sound is a separate playlist: it is joined into the MP4); HLS saves get a seek index so the video can be skipped through. DASH, live and protected streams are not downloaded
 
 **Browsing**
 - Home with Continue watching, Favorites, **your country's movies and series first** (by language, from TMDB), then **New and Popular** for Movies, TV and Anime (from Cinemeta and Kitsu)
