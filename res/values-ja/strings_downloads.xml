@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dl_title">ダウンロード</string>
+    <string name="dl_starting">開始中…</string>
+    <string name="dl_done_channel">ダウンロード完了</string>
+    <string name="dl_done">ダウンロードが完了しました</string>
+    <string name="dl_notify_many">%1$d 件のファイルをダウンロード中</string>
+    <string name="dl_empty">まだ何もありません。映画・シリーズ・アニメの再生中に、プレイヤーの「その他」から「ダウンロード」を選ぶと保存できます。</string>
+    <string name="dl_hint_tv">左右でボタンを選択します: 一時停止、再生、または削除</string>
+    <string name="dl_hint_touch">ボタンで一時停止、再生、削除ができます</string>
+    <string name="dl_failed">停止しました: %1$s</string>
+    <string name="dl_speed">%1$s/s · %2$d×</string>
+    <string name="dl_connections_n">%1$d 接続</string>
+    <string name="dl_checking">ストリームを確認中…</string>
+    <string name="dl_pause">一時停止</string>
+    <string name="dl_delete">削除</string>
+    <string name="dl_delete_confirm">このダウンロードとそのファイルを削除しますか？</string>
+    <string name="dl_resume">再開</string>
+    <string name="dl_cancel">キャンセルしてファイルを削除</string>
+    <string name="dl_play">再生</string>
+    <string name="dl_delete_file">ファイルを削除</string>
+    <string name="dl_remove">リストから削除（ファイルは残す）</string>
+    <string name="dl_dash">このストリーム形式（DASH）はまだダウンロードできません</string>
+    <string name="dl_live">ライブストリームはダウンロードできません</string>
+    <string name="dl_protected">このストリームは保護されているためダウンロードできません</string>
+    <string name="dl_merge_failed">このストリームの映像と音声を結合できません</string>
+    <string name="dl_added">ダウンロード中: %1$s</string>
+    <string name="player_download">ダウンロード</string>
+    <string name="dl_confirm_title">この動画をダウンロードしますか？</string>
+    <string name="player_downloads">ダウンロード</string>
+    <string name="dl_open_settings">ダウンロード</string>
+    <string name="dl_open_help">ダウンロード中とダウンロード済みのすべてです。進行状況、一時停止、再開、再生ができます</string>
+    <string name="dl_active_count">%1$d 件実行中</string>
+    <string name="dl_connections">接続数</string>
+    <string name="dl_connections_help">ダウンロードを一度に取得する分割数（1〜8）。多いほど速くなりますが、サイトや回線が遅い場合はそれが上限になります</string>
+    <string name="dl_connections_title">ダウンロードの接続数</string>
+    <string name="dl_folder">フォルダ</string>
+    <string name="dl_folder_help">ダウンロードの保存先です。Download、Movies、Documents のいずれかの下のフォルダを指定します</string>
+    <string name="dl_name_title">ファイル名</string>
+    <string name="dl_name_change">ファイル名を変更</string>
+    <string name="dl_folder_change">フォルダを変更</string>
+    <string name="dl_folder_other">その他のフォルダ…</string>
+    <string name="dl_folder_prompt">フォルダ（Download/…、Movies/…、または Documents/…）</string>
+    <string name="dl_folder_bad">フォルダは Download/、Movies/、Documents/ のいずれかで始まる必要があります</string>
+</resources>

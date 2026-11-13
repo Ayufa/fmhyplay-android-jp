@@ -16,6 +16,9 @@
     <string name="player_boost_now">音量ブースト · %1$s</string>
     <string name="player_db">+%1$d dB</string>
     <string name="player_off">オフ</string>
+    <string name="player_sound_boost_now">サウンドブースト · %1$s · ダイアログ %2$s</string>
+    <string name="audio_title">サウンドブースト</string>
+    <string name="audio_help">0 はオフ、20 が最大です。音量ブーストは全体を最大 +20 dB まで上げます。ダイアログブーストは低音の響きを抑えてゲインを加え、声を際立たせます。上げすぎると音が歪むことがあります</string>
     <string name="player_on">オン</string>
     <string name="player_dialog_now">ダイアログブースト · %1$s</string>
     <string name="player_subs_now">字幕 · %1$s</string>
