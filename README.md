@@ -3,184 +3,71 @@
 </p>
 
 <p align="center">
-  <b>Any streaming site, a real player.</b><br>
-  A TV-first Android app that opens the sites you choose, finds the video they play, and plays it in a native hardware-accelerated player.
+  <b>AnantPlay 日本語化版</b><br>
+  AnantPlay（任意のストリーミングサイトを開き、動画をネイティブプレイヤーで再生するTV向けAndroidアプリ。旧称 FMHYPlay）の、非公式の日本語化コピーです。
 </p>
 
 <p align="center">
-  <a href="https://github.com/AnantPlay/android/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/AnantPlay/android?color=ff3b5c"></a>
-  <a href="https://github.com/AnantPlay/android/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/AnantPlay/android/build.yml?branch=main"></a>
+  <a href="https://github.com/Ayufa/fmhyplay-android-jp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/Ayufa/fmhyplay-android-jp?color=ff3b5c"></a>
+  <a href="https://github.com/Ayufa/fmhyplay-android-jp/actions/workflows/build.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/Ayufa/fmhyplay-android-jp/build.yml?branch=main"></a>
   <img alt="Android 8.0+" src="https://img.shields.io/badge/Android-8.0%2B-3ddc84">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
 <p align="center">
-  <a href="https://anantplay.github.io/android/">Documentation</a> ·
-  <a href="https://github.com/AnantPlay/android/releases/latest">Download</a> ·
-  <a href="https://anantplay.github.io/android/guide.html">User guide</a> ·
-  <a href="https://anantplay.github.io/android/build.html">Build from source</a> ·
-  <a href="https://buymeacoffee.com/rohit267">Support</a>
+  <a href="https://github.com/Ayufa/fmhyplay-android-jp/releases/latest">ダウンロード</a> ·
+  <a href="README.en.md">English README (上流の原文)</a> ·
+  <a href="https://github.com/AnantPlay/android">上流リポジトリ</a>
 </p>
 
-<p align="center">
-  <img src="docs/screenshots/player.jpg" alt="AnantPlayer" width="760">
-</p>
+## このリポジトリについて
 
-## Why
+- 上流 [AnantPlay/android](https://github.com/AnantPlay/android)（旧 fmhyplay/android。上流は v2.21.0 で改称し、履歴も新規に作り直されました）の**クローン＋翻訳のみ**のコピーです。機能・動作は上流そのままで、独自機能は追加していません。
+- 上流とは独立したリポジトリで、上流への干渉（PR・Issue等）は一切行いません。取り込みは取得（fetch）のみの一方向です。運用ルールは [docs/UPSTREAM.md](docs/UPSTREAM.md)、翻訳方針は [docs/LOCALIZATION.md](docs/LOCALIZATION.md) にまとめています。
+- 翻訳しているのは画面に表示されるUI文字列と説明文です。ブランド名（AnantPlay、ExoPlayer、Cloudflare WARP 等）、設定キー、サイト側ボタンの照合用文字列、内部ログ等は動作を壊さないため英語のまま残しています。
+- 作品タイトルは Wikidata から邦題を取得して日本語表示します（v1.1.0〜。表示のみで、サイト検索等は英語タイトルのまま動作します）
+- バージョンはこのリポジトリ独自の番号（v1.0.0〜）で、上流のバージョン番号とは対応しません。初回リリース v1.0.0 のベースは上流 v2.15.0 です。
+- アプリ内アップデートはこのリポジトリのリリースを参照します。
 
-Streaming sites are built for a desktop browser with a mouse. On a TV remote they are painful, they are full of pop-ups, and their embedded players stutter on weak hardware. AnantPlay keeps the site (so you keep every title and server it offers) but takes over the part that goes wrong:
+## インストール
 
-- It **finds the video stream** the page starts and plays it in **AnantPlayer** (ExoPlayer with the hardware decoder), with nothing painted over the picture.
-- It **drives the site for you**: pick a title and it opens that title's page (or the exact episode); the player's Episodes, Sub / Dub, Servers and Quality buttons press the site's own buttons, so you do not go back to the page.
-- It **blocks ads and pop-ups**, **tunnels the app's own traffic** through Cloudflare WARP when you want it, and works with a **TV remote** and with **touch**.
+[Releases](https://github.com/Ayufa/fmhyplay-android-jp/releases/latest) から端末に合うAPKをダウンロードしてください。
 
-## Features
-
-**Cast to TV**
-- The **Cast** button in the phone's player sends the video to a TV on the same Wi-Fi, from the same spot. The phone becomes the remote: play, pause, seek, ±10 s and TV volume (the phone's volume keys work too)
-- **TV with AnantPlay (recommended)**: the TV plays the stream itself, with the site's headers and cookie, WARP, ad blocking and subtitles. It opens even when AnantPlay is closed on the TV
-- **Chromecast, Google TV and TVs with Cast built in**: no app needed on the TV; the phone relays the stream so sites still accept it
-- **DLNA / UPnP smart TVs** (Samsung, LG, Sony, Kodi and others): same relay; works best with MP4 and TS streams, since not every TV plays HLS
-
-<p align="center"><img src="docs/cast.svg" alt="Cast from the phone to a TV on the same Wi-Fi" width="760"></p>
-
-**Series and anime**
-- **Episodes** strip in the player (stills and names along the bottom while the video plays), **Previous** and **Next**, and the next episode starts by itself
-- **Skip intro, recap and credits** (times from TheIntroDB and AniSkip), with a Next episode button at the credits; *Settings, Skip intros* skips them for you
-- **Sub / Dub** button for anime, remembered per site
-- Opens the exact episode directly on 34 TV sites and 22 anime sites; elsewhere it presses the episode in the site's own list or menus
-
-**AnantPlayer**
-- Hands off automatically when a page starts an HLS, DASH or live FLV stream; falls back to the page if the stream cannot be played
-- Icon buttons in two groups: Previous, Next, Episodes on the left; Quality, Audio, Sub / Dub, Servers, Subtitles, Download, More, Cast, Full screen on the right; menus open as a side panel; what is picked shows under the title, and on a TV the button the remote is on shows its name
-- Replays the page's Referer, Origin and cookies, so streams that check them still play
-- **Resumes where you stopped on any site or server**, with a Restart button; the place is saved every 10 seconds while you watch, and the subtitles you had on come back
-- Quality list with frame rate (for example 1080p60), audio and subtitle tracks, speed and zoom modes
-- **Servers and Quality buttons that control the site's own player**, including players inside cross-origin iframes
-- **Volume boost** and **Dialog boost** (clearer voices), each from 0 to 20, in Settings or in the player
-- **Debug overlay** (*More, Debug overlay*, off by default): a panel down the right edge with resolution, frame rate, codec and decoder (hardware or software), video and audio bitrate, network speed, buffer, frames shown and dropped, stream type, host, how long the video took to open, and memory, refreshed every second
-- **Subtitles in any language** from OpenSubtitles, converted so every script shows right, remembered per title, optional auto subtitles in your language, and **auto-sync** that lines a file up with the speech; size, position, color, background and timing
-- **Simkl** and **PunchPlay** tracking (optional): what you watch is tracked there, titles you finish are marked watched
-- Phone: **picture in picture**, hold the right or left side for **2x**, follows the rotation lock with a Full screen button; swipe for brightness and volume, double-tap to skip 10 seconds
-- **Back to Home in one step** from the player (phone: house button, TV: More, Home) and from a website (phone: a house at the top right, TV: Menu, Back to home), or by **holding Back for 3 seconds** on any screen
-- A translucent **loading screen** (title, current step, a cat that spins while it works, jumps when the stream is found and stares when it gets stuck) while the app drives a site, until the player is up; tap it or press Back to see the page
-
-**Downloads**
-- A **Download** button in the player saves the movie, series or anime you are watching: it asks first (file name, folder), names the file like `Title.2024.1080p.AnantPlay.mp4`, and keeps going in the background with progress in a notification
-- **Several connections** at once (4 by default, 1 to 8 in *Settings, Downloads*), pause and resume, a **Downloads** screen with each file's path, and a folder of your choice under Download, Movies or Documents
-- Plain files and HLS streams (including encrypted ones, and ones whose sound is a separate playlist: it is joined into the MP4); HLS saves get a seek index so the video can be skipped through. DASH, live and protected streams are not downloaded
-
-**Browsing**
-- Home with Continue watching, Favorites, **your country's movies and series first** (by language, from TMDB), then **New and Popular** for Movies, TV and Anime (from Cinemeta and Kitsu)
-- A side rail on a TV, bottom tabs on a phone; pull down to refresh; trailers on title pages
-- A Home banner that changes every 20 seconds through the world's top 5 films and series; lists that keep loading as you scroll
-- **One search** for movies, series, IPTV channels and sites, by typing or by voice
-- **Sources you pick**: the app ships with no sites or channels. *Settings, Sources* lists an index (AnantPlay's own, or any you add by link) with an **Add** button per source: streaming sites, channel playlists, title links. Added sources refresh every 12 hours
-- Opens a title's own page on sites that have title links and searches the rest for you, then opens the match
-- Anime opens on anime sites only
-- **Add your own site**, an optional address bar, dark pages, a cursor for the TV remote (with funny and useful looks)
-- Pop-ups that are real links open in the same tab (Back returns); pop-up ads are dropped, and "Join our Discord" style nag dialogs close by themselves
-
-**Your language**
-- English, Hindi, Spanish, Portuguese, Indonesian, Arabic (right to left) and German, picked from the phone's or TV's language
-
-**Network and privacy**
-- **In-app Cloudflare WARP**: a userspace WireGuard tunnel for the app's traffic only, with no VPN permission and no root; LAN addresses stay direct. A WARP log to share when it fails
-- Domain-based ad, tracker and pop-up blocking, plus redirect blocking
-- No AnantPlay account, no analytics, no telemetry. Updates come from this repository's releases, looked for every hour and at every boot (even with the app closed), with What's new before you install
-
-**IPTV**
-- Channels from the playlist sources you add, grouped by category and country, with logos
-- A background check hides channels that are offline; your country's channels and its categories come first
-- In the player: **Channel + / −**, Previous / Next and a **Channels strip** move through the channel's category and then the country's other ones
-- **Add your own playlist, a single `.m3u8` stream link, an Xtream Codes login or a Stalker portal (MAC address)**; each playlist gets its own row
-- **Category and Language filters** in every channel list, and **pins**: keep a list with its filters (India · News · Hindi) as its own row
-- Favorite channels with a heart; channels also show up in the one search
-
-**Engineering**
-- Plain Java and SDK command-line tools, **no Gradle**, roughly 11 MB per APK
-- Reproducible CI build and signed releases from a tag
-
-## Screenshots
-
-<table>
-  <tr>
-    <td><img src="docs/screenshots/home.jpg" alt="Home"></td>
-    <td><img src="docs/screenshots/sites.jpg" alt="Sites and catalog"></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/iptv.jpg" alt="IPTV channels"></td>
-    <td><img src="docs/screenshots/quality.jpg" alt="Quality list"></td>
-  </tr>
-</table>
-
-<p align="center">
-  <img src="docs/screenshots/phone-home.jpg" alt="Phone home" height="420">
-  &nbsp;
-  <img src="docs/screenshots/phone-cast.jpg" alt="Phone as the remote while casting" height="420">
-  &nbsp;
-  <img src="docs/screenshots/phone-hindi.jpg" alt="Home in Hindi" height="420">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/phone-player.jpg" alt="Phone player" width="760">
-</p>
-
-<p align="center">
-  <img src="docs/screenshots/phone-iptv.jpg" alt="IPTV on a phone" height="420">
-</p>
-
-## Install
-
-Download the APK for your device from [Releases](https://github.com/AnantPlay/android/releases/latest):
-
-| File | For |
+| ファイル | 用途 |
 | --- | --- |
-| `AnantPlay-TV-vX.Y.Z.apk` | Android TV, Google TV, Fire TV, boxes (adds the TV launcher entry) |
-| `AnantPlay-Android-vX.Y.Z.apk` | phones and tablets |
+| `AnantPlay-TV-vX.Y.Z.apk` | Android TV、Google TV、Fire TV、TVボックス（TVランチャー項目付き） |
+| `AnantPlay-Android-vX.Y.Z.apk` | スマートフォン、タブレット |
 
-Allow installs from your file manager or browser, open the APK, done. On a TV, `adb install -r AnantPlay-TV-vX.Y.Z.apk` works over the network. Updates install over the old version because releases are signed with the same key. Check a download with `SHA256SUMS.txt` from the release.
+- Android 8.0（API 26）以上が必要です。
+- **上流版とは署名が異なるため、上流版の上書きインストールはできません。** 上流版を使っている場合は、先にアンインストールしてからインストールしてください（設定等のデータは引き継がれません）。
+- このリポジトリのリリース同士は同じ署名なので、上書き更新できます。
 
-**Is it safe?** Yes. All of the code is in this repository, and every release APK is built from it by GitHub Actions. To check a file yourself, search its SHA-256 from `SHA256SUMS.txt` on [virustotal.com](https://www.virustotal.com) or upload it there. Google Play Protect may still say *Harmful app blocked* without giving a reason; tap *Install anyway* (under *More details* on some phones).
+## 上流の機能概要
 
-Requires Android 8.0 (API 26) or newer, arm64 or 32-bit ARM.
+- WebViewで開いたページの動画ストリーム（HLS / DASH）を検出し、ExoPlayer（ハードウェアデコーダ）でネイティブ再生
+- サイト側プレイヤーのサーバー切替・画質ボタンをプレイヤー側から操作
+- 広告・ポップアップ・トラッカーブロック
+- アプリ内 Cloudflare WARP（アプリの通信のみを通すユーザースペース WireGuard、VPN権限・root不要）
+- 設定の「ソース」からインデックスを追加して取り込むストリーミングサイト／チャンネル（上流 v2.21.0〜の方式。本体には同梱されません）、Cinemetaの映画・シリーズカタログ
+- OpenSubtitles連携、Simklの視聴記録（任意）
+- プレイヤーからのダウンロード保存（通常ファイルとHLS、複数接続・一時停止／再開対応、保存先フォルダ選択可）
+- ホーム上部のバナー（世界のトップ作品を20秒ごとに切替）と、スクロールで続けて読み込む無限リスト
+- IPTV対応（iptv-orgの公開チャンネル11,000以上、プレイリスト・Xtream Codes追加可）
+- TVリモコン（D-pad）とタッチの両対応
 
-### Fire TV
+詳しい使い方は上流の [ドキュメント](https://anantplay.github.io/android/) と [ユーザーガイド](https://anantplay.github.io/android/guide.html) を参照してください。
 
-1. On the Fire TV: *Settings → My Fire TV → About*, press OK on the device name 7 times (developer options on).
-2. Install **Downloader** (by AFTVnews) from the Amazon Appstore.
-3. *Settings → My Fire TV → Developer options → Install unknown apps* → turn on **Downloader**.
-4. In Downloader, type the code **`6664733`** or `https://github.com/AnantPlay/android/releases/latest/download/AnantPlay-TV.apk`, then *Go → Install → Open*.
-
-Fire OS 7 or newer (Fire TV Stick 4K and later). The app updates itself afterwards. That link always gets the newest TV APK (`AnantPlay-Android.apk` for phones).
-
-## Build from source
+## ソースからビルド
 
 ```sh
-git clone https://github.com/AnantPlay/android
-cd android
-warp/build.sh      # builds the WARP helper (needs Go and the Android NDK)
-./build.sh         # needs an Android SDK (platform 34, build-tools) and JDK 17+
+git clone https://github.com/Ayufa/fmhyplay-android-jp
+cd fmhyplay-android-jp
+warp/build.sh      # WARPヘルパーのビルド（Go と Android NDK が必要）
+./build.sh         # Android SDK（platform 34、build-tools）と JDK 17+ が必要
 ```
 
-The APKs appear in the project folder. Details, signing and the CI setup are in the [build guide](https://anantplay.github.io/android/build.html).
+## ライセンスとクレジット
 
-## How it works
-
-1. The page loads in a WebView. A small script (`assets/frame.js`) runs in every frame, including cross-origin embeds.
-2. The WebView's requests are watched for HLS and DASH playlists; some sites hide them behind URLs without an extension, so downloads are also recognised by their first bytes.
-3. Which sites, channels and title links exist is not in the app: it reads them from the sources added in *Settings, Sources* (by default the list in [AnantPlay/index](https://github.com/AnantPlay/index)).
-4. When a stream shows up, the page is paused and the stream goes to ExoPlayer with the same headers and cookies the page used.
-5. The same script reads the page's server and quality lists. The player's buttons send a click back to it, the page switches, and the new stream is handed over the same way.
-
-## Support
-
-AnantPlay is free and made in spare time. If it is useful to you: [Buy me a coffee](https://buymeacoffee.com/rohit267) or [PayPal](https://paypal.me/champdev).
-
-## Legal
-
-AnantPlay is a browser and a media player. It does not host, store, index or distribute any video, and it ships no list of streams. The sites it opens, the IPTV playlists it reads and the content they serve are provided by third parties; what you open and play is your responsibility, and you should only use content you have the right to watch. See [THIRD_PARTY.md](THIRD_PARTY.md) for the components and data sources it builds on. AnantPlay is not affiliated with or endorsed by Cloudflare, Stremio, OpenSubtitles, the maintainers of any source, or any streaming site.
-
-## License
-
-[MIT](LICENSE)
+- MIT ライセンス（[LICENSE](LICENSE)）。原著作権表記は保持しています。
+- AnantPlay 本体は [AnantPlay/android](https://github.com/AnantPlay/android) の開発者・貢献者によるものです。このリポジトリは非公式の翻訳コピーであり、上流プロジェクトとは関係ありません。
+- サードパーティについては [THIRD_PARTY.md](THIRD_PARTY.md) を参照してください。

@@ -41,6 +41,10 @@ final class Catalog {
     static final class Title {
         String tmdb = "";   // TheMovieDB id (Cinemeta meta only): many sites key their pages by it
         String id = "", type = "movie", name = "", year = "", rating = "", poster = "", background = "", overview = "", runtime = "", genres = "";
+        String nameJa = "";   // Japanese title from Wikidata (JaTitles), display only: name stays English for matching and site searches
+
+        /** The title to show: the Japanese one when Wikidata has it, else the original. */
+        String displayName() { return nameJa.isEmpty() ? name : nameJa; }
         String cast = "", director = "", writer = "", country = "", awards = "", status = "";   // from the detail page
         String trailer = "";   // YouTube id (detail page)
         String released = "";   // "2026-10-02T00:00:00.000Z": cinema release for a movie, first episode for a series
@@ -49,7 +53,7 @@ final class Catalog {
 
         boolean series() { return type.equals("series"); }
 
-        String kind() { return anime ? "Anime" : series() ? "TV Series" : "Movie"; }
+        String kind() { return anime ? "アニメ" : series() ? "TVシリーズ" : "映画"; }
     }
 
     /** One catalog page. type = movie|series; extra = "" | "genre=Comedy" | "skip=50" | "search=text". Null when offline with nothing cached. */
@@ -61,7 +65,10 @@ final class Catalog {
         if (extra.startsWith("genre=" + POPULAR_ANIME)) return popularAnime(extra, false);
         if (extra.startsWith("genre=" + NEW)) return extra.contains("skip=") ? new ArrayList<>() : fresh(type, false);   // one page only
         String text = get(path(type, extra), !extra.startsWith("search="));
-        return text == null ? null : parseList(text, type);
+        if (text == null) return null;
+        List<Title> out = parseList(text, type);
+        JaTitles.enrich(out);
+        return out;
     }
 
     static String path(String type, String extra) {
@@ -90,6 +97,7 @@ final class Catalog {
         if (!any) return null;
         List<Title> out = new ArrayList<>(found.values());
         out.sort((a, b) -> b.released.compareTo(a.released));   // ISO dates sort as text
+        if (diskOnly) JaTitles.applyCached(out); else JaTitles.enrich(out);
         return out;
     }
 
@@ -124,7 +132,10 @@ final class Catalog {
                 }
             } catch (JSONException ignored) { }
         }
-        return any ? new ArrayList<>(out.values()) : null;
+        if (!any) return null;
+        List<Title> list = new ArrayList<>(out.values());
+        if (diskOnly) JaTitles.applyCached(list); else JaTitles.enrich(list);
+        return list;
     }
 
     /** A fresh cached copy of a catalog path, else null (no network). */
@@ -282,7 +293,9 @@ final class Catalog {
         File f = file(path(type, extra));
         if (!f.exists() || System.currentTimeMillis() - f.lastModified() > TTL) return null;
         try {
-            return parseList(Sites.readAll(new java.io.FileInputStream(f)), type);
+            List<Title> out = parseList(Sites.readAll(new java.io.FileInputStream(f)), type);
+            JaTitles.applyCached(out);
+            return out;
         } catch (IOException e) {
             return null;
         }
@@ -344,6 +357,7 @@ final class Catalog {
             if (!full.rating.isEmpty()) t.rating = full.rating;
             t.episodes.clear();
             t.episodes.addAll(full.episodes);
+            JaTitles.enrichOne(t);
             if (!t.anime && t.genres.contains("Animation") && isAnime(t.id)) t.anime = true;   // also a title known only by its page's name (Continue watching)
         } catch (JSONException ignored) { }
     }
@@ -464,6 +478,7 @@ final class Catalog {
                 out.add(t);
             }
         } catch (JSONException ignored) { }
+        JaTitles.applyCached(out);
         return out;
     }
 

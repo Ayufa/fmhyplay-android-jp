@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="warp_dns_title">WARP DNS</string>
+    <string name="warp_dns_help">WARPがCloudflareのアドレスを問い合わせる先のDNSです。自動はほとんどのネットワークで動作します。WARPが接続できないと表示する場合は、契約しているインターネットプロバイダーのDNSを入力してください。</string>
+    <string name="warp_dns_hint">DNSサーバーのアドレス（カンマ区切り、例: 87.101.204.72）</string>
+    <string name="warp_dns_auto">自動</string>
+    <string name="warp_dns_save">保存</string>
+    <string name="warp_dns_msg">WARPがCloudflareを検索する先です。プロバイダーのDNSアドレスはルーターのステータス画面で確認できます。空欄にすると自動（ネットワークのDNSとパブリックDNS）になります。</string>
+</resources>

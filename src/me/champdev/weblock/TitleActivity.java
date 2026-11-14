@@ -57,7 +57,7 @@ public class TitleActivity extends Home {
         FrameLayout poster = new FrameLayout(this);
         poster.setBackground(rounded(colorFor(t.name), dp(12)));
         poster.setClipToOutline(true);
-        TextView letter = text(t.name.isEmpty() ? "?" : t.name.substring(0, 1).toUpperCase(), 40, 0x55FFFFFF, true);
+        TextView letter = text(t.displayName().isEmpty() ? "?" : t.displayName().substring(0, 1).toUpperCase(), 40, 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         poster.addView(letter, new FrameLayout.LayoutParams(-1, -1));
         ImageView img = new ImageView(this);
@@ -69,7 +69,7 @@ public class TitleActivity extends Home {
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(u(24, 14), 0, 0, 0);
-        TextView name = text(t.name, sp(30, 21), TEXT, true);
+        TextView name = text(t.displayName(), sp(30, 21), TEXT, true);
         name.setMaxLines(3);
         name.setEllipsize(TextUtils.TruncateAt.END);
         info.addView(name);
@@ -81,7 +81,7 @@ public class TitleActivity extends Home {
         line.setPadding(0, dp(6), 0, 0);
         info.addView(line);
         if (!t.genres.isEmpty()) {
-            TextView genres = text(t.genres, sp(14, 12), MUTED, false);
+            TextView genres = text(JaLabels.genres(t.genres), sp(14, 12), MUTED, false);
             genres.setPadding(0, dp(3), 0, 0);
             info.addView(genres);
         }

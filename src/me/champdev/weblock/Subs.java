@@ -504,10 +504,10 @@ final class Subs {
     // OpenSubtitles' own codes that are not ISO languages
     static final Map<String, String> ODD = new LinkedHashMap<>();
     static {
-        ODD.put("pob", "Portuguese (Brazil)"); ODD.put("zht", "Chinese (Traditional)"); ODD.put("zhc", "Chinese (Cantonese)");
-        ODD.put("zhe", "Chinese (bilingual)"); ODD.put("spl", "Spanish (Latin America)"); ODD.put("spn", "Spanish (Spain)");
-        ODD.put("ex", "Extremaduran"); ODD.put("ze", "Chinese (bilingual)"); ODD.put("pom", "Portuguese");
-        ODD.put("scc", "Serbian");
+        ODD.put("pob", "ポルトガル語（ブラジル）"); ODD.put("zht", "中国語（繁体字）"); ODD.put("zhc", "中国語（広東語）");
+        ODD.put("zhe", "中国語（バイリンガル）"); ODD.put("spl", "スペイン語（ラテンアメリカ）"); ODD.put("spn", "スペイン語（スペイン）");
+        ODD.put("ex", "エストレマドゥーラ語"); ODD.put("ze", "中国語（バイリンガル）"); ODD.put("pom", "ポルトガル語");
+        ODD.put("scc", "セルビア語");
     }
 
     static String language(String iso3) {
@@ -515,7 +515,7 @@ final class Subs {
         // the /B codes OpenSubtitles uses (ger, fre) through their /T spelling, which Android names
         for (String p : new String[]{"deu ger", "fra fre", "nld dut", "zho chi", "ces cze", "ron rum", "fas per", "slk slo", "msa may", "ell gre"})
             if (p.endsWith(" " + iso3)) iso3 = p.substring(0, 3);
-        String n = new Locale(iso3).getDisplayLanguage();
+        String n = new Locale(iso3).getDisplayLanguage(Locale.JAPANESE);
         return n.isEmpty() || n.equals(iso3) ? iso3.toUpperCase(Locale.ROOT) : n;
     }
 }

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PunchPlay watch tracking: Settings row, sign-in dialog and the player toast. Every language has the same names. -->
+<resources>
+    <string name="punchplay_help">プレイヤーで観た映画やエピソードを、無料のトラッカー PunchPlay に視聴済みとして記録します。映画・TV・アニメから開いたタイトルが対象です。</string>
+    <string name="punchplay_disconnect_title">PunchPlay を切断しますか？</string>
+    <string name="punchplay_disconnect_msg">AnantPlay から PunchPlay への視聴通知を停止します。PunchPlay 側の履歴は残ります。</string>
+    <string name="punchplay_connect">PunchPlay と接続</string>
+    <string name="punchplay_offline">PunchPlay に接続できません。WARP を確認して、もう一度お試しください。</string>
+    <string name="punchplay_connected">PunchPlay と接続しました</string>
+    <string name="punchplay_expired">コードの有効期限が切れました。これを閉じて、PunchPlay をもう一度押すと新しいコードが発行されます。</string>
+    <string name="punchplay_refused">PunchPlay に拒否されました。これを閉じて、もう一度お試しください。</string>
+    <string name="punchplay_marked">PunchPlay に視聴済みを記録しました</string>
+</resources>

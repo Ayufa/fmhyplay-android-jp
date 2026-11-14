@@ -611,17 +611,17 @@ public class Home extends Activity {
 
     /** The words of one title in the picture's frame. */
     void words(Catalog.Title t) {
-        heroName.setText(t.name);
+        heroName.setText(t.displayName());
         List<String> meta = new ArrayList<>();
         if (!t.year.isEmpty()) meta.add(t.year);
         if (!t.rating.isEmpty()) meta.add("\u2605 " + t.rating);
-        if (!t.genres.isEmpty()) meta.add(t.genres);
+        if (!t.genres.isEmpty()) meta.add(JaLabels.genres(t.genres));
         heroLine.setText(TextUtils.join("    ", meta));
         if (heroAbout != null) {
             heroAbout.setText(t.overview);
             heroAbout.setVisibility(t.overview.isEmpty() ? View.GONE : View.VISIBLE);
         }
-        heroPlay.setContentDescription(t.name);
+        heroPlay.setContentDescription(t.displayName());
         drawDots();
     }
 
@@ -1038,7 +1038,7 @@ public class Home extends Activity {
         all.addAll(java.util.Arrays.asList(Catalog.GENRES));
         for (String g : all) {
             TextView c = chip(v -> { genres.put(tab, g); focusGenre = g; build(); });
-            c.setText(g.isEmpty() ? App.t(R.string.home_popular) : g.equals(Catalog.NEW) ? App.t(R.string.home_new) : g.startsWith(Catalog.LANG) ? g.substring(Catalog.LANG.length()) : g);
+            c.setText(g.isEmpty() ? App.t(R.string.home_popular) : g.equals(Catalog.NEW) ? App.t(R.string.home_new) : g.startsWith(Catalog.LANG) ? g.substring(Catalog.LANG.length()) : JaLabels.genre(g));
             c.setTextColor(g.equals(now) ? BG : TEXT);
             c.setBackground(rounded(g.equals(now) ? TEXT : CARD, dp(22)));
             focusable(c, dp(22));
@@ -1155,7 +1155,7 @@ public class Home extends Activity {
         }
         // Pinned lists (a country or category with its chips), each with an All tile that opens it filtered
         for (Iptv.Pin p : Iptv.pins()) {
-            String title = p.title + (p.cat.isEmpty() ? "" : ", " + groupName(p.cat)) + (p.lang.isEmpty() ? "" : ", " + p.lang);
+            String title = p.title + (p.cat.isEmpty() ? "" : ", " + JaLabels.iptvCategory(groupName(p.cat))) + (p.lang.isEmpty() ? "" : ", " + p.lang);
             channelRow("\uD83D\uDCCC  " + title, Iptv.filter(Iptv.list(p.type, p.key), p.cat, p.lang), cols, "pin", 0,
                 v -> startActivity(new Intent(this, IptvActivity.class).putExtra("type", p.type).putExtra("key", p.key)
                     .putExtra("title", p.title).putExtra("cat", p.cat).putExtra("lang", p.lang)));
@@ -1195,7 +1195,7 @@ public class Home extends Activity {
                 int n = 0;
                 for (Iptv.Channel c : mine) if (java.util.Arrays.asList(c.cats).contains(cat)) n++;
                 if (n == 0) continue;
-                View card = groupCard(local.cell, Iptv.emoji(cat), groupName(cat), n, "country", own);
+                View card = groupCard(local.cell, Iptv.emoji(cat), JaLabels.iptvCategory(groupName(cat)), n, "country", own);
                 card.setOnClickListener(v -> startActivity(new Intent(this, IptvActivity.class).putExtra("type", "country").putExtra("key", own)
                     .putExtra("title", own).putExtra("cat", cat)));
                 local.add(card);
@@ -1209,7 +1209,7 @@ public class Home extends Activity {
         Grid cats = new Grid(col, cols);
         int working = Iptv.working().size();
         if (working > 0) cats.add(groupCard(cats.cell, "\u2705", App.t(R.string.home_working_channels), working, "working", ""));
-        for (Map.Entry<String, List<Iptv.Channel>> e : byCat.entrySet()) cats.add(groupCard(cats.cell, Iptv.emoji(e.getKey()), groupName(e.getKey()), e.getValue().size(), "cat", e.getKey()));
+        for (Map.Entry<String, List<Iptv.Channel>> e : byCat.entrySet()) cats.add(groupCard(cats.cell, Iptv.emoji(e.getKey()), JaLabels.iptvCategory(groupName(e.getKey())), e.getValue().size(), "cat", e.getKey()));
     }
 
     View groupCard(int w, String icon, String label, int n, String type, String key) {
@@ -2043,7 +2043,7 @@ public class Home extends Activity {
         ImageView img = new ImageView(this);
         img.setScaleType(ImageView.ScaleType.CENTER_CROP);
         art.addView(img, new FrameLayout.LayoutParams(-1, -1));
-        TextView letter = text(t.name.isEmpty() ? "?" : t.name.substring(0, 1).toUpperCase(), sp(40, 30), 0x55FFFFFF, true);
+        TextView letter = text(t.displayName().isEmpty() ? "?" : t.displayName().substring(0, 1).toUpperCase(), sp(40, 30), 0x55FFFFFF, true);
         letter.setGravity(Gravity.CENTER);
         art.addView(letter, new FrameLayout.LayoutParams(-1, -1));
         if (!t.poster.isEmpty()) loadImage(img, t.poster, letter, dp(w));
@@ -2057,7 +2057,7 @@ public class Home extends Activity {
         }
         art.setBackground(rounded(colorFor(t.name), dp(10)));
         art.setClipToOutline(true);
-        art.setContentDescription(t.name);
+        art.setContentDescription(t.displayName());
         art.setTag("t" + t.id);
         focusable(art, dp(10));
         art.setOnClickListener(v -> openTitle(t));
@@ -2067,7 +2067,7 @@ public class Home extends Activity {
             return true;
         });
         card.addView(art, new LinearLayout.LayoutParams(-1, dp(w * 3 / 2)));
-        TextView name = text(t.name, 12, TEXT, false);
+        TextView name = text(t.displayName(), 12, TEXT, false);
         name.setSingleLine();
         name.setEllipsize(TextUtils.TruncateAt.END);
         name.setPadding(dp(2), u(8, 6), dp(2), 0);
