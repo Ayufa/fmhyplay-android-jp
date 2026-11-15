@@ -218,4 +218,22 @@
     <string name="home_about_site">Website</string>
     <string name="home_about_source">Source code</string>
     <string name="home_about_bug">Report a problem</string>
+    <string name="home_max_quality">Highest quality</string>
+    <string name="home_max_quality_help">Auto picks up to this. Auto: what this device plays smoothly (its screen, and memory). A quality picked in the player is not limited.</string>
+    <string name="home_auto_value">Auto (%1$s)</string>
+    <string name="home_audio_language">Audio language</string>
+    <string name="home_audio_language_help">Videos with more than one audio track start in this language when they have it. The player\'s Audio button changes it too.</string>
+    <string name="home_audio_original">Original</string>
+    <string name="home_clear_searches">Clear search history</string>
+    <string name="home_searches_count">Saved searches: %1$d</string>
+    <string name="home_clear_searches_msg">The recent searches under the search box are removed.</string>
+    <string name="home_searches_cleared">Search history cleared</string>
+    <string name="home_platforms">Platforms</string>
+    <string name="home_all">All</string>
+    <string name="home_animation">Animation</string>
+    <string name="home_kids">Kids</string>
+    <string name="home_studios">Studios</string>
+    <string name="home_trending">Trending</string>
+    <string name="home_top_rated">Top rated</string>
+    <string name="home_documentaries">Documentaries</string>
 </resources>

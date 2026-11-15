@@ -218,4 +218,22 @@
     <string name="home_about_site">الموقع</string>
     <string name="home_about_source">الشيفرة المصدرية</string>
     <string name="home_about_bug">الإبلاغ عن مشكلة</string>
+    <string name="home_max_quality">أعلى جودة</string>
+    <string name="home_max_quality_help">يختار الوضع التلقائي حتى هذه الجودة. تلقائي: ما يشغّله هذا الجهاز بسلاسة (حسب شاشته وذاكرته). الجودة التي تختارها في المشغّل غير مقيّدة.</string>
+    <string name="home_auto_value">تلقائي (%1$s)</string>
+    <string name="home_audio_language">لغة الصوت</string>
+    <string name="home_audio_language_help">تبدأ الفيديوهات التي فيها أكثر من مسار صوتي بهذه اللغة عندما تتوفر. يغيّرها زر الصوت في المشغّل أيضًا.</string>
+    <string name="home_audio_original">الأصلية</string>
+    <string name="home_clear_searches">مسح سجل البحث</string>
+    <string name="home_searches_count">عمليات البحث المحفوظة: %1$d</string>
+    <string name="home_clear_searches_msg">تُزال عمليات البحث الأخيرة التي تظهر تحت مربع البحث.</string>
+    <string name="home_searches_cleared">تم مسح سجل البحث</string>
+    <string name="home_platforms">المنصات</string>
+    <string name="home_all">الكل</string>
+    <string name="home_animation">رسوم متحركة</string>
+    <string name="home_kids">للأطفال</string>
+    <string name="home_studios">الاستوديوهات</string>
+    <string name="home_trending">الرائج</string>
+    <string name="home_top_rated">الأعلى تقييمًا</string>
+    <string name="home_documentaries">وثائقيات</string>
 </resources>

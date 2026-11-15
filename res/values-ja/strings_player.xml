@@ -125,4 +125,5 @@
     <string name="player_more">その他</string>
     <string name="player_channels">チャンネル</string>
     <string name="player_more_watch">ほかの作品</string>
+    <string name="player_auto_up_to">自動 · 最大 %1$s</string>
 </resources>

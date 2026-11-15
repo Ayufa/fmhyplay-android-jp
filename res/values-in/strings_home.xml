@@ -218,4 +218,22 @@
     <string name="home_about_site">Situs web</string>
     <string name="home_about_source">Kode sumber</string>
     <string name="home_about_bug">Laporkan masalah</string>
+    <string name="home_max_quality">Kualitas tertinggi</string>
+    <string name="home_max_quality_help">Otomatis memilih sampai kualitas ini. Otomatis: yang diputar lancar oleh perangkat ini (layar dan memorinya). Kualitas yang dipilih di pemutar tidak dibatasi.</string>
+    <string name="home_auto_value">Otomatis (%1$s)</string>
+    <string name="home_audio_language">Bahasa audio</string>
+    <string name="home_audio_language_help">Video dengan lebih dari satu trek audio dimulai dalam bahasa ini jika tersedia. Tombol Audio di pemutar juga mengubahnya.</string>
+    <string name="home_audio_original">Asli</string>
+    <string name="home_clear_searches">Hapus riwayat pencarian</string>
+    <string name="home_searches_count">Pencarian tersimpan: %1$d</string>
+    <string name="home_clear_searches_msg">Pencarian terbaru di bawah kotak pencarian dihapus.</string>
+    <string name="home_searches_cleared">Riwayat pencarian dihapus</string>
+    <string name="home_platforms">Platform</string>
+    <string name="home_all">Semua</string>
+    <string name="home_animation">Animasi</string>
+    <string name="home_kids">Anak-anak</string>
+    <string name="home_studios">Studio</string>
+    <string name="home_trending">Sedang tren</string>
+    <string name="home_top_rated">Rating tertinggi</string>
+    <string name="home_documentaries">Dokumenter</string>
 </resources>

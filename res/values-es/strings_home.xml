@@ -218,4 +218,22 @@
     <string name="home_about_site">Sitio web</string>
     <string name="home_about_source">Código fuente</string>
     <string name="home_about_bug">Informar de un problema</string>
+    <string name="home_max_quality">Calidad máxima</string>
+    <string name="home_max_quality_help">Automático elige hasta esta calidad. Automático: lo que este dispositivo reproduce con fluidez (su pantalla y su memoria). Una calidad elegida en el reproductor no tiene límite.</string>
+    <string name="home_auto_value">Automático (%1$s)</string>
+    <string name="home_audio_language">Idioma del audio</string>
+    <string name="home_audio_language_help">Los videos con más de una pista de audio empiezan en este idioma cuando lo tienen. El botón Audio del reproductor también lo cambia.</string>
+    <string name="home_audio_original">Original</string>
+    <string name="home_clear_searches">Borrar historial de búsqueda</string>
+    <string name="home_searches_count">Búsquedas guardadas: %1$d</string>
+    <string name="home_clear_searches_msg">Se quitan las búsquedas recientes que aparecen bajo el cuadro de búsqueda.</string>
+    <string name="home_searches_cleared">Historial de búsqueda borrado</string>
+    <string name="home_platforms">Plataformas</string>
+    <string name="home_all">Todo</string>
+    <string name="home_animation">Animación</string>
+    <string name="home_kids">Infantil</string>
+    <string name="home_studios">Estudios</string>
+    <string name="home_trending">Tendencias</string>
+    <string name="home_top_rated">Mejor valoradas</string>
+    <string name="home_documentaries">Documentales</string>
 </resources>

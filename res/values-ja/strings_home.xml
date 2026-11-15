@@ -223,4 +223,22 @@
     <string name="home_about_site">ウェブサイト</string>
     <string name="home_about_source">ソースコード</string>
     <string name="home_about_bug">問題を報告</string>
+    <string name="home_max_quality">最高画質</string>
+    <string name="home_max_quality_help">自動はこの画質までを選びます。自動: この端末で滑らかに再生できる画質（画面とメモリから判断）。プレイヤーで選んだ画質には制限はかかりません。</string>
+    <string name="home_auto_value">自動（%1$s）</string>
+    <string name="home_audio_language">音声言語</string>
+    <string name="home_audio_language_help">音声トラックが複数ある動画は、その言語がある場合にこの言語で開始します。プレイヤーの「音声」ボタンでも変更できます。</string>
+    <string name="home_audio_original">オリジナル</string>
+    <string name="home_clear_searches">検索履歴を消去</string>
+    <string name="home_searches_count">保存済みの検索: %1$d</string>
+    <string name="home_clear_searches_msg">検索ボックスの下に表示される最近の検索が削除されます。</string>
+    <string name="home_searches_cleared">検索履歴を消去しました</string>
+    <string name="home_platforms">プラットフォーム</string>
+    <string name="home_all">すべて</string>
+    <string name="home_animation">アニメーション</string>
+    <string name="home_kids">キッズ</string>
+    <string name="home_studios">スタジオ</string>
+    <string name="home_trending">トレンド</string>
+    <string name="home_top_rated">高評価</string>
+    <string name="home_documentaries">ドキュメンタリー</string>
 </resources>
