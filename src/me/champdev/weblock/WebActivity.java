@@ -360,9 +360,7 @@ public class WebActivity extends Activity {
         head.setPadding(Home.dp(this, 24), 0, Home.dp(this, 24), Home.dp(this, 20));
         head.setText(name == null || name.isEmpty() ? String.valueOf(site) : name);
         wait.addView(head);
-        ProgressBar spin = new ProgressBar(this);
-        spin.setIndeterminateTintList(ColorStateList.valueOf(Home.ACCENT));
-        wait.addView(spin, new LinearLayout.LayoutParams(Home.dp(this, 44), Home.dp(this, 44)));
+        wait.addView(new Home.Spinner(this), new LinearLayout.LayoutParams(Home.dp(this, 44), Home.dp(this, 44)));
         openingText = new TextView(this);
         openingText.setTextColor(Home.TEXT);
         openingText.setTextSize(App.tv ? 20 : 17);

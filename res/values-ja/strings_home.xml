@@ -238,7 +238,6 @@
     <string name="home_animation">アニメーション</string>
     <string name="home_kids">キッズ</string>
     <string name="home_studios">スタジオ</string>
-    <string name="home_trending">トレンド</string>
     <string name="home_top_rated">高評価</string>
     <string name="home_documentaries">ドキュメンタリー</string>
 </resources>

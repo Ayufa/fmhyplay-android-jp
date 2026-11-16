@@ -75,8 +75,10 @@ public class PlayerActivity extends Activity {
 
     ExoPlayer player;
     SurfaceView surface;
+    android.view.TextureView texture;   // Crop and Stretch draw here (see fit)
+    boolean onTexture;
     TextView subtitle, title, time, timeTotal, notice;
-    ProgressBar spinner;
+    View spinner;
     ImageView playPause;
     SeekBar seek;
     View controls;
@@ -114,7 +116,7 @@ public class PlayerActivity extends Activity {
     View gestureFill;                    // the filled part of the indicator's vertical bar
     TextView gestureText;
     int zoom = 0;   // Fit at the start of every playback (the choice is not remembered)
-    static final int[] ZOOMS = {R.string.player_zoom_fit, R.string.player_zoom_fill, R.string.player_zoom_stretch, R.string.player_zoom_16_9, R.string.player_zoom_4_3};
+    static final int[] ZOOMS = {R.string.player_zoom_fit, R.string.player_zoom_fill, R.string.player_zoom_stretch};
     android.media.audiofx.LoudnessEnhancer booster;   // Volume boost, on the player's audio session
     android.media.audiofx.Equalizer voices;           // Dialog boost, same session
     // Every video starts with the Settings defaults; the Audio button changes them for this video only
@@ -380,6 +382,9 @@ public class PlayerActivity extends Activity {
         root.setDefaultFocusHighlightEnabled(false);   // a remote key would grey out the whole picture
         surface = new SurfaceView(this);
         root.addView(surface, new FrameLayout.LayoutParams(-1, -1));
+        texture = new android.view.TextureView(this);
+        texture.setVisibility(View.GONE);
+        root.addView(texture, new FrameLayout.LayoutParams(-1, -1));
         root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
             fit();
             if (r - l != or - ol) {
@@ -396,8 +401,7 @@ public class PlayerActivity extends Activity {
         root.addView(subtitle, new FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
         placeSubtitle();
 
-        spinner = new ProgressBar(this);
-        spinner.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(Home.ACCENT));
+        spinner = new Home.Spinner(this);
         root.addView(spinner, new FrameLayout.LayoutParams(dp(56), dp(56), Gravity.CENTER));
 
         notice = new TextView(this);
@@ -1176,7 +1180,11 @@ public class PlayerActivity extends Activity {
                 measuredFps = 0;
                 fpsMinGapUs = Long.MAX_VALUE;
                 fpsFrames = 0;
-                if (v.width > 0 && v.height > 0) videoRatio = v.width * v.pixelWidthHeightRatio / v.height;
+                if (v.width > 0 && v.height > 0) {
+                    float ratio = v.width * v.pixelWidthHeightRatio / v.height;
+                    if (Math.abs(ratio - videoRatio) > 0.01f) barX = barY = -1;   // another picture shape: other bars
+                    videoRatio = ratio;
+                }
                 fit();
                 updatePip();
                 refreshChips();
@@ -1262,28 +1270,96 @@ public class PlayerActivity extends Activity {
         refreshChips();
     }
 
-    // The surface is sized to the picture: Fit letterboxes (nothing stretched), Fill crops to cover the screen, Stretch fills it,
-    // 16:9 and 4:3 force that shape
+    // Fit letterboxes (nothing stretched), Crop covers the screen and cuts what is past its edges (nothing stretched either; black bars inside
+    // the picture go too), Stretch pulls the picture (without its bars) to the screen's shape
     void fit() {
         View root = (View) surface.getParent();
         int w = root.getWidth(), h = root.getHeight();
         if (w == 0 || h == 0 || (videoRatio <= 0 && zoom != 2)) return;
-        float r = zoom == 3 ? 16f / 9 : zoom == 4 ? 4f / 3 : videoRatio;
+        float r = videoRatio;
         int vw = w, vh = h;
         if (zoom == 1) {
-            vh = Math.round(w / r);
-            if (vh < h) { vh = h; vw = Math.round(h * r); }
-        } else if (zoom != 2) {
+            float k = Math.max(w / (r * (1 - 2 * Math.max(0, barX))), h / (1 - 2 * Math.max(0, barY)));   // the picture without its own black bars covers the screen
+            vw = Math.round(r * k);
+            vh = Math.round(k);
+        } else if (zoom == 2) {   // the picture without its own black bars, pulled to the screen
+            vw = Math.round(w / (1 - 2 * Math.max(0, barX)));
+            vh = Math.round(h / (1 - 2 * Math.max(0, barY)));
+        } else {
             vh = Math.round(w / r);
             if (vh > h) { vh = h; vw = Math.round(h * r); }
         }
+        if (zoom != 0) {
+            // A SurfaceView bigger than the screen is squeezed back into it by some TVs (on a TCL, Crop looked just like Stretch): what reaches
+            // past the edges is drawn on a TextureView, which is cut at the screen like any view, scaled about its middle
+            useTexture(true);
+            android.graphics.Matrix m = new android.graphics.Matrix();
+            m.setScale(vw / (float) w, vh / (float) h, w / 2f, h / 2f);
+            texture.setTransform(m);
+            return;
+        }
+        useTexture(false);   // Fit: the SurfaceView (the cheapest way to show video), never bigger than the screen
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) surface.getLayoutParams();
         if (lp.width == vw && lp.height == vh) return;
         surface.setLayoutParams(new FrameLayout.LayoutParams(vw, vh, Gravity.CENTER));
     }
 
+    void useTexture(boolean on) {
+        if (on == onTexture || player == null) return;
+        onTexture = on;
+        (on ? texture : surface).setVisibility(View.VISIBLE);
+        if (on) player.setVideoTextureView(texture); else player.setVideoSurfaceView(surface);
+        (on ? surface : texture).setVisibility(View.GONE);
+    }
+
+    float barX = -1, barY = -1;   // Fill and Stretch: the share of the picture, each side, that is black bars baked into the video (a wide film in a 16:9 frame); -1 = not measured
+
+    /** While Fill or Stretch is on: a small copy of the frame every 2 s, to find those bars. The smallest seen is kept, since a dark scene shows more black than there is. */
+    final Runnable barLoop = new Runnable() {
+        @Override public void run() {
+            if (zoom == 0 || isFinishing()) return;
+            App.main.postDelayed(this, 2000);
+            if (player == null || !player.isPlaying()) return;
+            if (onTexture) {   // the frame as the decoder gave it (the view's scaling is not in it)
+                android.graphics.Bitmap b = texture.isAvailable() ? texture.getBitmap(160, 90) : null;
+                if (b != null) bars(b);
+                return;
+            }
+            if (surface.getWidth() == 0 || !surface.getHolder().getSurface().isValid()) return;
+            android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(160, 90, android.graphics.Bitmap.Config.ARGB_8888);
+            try {
+                android.view.PixelCopy.request(surface, bmp, res -> { if (res == android.view.PixelCopy.SUCCESS) bars(bmp); }, App.main);
+            } catch (RuntimeException ignored) { }   // a protected video cannot be copied: nothing to measure
+        }
+    };
+
+    void bars(android.graphics.Bitmap b) {
+        int w = b.getWidth(), h = b.getHeight();
+        int[] px = new int[w * h], rows = new int[h], cols = new int[w];
+        b.getPixels(px, 0, w, 0, 0, w, h);
+        for (int y = 0; y < h; y++) for (int x = 0; x < w; x++) {
+            int p = px[y * w + x];
+            if ((p >> 16 & 255) + (p >> 8 & 255) + (p & 255) > 3 * 28) { rows[y]++; cols[x]++; }
+        }
+        float ny = bar(rows, w), nx = bar(cols, h);   // a few lit pixels (a logo, noise) do not count as picture
+        float oy = barY, ox = barX;
+        if (ny >= 0) barY = barY < 0 ? ny : Math.min(barY, ny);
+        if (nx >= 0) barX = barX < 0 ? nx : Math.min(barX, nx);
+        if (Math.abs(barY - oy) > 0.004f || Math.abs(barX - ox) > 0.004f) fit();
+    }
+
+    /** The bars at the ends of one axis as a share of it, when they match (real bars do; a dark scene rarely does); -1 when they do not or there is no picture. `lit` = lit pixels per line, `len` = a line's pixels. */
+    static float bar(int[] lit, int len) {
+        int n = lit.length, min = Math.max(2, len * 3 / 100), a = 0, z = 0;
+        while (a < n && lit[a] < min) a++;
+        while (z < n && lit[n - 1 - z] < min) z++;
+        if (a >= n || Math.abs(a - z) > n * 3 / 100) return -1;
+        return Math.min(0.3f, Math.min(a, z) == 0 ? 0 : Math.min(a, z) / (float) n + 0.004f);   // a hair more, so no sliver of the bar is left
+    }
+
     void cycleZoom() {
         zoom = (zoom + 1) % ZOOMS.length;
+        if (zoom != 0) { App.main.removeCallbacks(barLoop); App.main.post(barLoop); }   // it stops by itself once Fit is back
         fit();
         say(App.t(R.string.player_zoom_say, App.t(ZOOMS[zoom])));
         refreshChips();
@@ -1320,10 +1396,15 @@ public class PlayerActivity extends Activity {
     }
 
     void say(String s) {
+        say(s, 1200);
+    }
+
+    /** A notice for `ms`: a reason (why a download is not started) needs time to be read. */
+    void say(String s, long ms) {
         notice.setText(s);
         notice.setVisibility(View.VISIBLE);
         App.main.removeCallbacks(hideNotice);
-        App.main.postDelayed(hideNotice, 1200);
+        App.main.postDelayed(hideNotice, ms);
     }
 
     final Runnable hideNotice = () -> notice.setVisibility(View.GONE);
@@ -1683,7 +1764,7 @@ public class PlayerActivity extends Activity {
             row.setBackground(st);
             row.setFocusable(true);
             row.setDefaultFocusHighlightEnabled(false);
-            row.setOnClickListener(v -> { d.dismiss(); pick.onClick(d, n); });
+            row.setOnClickListener(v -> { d.dismiss(); pick.onClick(d, n); if (App.tv) App.main.postDelayed(this::backToVideo, 150); });
             LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(-1, -2);
             rp.setMargins(dp(8), dp(1), dp(8), dp(1));
             list.addView(row, rp);
@@ -1702,6 +1783,15 @@ public class PlayerActivity extends Activity {
         w.setDimAmount(0.3f);
         d.show();
         if (first != null) { View f = first; f.post(f::requestFocus); }
+    }
+
+    /**
+     * TV, after a pick in a list (a quality, a server, a speed...): back to the video, the controls hidden, as TV players do. Not when the pick
+     * opened another list or panel (it has the focus then); Back out of a list still returns to its button.
+     */
+    void backToVideo() {
+        if (isFinishing() || panel != null || !hasWindowFocus()) return;
+        hideControls();   // rowFocus(false) takes the focus off the buttons; the next key acts on the video
     }
 
     /** More: the settings changed less often, each with its value now. */
@@ -1774,7 +1864,7 @@ public class PlayerActivity extends Activity {
         App.io.execute(() -> {
             Downloads.Plan plan = Downloads.plan(url, headers, dash);
             if (plan.height == 0) plan.height = playing;
-            runOnUiThread(() -> showConfirm(base, plan, null));
+            runOnUiThread(() -> { if (plan.error != null) say(plan.error, 4000); else showConfirm(base, plan, null); });   // nothing is started for a stream that cannot be saved
         });
     }
 

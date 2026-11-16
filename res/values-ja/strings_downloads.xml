@@ -20,7 +20,6 @@
     <string name="dl_play">再生</string>
     <string name="dl_delete_file">ファイルを削除</string>
     <string name="dl_remove">リストから削除（ファイルは残す）</string>
-    <string name="dl_dash">このストリーム形式（DASH）はまだダウンロードできません</string>
     <string name="dl_live">ライブストリームはダウンロードできません</string>
     <string name="dl_protected">このストリームは保護されているためダウンロードできません</string>
     <string name="dl_merge_failed">このストリームの映像と音声を結合できません</string>
@@ -42,4 +41,12 @@
     <string name="dl_folder_other">その他のフォルダ…</string>
     <string name="dl_folder_prompt">フォルダ（Download/…、Movies/…、または Documents/…）</string>
     <string name="dl_folder_bad">フォルダは Download/、Movies/、Documents/ のいずれかで始まる必要があります</string>
+    <string name="dl_make_seekable">シーク可能にする</string>
+    <string name="dl_ts_hint">.ts ファイルです: プレイヤーによっては長さが分からない場合があります。このボタンでシークできる MP4 に変換します。</string>
+    <string name="dl_ts_kept">.ts のまま保持しました: %1$s</string>
+    <string name="dl_converting">MP4 を作成中…</string>
+    <string name="dl_dash_pieces">この DASH ストリームの分割データが見つかりません</string>
+    <string name="dl_no_space">MP4 に変換するための空き容量が不足しています（約 %1$s が必要です）</string>
+    <string name="dl_dash_periods">この DASH ストリームは複数のパート（ピリオド）に分かれており、ダウンロードではまだ結合できません</string>
+    <string name="dl_no_sound">このストリームには音声がないため、ダウンロードできません</string>
 </resources>

@@ -233,7 +233,6 @@
     <string name="home_animation">رسوم متحركة</string>
     <string name="home_kids">للأطفال</string>
     <string name="home_studios">الاستوديوهات</string>
-    <string name="home_trending">الرائج</string>
     <string name="home_top_rated">الأعلى تقييمًا</string>
     <string name="home_documentaries">وثائقيات</string>
 </resources>

@@ -25,6 +25,27 @@ public class HistoryTest {
         check("number from the address", History.episodeNumber("https://anime.example/watch/anime-1535-episode-3", ""), 3);
         check("number from the title", History.episodeNumber("https://x.com/watch/abc", "Death Note Episode 7"), 7);
         check("no number", History.episodeNumber("https://x.com/movie", "A Movie"), 0);
+        // Watch on a series: where it was left, the next episode after a finished one, else nothing (the caller starts the first)
+        java.util.List<int[]> eps = new java.util.ArrayList<>();
+        for (int sn = 1; sn <= 2; sn++) for (int n = 1; n <= 3; n++) eps.add(new int[]{sn, n});
+        History.Entry w = new History.Entry();
+        w.title = "Show"; w.episode = "S1 E2";
+        check("never watched", History.resume(new java.util.ArrayList<>(), "Show", eps), null);
+        check("left at S1 E2", java.util.Arrays.toString(History.resume(java.util.Collections.singletonList(w), "show (2020)", eps)), "[1, 2]");
+        w.done = true; w.posEpisode = "S1 E2";
+        check("finished: the next", java.util.Arrays.toString(History.resume(java.util.Collections.singletonList(w), "Show", eps)), "[1, 3]");
+        w.episode = "S1 E3"; w.posEpisode = "S1 E3";
+        check("finished the season: the next season", java.util.Arrays.toString(History.resume(java.util.Collections.singletonList(w), "Show", eps)), "[2, 1]");
+        w.episode = "S2 E3"; w.posEpisode = "S2 E3";
+        check("finished the last: it stays", java.util.Arrays.toString(History.resume(java.util.Collections.singletonList(w), "Show", eps)), "[2, 3]");
+        w.episode = "S2 E1"; w.posEpisode = "S1 E3";
+        check("done belongs to another episode: this one", java.util.Arrays.toString(History.resume(java.util.Collections.singletonList(w), "Show", eps)), "[2, 1]");
+        w.episode = "E2"; w.done = false;
+        check("no season on the page: the first season with it", java.util.Arrays.toString(History.resume(java.util.Collections.singletonList(w), "Show", eps)), "[1, 2]");
+        w.episode = "S5 E1";
+        check("not in the list", History.resume(java.util.Collections.singletonList(w), "Show", eps), null);
+        w.title = "Other"; w.episode = "S1 E2";
+        check("another title", History.resume(java.util.Collections.singletonList(w), "Show", eps), null);
         System.out.println(fails == 0 ? "all passed" : fails + " failed");
         if (fails > 0) System.exit(1);
     }

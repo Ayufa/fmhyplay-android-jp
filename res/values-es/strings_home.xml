@@ -233,7 +233,6 @@
     <string name="home_animation">Animación</string>
     <string name="home_kids">Infantil</string>
     <string name="home_studios">Estudios</string>
-    <string name="home_trending">Tendencias</string>
     <string name="home_top_rated">Mejor valoradas</string>
     <string name="home_documentaries">Documentales</string>
 </resources>

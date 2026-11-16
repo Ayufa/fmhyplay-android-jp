@@ -80,7 +80,8 @@ public class SearchActivity extends Home {
             @Override public void afterTextChanged(Editable e) {
                 query = e.toString();
                 if (query.isEmpty()) showRecent();
-                // Nothing is searched or redrawn until typing pauses (a TV remote types slowly: each letter used to redraw the page)
+                if (App.tv) return;   // a TV searches on Enter (the keyboard's Search key): the page stays still while the remote types
+                // Nothing is searched or redrawn until typing pauses
                 App.main.removeCallbacks(render);
                 App.main.removeCallbacks(fetchTitles);
                 App.main.postDelayed(render, DEBOUNCE);
@@ -91,7 +92,7 @@ public class SearchActivity extends Home {
         box.setOnEditorActionListener((v, action, ev) -> { searchNow(); return true; });
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        android.widget.ImageView mic = iconButton(R.drawable.ic_mic, App.t(R.string.search_voice), v -> listen(box::setText));
+        android.widget.ImageView mic = iconButton(R.drawable.ic_mic, App.t(R.string.search_voice), v -> listen(this::spoken));
         ((LinearLayout.LayoutParams) mic.getLayoutParams()).setMargins(0, 0, dp(10), 0);
         mic.setColorFilter(TEXT);
         bar.addView(mic);   // left of the box
@@ -106,14 +107,24 @@ public class SearchActivity extends Home {
         if (!keyboardShown) {
             keyboardShown = true;
             box.requestFocus();
-            if (getIntent().getBooleanExtra("voice", false)) box.post(() -> listen(box::setText));   // opened from the mic chip
+            if (getIntent().getBooleanExtra("voice", false)) box.post(() -> listen(this::spoken));   // opened from the mic chip
             else if (!App.tv) getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
         }
     }
 
+    /** What was said goes in the box and is searched at once (no Enter to press after speaking). */
+    void spoken(String said) {
+        box.setText(said);
+        box.setSelection(said.length());
+        searchNow();
+    }
+
     /** Search pressed (or a recent search picked): no waiting, the search is kept, the keyboard goes so the arrows reach the results. */
+    boolean focusResults;   // TV: Enter was pressed, the results are on their way
+
     void searchNow() {
         query = box.getText().toString();
+        focusResults = App.tv;
         remember(query);
         App.main.removeCallbacks(render);
         App.main.removeCallbacks(fetchTitles);
@@ -291,6 +302,8 @@ public class SearchActivity extends Home {
                         titlesFor = q;
                         titlesFailed = failed;
                         showResults();
+                        // Enter on a TV: the results come after it, so the remote goes to the first one now (unless it already moved there)
+                        if (focusResults && firstCard != null) { focusResults = false; if (!inside(getCurrentFocus(), results)) firstCard.requestFocus(); }
                     });
                     return null;
                 });
@@ -302,9 +315,7 @@ public class SearchActivity extends Home {
         LinearLayout line = new LinearLayout(this);
         line.setGravity(Gravity.CENTER_VERTICAL);
         line.setPadding(dp(4), dp(8), 0, dp(8));
-        android.widget.ProgressBar spin = new android.widget.ProgressBar(this);
-        spin.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(ACCENT));
-        line.addView(spin, new LinearLayout.LayoutParams(dp(28), dp(28)));
+        line.addView(new Spinner(this), new LinearLayout.LayoutParams(dp(28), dp(28)));
         TextView t = text(App.t(R.string.search_searching), sp(15, 13), MUTED, false);
         t.setPadding(dp(12), 0, 0, 0);
         line.addView(t);

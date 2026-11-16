@@ -22,10 +22,8 @@
     <string name="player_speed">Velocidade</string>
     <string name="player_speed_now">Velocidade · %1$s</string>
     <string name="player_zoom_fit">Ajustar</string>
-    <string name="player_zoom_fill">Preencher</string>
+    <string name="player_zoom_fill">Recortar</string>
     <string name="player_zoom_stretch">Esticar</string>
-    <string name="player_zoom_16_9">16:9</string>
-    <string name="player_zoom_4_3">4:3</string>
     <string name="player_zoom_now">Zoom · %1$s</string>
     <string name="player_debug_now">Sobreposição de depuração: %1$s</string>
     <string name="player_zoom_say">Zoom: %1$s</string>

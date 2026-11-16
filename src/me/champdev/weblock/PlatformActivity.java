@@ -11,7 +11,7 @@ import java.util.Map;
 /**
  * One streaming service: its brands as tiles (Disney+ > Marvel, Pixar...), then rows of what is on it, movies or series: popular,
  * top rated, new, and a row per genre.
- * Opened with "brand" it is that brand's page: rows of what is trending, popular and top rated, a row per group of the brand
+ * Opened with "brand" it is that brand's page: rows of what is new, popular and top rated, a row per group of the brand
  * (Marvel: MCU, Avengers, X-Men...), then its movies and its series, newest first.
  * Every row shows 15 and ends in More, which opens all of it as a grid in the same order.
  */
@@ -163,10 +163,10 @@ public class PlatformActivity extends Home {
         for (Catalog.Title t : b.titles) { if (t.series()) series = true; else movies = true; }
         if (movies && series)
             kindChips(body, new String[][]{{"", App.t(R.string.home_all)}, {"movie", App.t(R.string.home_tab_movies)}, {"series", App.t(R.string.title_show)}}, () -> showBrand(b, body));
-        // What is trending, popular and top rated (a short list is all in its other rows already), the brand's groups, then everything
-        boolean many = b.list(kind, "trending").size() >= 30;
+        // What is new, popular and top rated (a short list is all in its other rows already), the brand's groups, then everything
+        boolean many = b.list(kind, "new").size() >= 30;
         List<String[]> rows = new ArrayList<>();   // {row, name}
-        rows.add(new String[]{"trending", App.t(R.string.home_trending)});
+        rows.add(new String[]{"new", App.t(R.string.home_new)});
         rows.add(new String[]{"popular", App.t(R.string.home_popular)});
         rows.add(new String[]{"rated", App.t(R.string.home_top_rated)});
         for (String[] g : b.groups)
