@@ -240,4 +240,6 @@
     <string name="home_studios">スタジオ</string>
     <string name="home_top_rated">高評価</string>
     <string name="home_documentaries">ドキュメンタリー</string>
+    <string name="home_swipe_controls">スワイプで明るさ・音量</string>
+    <string name="home_swipe_controls_help">画面の左側を上下にスワイプすると明るさ、右側では音量が変わります</string>
 </resources>

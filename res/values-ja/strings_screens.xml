@@ -131,4 +131,9 @@
     <string name="iptv_pinned">ピン留めしました: %1$s</string>
     <string name="iptv_unpinned">ピン留めを解除しました: %1$s</string>
     <string name="title_trailer">予告編</string>
+    <string name="iptv_restore_chip">オフラインを表示</string>
+    <string name="iptv_restore_title">オフラインのチャンネル</string>
+    <string name="iptv_restore_all">すべて復元（%1$d件）</string>
+    <string name="iptv_restored">%1$s をリストに戻しました</string>
+    <string name="iptv_restored_all">%1$s件のチャンネルをリストに戻しました</string>
 </resources>
