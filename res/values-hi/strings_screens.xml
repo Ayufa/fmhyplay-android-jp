@@ -131,4 +131,9 @@
     <string name="iptv_pinned">पिन किया: %1$s</string>
     <string name="iptv_unpinned">अनपिन किया: %1$s</string>
     <string name="title_trailer">ट्रेलर</string>
+    <string name="iptv_restore_chip">ऑफ़लाइन दिखाएँ</string>
+    <string name="iptv_restore_title">ऑफ़लाइन चैनल</string>
+    <string name="iptv_restore_all">सभी %1$d वापस लाएँ</string>
+    <string name="iptv_restored">%1$s फिर से सूची में है</string>
+    <string name="iptv_restored_all">%1$s चैनल फिर से सूची में हैं</string>
 </resources>

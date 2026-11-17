@@ -1,5 +1,7 @@
 package me.champdev.weblock;
 
+import android.graphics.Bitmap;
+
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Gravity;
@@ -63,7 +65,11 @@ public class TitleActivity extends Home {
         ImageView img = new ImageView(this);
         img.setScaleType(ImageView.ScaleType.CENTER_CROP);
         poster.addView(img, new FrameLayout.LayoutParams(-1, -1));
-        if (!t.poster.isEmpty() && !t.poster.equals("null")) loadImage(img, t.poster, letter);
+        if (!t.poster.isEmpty() && !t.poster.equals("null")) {
+            Bitmap seen = anySize(t.poster);   // the list's card had it: shown at once, the sharper size follows
+            if (seen != null) show(img, seen, letter);
+            loadImage(img, t.poster, letter);
+        }
         hero.addView(poster, new LinearLayout.LayoutParams(dp(w), dp(w * 3 / 2)));
 
         LinearLayout info = new LinearLayout(this);
@@ -153,6 +159,7 @@ public class TitleActivity extends Home {
         LinearLayout buttons = new LinearLayout(this);
         buttons.setPadding(0, u(4, 2), 0, 0);
         Sites.Site site = chosen();
+        pickedUrl = site == null ? null : site.url;   // worked out once: the site cards below only compare with it
         TextView watch = chip(v -> watch(null));
         watch.setText(bare(site == null ? App.t(R.string.title_no_site) : App.t(R.string.title_watch_on, site.name)));
         watch.setTextColor(0xFFFFFFFF);
@@ -344,9 +351,10 @@ public class TitleActivity extends Home {
         if (t.series()) rebuild(); else watch(null);
     }
 
+    String pickedUrl;   // the chosen site of this drawing of the page (chosen() sorts every site: once per page, not once per card)
+
     @Override boolean picked(Sites.Site s) {
-        Sites.Site c = chosen();
-        return c != null && c.url.equals(s.url);
+        return s.url.equals(pickedUrl);
     }
 
     // The title's own page when the site is known (by TMDB id), else the site with a search for its name

@@ -167,7 +167,7 @@ final class History {
         String key = same(title);
         for (Entry e : list) {
             if (e.episode == null || !same(e.title).equals(key)) continue;
-            Matcher m = Pattern.compile("(?:S(\\d+)\\s*)?E(\\d+)").matcher(e.episode);
+            Matcher m = SEASON_EP.matcher(e.episode);
             if (!m.find()) continue;
             int season = m.group(1) == null ? 0 : Integer.parseInt(m.group(1)), number = Integer.parseInt(m.group(2));
             int[] at = null;   // no season in the page's own words: the first season that has that number
@@ -182,6 +182,8 @@ final class History {
         }
         return null;
     }
+
+    static final Pattern SEASON_EP = Pattern.compile("(?:S(\\d+)\\s*)?E(\\d+)");   // "S2 E4" or "E7", as episode() writes it
 
     static boolean isTmdb(String url) {
         return url.contains("image.tmdb.org") || url.contains("/t/p/");

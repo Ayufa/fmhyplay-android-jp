@@ -131,4 +131,9 @@
     <string name="iptv_pinned">Angeheftet: %1$s</string>
     <string name="iptv_unpinned">Gelöst: %1$s</string>
     <string name="title_trailer">Trailer</string>
+    <string name="iptv_restore_chip">Offline zeigen</string>
+    <string name="iptv_restore_title">Offline-Sender</string>
+    <string name="iptv_restore_all">Alle %1$d wiederherstellen</string>
+    <string name="iptv_restored">%1$s ist wieder in den Listen</string>
+    <string name="iptv_restored_all">%1$s Sender sind wieder in den Listen</string>
 </resources>

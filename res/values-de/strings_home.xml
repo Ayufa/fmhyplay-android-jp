@@ -235,4 +235,6 @@
     <string name="home_studios">Studios</string>
     <string name="home_top_rated">Bestbewertet</string>
     <string name="home_documentaries">Dokus</string>
+    <string name="home_swipe_controls">Wischen für Helligkeit und Lautstärke</string>
+    <string name="home_swipe_controls_help">Links im Bild nach oben oder unten wischen für die Helligkeit, rechts für die Lautstärke</string>
 </resources>

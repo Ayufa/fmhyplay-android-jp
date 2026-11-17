@@ -645,6 +645,11 @@ public class PlayerActivity extends Activity {
     float downX, downY, startLevel;
     int swipeKind;   // 0 undecided, 1 brightness, 2 volume, -1 not a vertical swipe
 
+    /** Settings, Player: swiping up and down on the picture changes the brightness (left half) and the volume (right half). On unless turned off. */
+    static boolean swipeOn() {
+        return App.prefs.getBoolean("swipeControls", true);
+    }
+
     float brightnessNow() {
         float b = getWindow().getAttributes().screenBrightness;
         if (b >= 0) return b;
@@ -737,7 +742,7 @@ public class PlayerActivity extends Activity {
                     float slop = dp(14);
                     if (Math.abs(dx) > slop && Math.abs(dx) > Math.abs(dy)) { swipeKind = -1; return false; }
                     if (Math.abs(dy) < slop) return false;
-                    if (downX < dp(28) || downX > v.getWidth() - dp(28)) { swipeKind = -1; return false; }
+                    if (!swipeOn() || downX < dp(28) || downX > v.getWidth() - dp(28)) { swipeKind = -1; return false; }   // off in Settings, or the screen's edge (the system's back swipe)
                     swipeKind = downX < v.getWidth() / 2f ? 1 : 2;
                     startLevel = swipeKind == 1 ? brightnessNow() : volumeNow();
                     MotionEvent c = MotionEvent.obtain(ev);   // the view saw a press: end it so it does not count as a tap
@@ -1208,7 +1213,7 @@ public class PlayerActivity extends Activity {
                         Log.w(TAG, "FAILED " + c + " " + ((androidx.media3.datasource.HttpDataSource.HttpDataSourceException) c).dataSpec.uri);
                     } else if (c instanceof androidx.media3.common.ParserException) Log.w(TAG, "FAILED parse " + c.getMessage() + " stream " + getIntent().getStringExtra("url"));
                 }
-                if (getIntent().hasExtra("mime")) { Iptv.mark(channel(), false); Iptv.saveHealth(); }
+                // a channel that fails once stays listed (a stream can be down for a while, or fail on this device only); only the background check hides one
                 Toast.makeText(PlayerActivity.this, App.t(getIntent().hasExtra("mime") ? R.string.player_channel_offline : R.string.player_cant_play, e.getErrorCodeName()),
                     Toast.LENGTH_LONG).show();
                 setResult(RESULT_CANCELED);

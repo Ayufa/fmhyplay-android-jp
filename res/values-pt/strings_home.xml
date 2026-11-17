@@ -235,4 +235,6 @@
     <string name="home_studios">Estúdios</string>
     <string name="home_top_rated">Mais bem avaliados</string>
     <string name="home_documentaries">Documentários</string>
+    <string name="home_swipe_controls">Deslizar para brilho e volume</string>
+    <string name="home_swipe_controls_help">Deslize para cima ou para baixo à esquerda da imagem para o brilho, à direita para o volume</string>
 </resources>

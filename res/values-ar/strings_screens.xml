@@ -131,4 +131,9 @@
     <string name="iptv_pinned">تم التثبيت: %1$s</string>
     <string name="iptv_unpinned">تم إلغاء التثبيت: %1$s</string>
     <string name="title_trailer">الإعلان</string>
+    <string name="iptv_restore_chip">إظهار غير المتصلة</string>
+    <string name="iptv_restore_title">القنوات غير المتصلة</string>
+    <string name="iptv_restore_all">استعادة الكل %1$d</string>
+    <string name="iptv_restored">عادت %1$s إلى القوائم</string>
+    <string name="iptv_restored_all">عادت %1$s قناة إلى القوائم</string>
 </resources>

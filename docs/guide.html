@@ -94,6 +94,7 @@ adb install -r AnantPlay-TV-vX.Y.Z.apk</code></pre>
 <tr><td>Swipe up or down on the left half</td><td>Brightness</td></tr>
 <tr><td>Swipe up or down on the right half</td><td>Volume</td></tr>
 <tr><td>Drag the progress bar</td><td>Seek (it jumps once, when you let go)</td></tr></table>
+<p>The two swipes can be turned off in <i>Settings, Player, Swipe for brightness and volume</i>.</p>
 <p>The player follows the rotation lock (the Full screen button turns it), and it keeps clear of camera cut-outs. <b>Picture in picture:</b> press Home while a video plays and it keeps playing in a small window, with play and pause; tap it for full screen, close it to stop.</p>
 <p><b>Back to Home in one step:</b> on a phone the player has a house button at the top right, and the same house sits at the top right of a website. On a TV open <i>More</i> in the player, or press <kbd>Menu</kbd> on a website, and pick <i>Home</i>. Everything open closes, and your place in the video is saved. While the app loads a page, searches for the title, opens the episode or starts the video, a translucent screen with the title, the current step and a spinner covers the site; tap it (or press <kbd>Back</kbd>) to see the page, and it closes by itself if a step gets stuck.</p>
 
@@ -170,7 +171,7 @@ adb install -r AnantPlay-TV-vX.Y.Z.apk</code></pre>
 <p>The <b>IPTV</b> tab starts with what you watched and your favorites, then your own playlists and pins, then your country's channels with its categories (News, Movies, Kids...), then every country and every category. In the player, <i>Previous</i> / <i>Next</i> and the remote's <kbd>Channel +</kbd> / <kbd>Channel −</kbd> move through the channel's category.</p>
 <ul>
 <li><b>Continue watching</b>: the last channels you watched. Hold <kbd>OK</kbd> on a card to remove it or star it. <b>Working channels</b> (every channel that has played or passed the check) is the first card under Categories.</li>
-<li><b>Offline channels are hidden.</b> A background check tests channels a few at a time and remembers the result (working for a week, not working for two days). A channel that fails when you press play is hidden at once. <i>Settings, Hide offline channels</i> turns this off and <i>Check channels now</i> tests everything again.</li>
+<li><b>Offline channels are hidden.</b> A background check tests channels a few at a time and remembers the result (working for a week, not working for two days). A channel that fails when you press play stays listed. <i>Show offline</i> at the top of the IPTV tab lists the hidden ones: bring one back, or all of them, and the check never hides them again. <i>Settings, Hide offline channels</i> turns hiding off and <i>Check channels now</i> tests everything again.</li>
 <li><b>Search</b> by typing or by voice, and filter inside any list by name.</li>
 <li><b>Category and Language chips</b> above every channel list: in <i>India</i>, for example, pick <i>News</i> and <i>Hindi</i>. Categories start with Movies, TV, Kids and News; languages with the one you use for audio, the country's main one and English.</li>
 <li><b>Pins</b>: the pin button next to the microphone keeps a list with its chips (<i>India · News · Hindi</i>) as its own row on the IPTV tab, near the top. Press it again in that list to unpin.</li>
@@ -215,7 +216,7 @@ adb install -r AnantPlay-TV-vX.Y.Z.apk</code></pre>
 <tr><td>"AnantPlayer could not play this"</td><td>It goes back to the page, which still plays the video itself. Try another server from the page.</td></tr>
 <tr><td>No Servers button</td><td>It appears only when the site's own buttons were found. Use the page's own controls for that site.</td></tr>
 <tr><td>Picture looks zoomed after a quality change</td><td>Seen only on the Android emulator's software decoder; AnantPlay restarts the decoder there. On a device, set Zoom back to Fit.</td></tr>
-<tr><td>IPTV channels disappear</td><td>They failed the check. Turn off <i>Hide offline channels</i>, or run <i>Check channels now</i> later.</td></tr></table>
+<tr><td>IPTV channels disappear</td><td>They failed the check. Bring them back with <i>Show offline</i> on the IPTV tab, turn off <i>Hide offline channels</i>, or run <i>Check channels now</i> later.</td></tr></table>
 </article>
 </div></main>
 <footer>MIT licensed. AnantPlay does not host or distribute any media and is not affiliated with Cloudflare, Stremio, OpenSubtitles, the maintainers of any source, or any streaming site.<br>

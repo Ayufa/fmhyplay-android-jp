@@ -114,6 +114,14 @@ final class Iptv {
         return out;
     }
 
+    /** The channels hidden as offline (the background check could not reach them), by name. */
+    static List<Channel> hidden() {
+        List<Channel> out = new ArrayList<>();
+        if (cache == null || !hideDead()) return out;
+        for (Channel c : cache) if ((adultOn() || !c.adult) && isDead(c.url)) out.add(c);
+        return out;
+    }
+
     /** Stream address to its languages, from a by-language playlist (a stream is listed once per language). */
     static Map<String, List<String>> languages(String m3u) {
         Map<String, List<String>> out = new HashMap<>();
@@ -198,7 +206,23 @@ final class Iptv {
     static boolean isDead(String url) {
         loadHealth();
         Long v = health.get(url);
-        return v != null && v < 0 && System.currentTimeMillis() + v < DEAD_TTL;
+        return v != null && v < 0 && System.currentTimeMillis() + v < DEAD_TTL && !kept().contains(url);
+    }
+
+    private static volatile Set<String> kept;
+
+    /** Channels brought back by hand (IPTV tab, the offline line): never hidden as offline again, the check can be wrong about them. */
+    static Set<String> kept() {
+        Set<String> k = kept;
+        if (k == null) kept = k = new HashSet<>(App.prefs.getStringSet("iptvKeep", java.util.Collections.emptySet()));
+        return k;
+    }
+
+    static void restore(java.util.Collection<String> urls) {
+        Set<String> k = new HashSet<>(kept());
+        k.addAll(urls);
+        kept = k;
+        App.prefs.edit().putStringSet("iptvKeep", k).apply();
     }
 
     static boolean known(String url) {
@@ -208,9 +232,8 @@ final class Iptv {
 
     static int deadCount() {
         loadHealth();
-        int n = 0;
-        for (Channel c : all(true)) if (isDead(c.url)) n++;   // all(true) reloads the list after a playlist was added or removed
-        return n;
+        all();   // the list as the tabs show it (adult channels only when they are on), so the count matches the Show offline list
+        return hidden().size();
     }
 
     /** One line for the top of the IPTV tab, "" when there is nothing to say. */

@@ -131,4 +131,9 @@
     <string name="iptv_pinned">Disematkan: %1$s</string>
     <string name="iptv_unpinned">Sematan dilepas: %1$s</string>
     <string name="title_trailer">Trailer</string>
+    <string name="iptv_restore_chip">Tampilkan offline</string>
+    <string name="iptv_restore_title">Saluran offline</string>
+    <string name="iptv_restore_all">Pulihkan semua %1$d</string>
+    <string name="iptv_restored">%1$s kembali ke daftar</string>
+    <string name="iptv_restored_all">%1$s saluran kembali ke daftar</string>
 </resources>

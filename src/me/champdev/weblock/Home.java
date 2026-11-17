@@ -985,7 +985,7 @@ public class Home extends Activity {
         LinearLayout bar = new LinearLayout(this);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         bar.setBackgroundColor(BG);
-        bar.setPadding(dp(10), 0, dp(4), 0);   // the status bar above already leaves room
+        bar.setPadding(dp(10), 0, dp(4), dp(8));   // the status bar above already leaves room; below, a gap before the page starts
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.drawable.ic_logo);
         LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(dp(28), dp(28));
@@ -1274,6 +1274,20 @@ public class Home extends Activity {
         }
     }
 
+    /** The channels hidden as offline: Restore all, or one of them. A restored channel is never hidden again. */
+    void restoreChannels(List<Iptv.Channel> hidden) {
+        String[] names = new String[hidden.size() + 1];
+        names[0] = App.t(R.string.iptv_restore_all, hidden.size());
+        for (int i = 0; i < hidden.size(); i++) names[i + 1] = hidden.get(i).name;
+        new AlertDialog.Builder(this).setTitle(App.t(R.string.iptv_restore_title)).setItems(names, (d, i) -> {
+            List<String> urls = new ArrayList<>();
+            if (i == 0) for (Iptv.Channel c : hidden) urls.add(c.url); else urls.add(hidden.get(i - 1).url);
+            Iptv.restore(urls);
+            toast(App.t(i == 0 ? R.string.iptv_restored_all : R.string.iptv_restored, i == 0 ? String.valueOf(urls.size()) : hidden.get(i - 1).name));
+            rebuild();
+        }).show();
+    }
+
     /**
      * IPTV, in the order people reach for channels: what you watched, your stars, your own playlists and pins,
      * your country's channels, then every category and country as a compact list.
@@ -1286,6 +1300,13 @@ public class Home extends Activity {
         if (status.isEmpty() && App.tv && !Iptv.history().isEmpty()) status = App.t(R.string.home_hint_hold_channel);
         TextView note = text(status, sp(13, 12), MUTED, false);
         h.addView(note, new LinearLayout.LayoutParams(0, -2, 1));
+        List<Iptv.Channel> hidden = all.isEmpty() || Iptv.sweeping ? new ArrayList<>() : Iptv.hidden();
+        if (!hidden.isEmpty()) {   // the offline ones can be brought back, one by one or all
+            TextView show = chip(v -> restoreChannels(hidden));
+            show.setText(App.t(R.string.iptv_restore_chip));
+            show.setBackground(rounded(CARD, dp(22)));
+            h.addView(show);
+        }
         TextView add = chip(v -> addPlaylistDialog());   // channels are in Search, with movies and sites
         add.setText(App.t(R.string.home_add_playlist_chip));
         add.setBackground(rounded(CARD, dp(22)));
@@ -1830,6 +1851,15 @@ public class Home extends Activity {
         secBox.addView(settingRow(R.drawable.ic_p_audio, App.t(R.string.home_audio_language), App.t(R.string.home_audio_language_help), audioValue, v -> audioLanguageDialog()));
         audioValue.setText(audioLanguageName(App.prefs.getString("audioLang", "")));
         audioValue.setTextColor(App.prefs.getString("audioLang", "").isEmpty() ? MUTED : GREEN);
+        if (!App.tv) {   // a TV has no touch
+            TextView swipeValue = new TextView(this);
+            secBox.addView(settingRow(R.drawable.ic_p_sun, App.t(R.string.home_swipe_controls), App.t(R.string.home_swipe_controls_help), swipeValue, v -> {
+                App.prefs.edit().putBoolean("swipeControls", !PlayerActivity.swipeOn()).apply();
+                rebuild();
+            }));
+            swipeValue.setText(App.t(PlayerActivity.swipeOn() ? R.string.home_on : R.string.home_off));
+            swipeValue.setTextColor(PlayerActivity.swipeOn() ? GREEN : MUTED);
+        }
         TextView boostValue = new TextView(this);
         secBox.addView(settingRow(R.drawable.ic_p_volume, App.t(R.string.home_volume_boost), App.t(R.string.home_volume_boost_help), boostValue, v -> audioPanel()));
         boostValue.setText(PlayerActivity.boostLabel(PlayerActivity.boostDb()));
@@ -2782,7 +2812,9 @@ public class Home extends Activity {
     void startLoad(ImageView into, String url, View placeholder, int min, String key) {
         java.util.function.Consumer<Bitmap> done = b -> {
             if (b == null || !key.equals(into.getTag())) return;   // failed, or the view shows something else by now
+            boolean had = into.getDrawable() != null;   // another size already shows: swapped in place, no fade from nothing
             show(into, b, placeholder);
+            if (had) return;
             into.setAlpha(0f);
             into.animate().alpha(1).setDuration(180).start();
         };
@@ -2798,6 +2830,12 @@ public class Home extends Activity {
             synchronized (loading) { waiting = loading.remove(key); }
             for (java.util.function.Consumer<Bitmap> c : waiting) App.main.post(() -> c.accept(b));
         });
+    }
+
+    /** The same picture at any size already in memory (a card shows a poster smaller than a title page does); null when none is. */
+    static Bitmap anySize(String url) {
+        for (Map.Entry<String, Bitmap> e : images.snapshot().entrySet()) if (e.getKey().startsWith(url + "@")) return e.getValue();
+        return null;
     }
 
     void show(ImageView into, Bitmap b, View placeholder) {

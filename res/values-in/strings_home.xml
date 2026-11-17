@@ -235,4 +235,6 @@
     <string name="home_studios">Studio</string>
     <string name="home_top_rated">Rating tertinggi</string>
     <string name="home_documentaries">Dokumenter</string>
+    <string name="home_swipe_controls">Geser untuk kecerahan dan volume</string>
+    <string name="home_swipe_controls_help">Geser ke atas atau bawah di kiri gambar untuk kecerahan, di kanan untuk volume</string>
 </resources>

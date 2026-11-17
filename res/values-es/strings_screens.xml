@@ -131,4 +131,9 @@
     <string name="iptv_pinned">Fijado: %1$s</string>
     <string name="iptv_unpinned">Desfijado: %1$s</string>
     <string name="title_trailer">Tráiler</string>
+    <string name="iptv_restore_chip">Mostrar sin conexión</string>
+    <string name="iptv_restore_title">Canales sin conexión</string>
+    <string name="iptv_restore_all">Restaurar los %1$d</string>
+    <string name="iptv_restored">%1$s vuelve a estar en las listas</string>
+    <string name="iptv_restored_all">%1$s canales vuelven a estar en las listas</string>
 </resources>

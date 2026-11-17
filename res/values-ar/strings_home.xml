@@ -235,4 +235,6 @@
     <string name="home_studios">الاستوديوهات</string>
     <string name="home_top_rated">الأعلى تقييمًا</string>
     <string name="home_documentaries">وثائقيات</string>
+    <string name="home_swipe_controls">السحب للسطوع ومستوى الصوت</string>
+    <string name="home_swipe_controls_help">اسحب لأعلى أو لأسفل على يسار الصورة للسطوع، وعلى يمينها لمستوى الصوت</string>
 </resources>

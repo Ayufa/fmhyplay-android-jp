@@ -235,4 +235,6 @@
     <string name="home_studios">स्टूडियो</string>
     <string name="home_top_rated">टॉप रेटेड</string>
     <string name="home_documentaries">डॉक्यूमेंट्री</string>
+    <string name="home_swipe_controls">स्वाइप से चमक और आवाज़</string>
+    <string name="home_swipe_controls_help">चमक के लिए तस्वीर के बाईं ओर, आवाज़ के लिए दाईं ओर ऊपर या नीचे स्वाइप करें</string>
 </resources>

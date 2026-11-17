@@ -235,4 +235,6 @@
     <string name="home_studios">Studios</string>
     <string name="home_top_rated">Top rated</string>
     <string name="home_documentaries">Documentaries</string>
+    <string name="home_swipe_controls">Swipe for brightness and volume</string>
+    <string name="home_swipe_controls_help">Swipe up or down on the left of the picture for brightness, on the right for volume</string>
 </resources>
