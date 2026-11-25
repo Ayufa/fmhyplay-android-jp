@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Trakt, AniList and MyAnimeList watch tracking: Settings rows, sign-in and the player toasts. -->
+<resources>
+    <string name="trakt_help">プレイヤーで観た映画やエピソードを、無料の視聴記録サービスTraktに視聴済みとして記録します。対象は映画、シリーズ、アニメから開いたタイトルです。</string>
+    <string name="trakt_disconnect_title">Traktの接続を解除しますか？</string>
+    <string name="trakt_disconnect_msg">AnantPlayからTraktへの視聴内容の送信を停止します。Traktの履歴は残ります。</string>
+    <string name="trakt_connect">Traktに接続</string>
+    <string name="trakt_offline">Traktに接続できません。WARPを確認してもう一度お試しください。</string>
+    <string name="trakt_connected">Traktに接続しました</string>
+    <string name="trakt_expired">コードの有効期限が切れました。これを閉じて、Traktをもう一度押して新しいコードを取得してください。</string>
+    <string name="trakt_refused">Traktに拒否されました。これを閉じてもう一度お試しください。</string>
+    <string name="trakt_marked">Traktに視聴済みとして記録しました</string>
+    <string name="anilist_help">プレイヤーでアニメのエピソードを観ると、AniListの進捗を更新します。対象はアニメから開いたタイトルです。サインインはAniList自体のページで行います。</string>
+    <string name="anilist_disconnect_title">AniListの接続を解除しますか？</string>
+    <string name="anilist_disconnect_msg">AnantPlayからAniListへの更新を停止します。リストは残ります。</string>
+    <string name="anilist_connected">AniListに接続しました</string>
+    <string name="anilist_marked">AniListの進捗を更新しました</string>
+    <string name="mal_help">プレイヤーでアニメのエピソードを観ると、MyAnimeListの進捗を更新します。対象はアニメから開いたタイトルです。サインインはMyAnimeList自体のページで行います。</string>
+    <string name="mal_disconnect_title">MyAnimeListの接続を解除しますか？</string>
+    <string name="mal_disconnect_msg">AnantPlayからMyAnimeListへの更新を停止します。リストは残ります。</string>
+    <string name="mal_connected">MyAnimeListに接続しました</string>
+    <string name="mal_marked">MyAnimeListの進捗を更新しました</string>
+    <string name="tracker_signin_failed">サインインが完了しませんでした。もう一度お試しください。</string>
+</resources>

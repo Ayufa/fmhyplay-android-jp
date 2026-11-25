@@ -113,6 +113,7 @@
     <string name="player_skip_credits">クレジットをスキップ</string>
     <string name="player_no_subs_lang">この動画には%1$sの字幕がありません</string>
     <string name="player_subs_failed">字幕ファイルを読み込めませんでした</string>
+    <string name="player_subs_translating">字幕の準備がまだできていません。まもなく再試行します</string>
     <string name="player_subs_synced">字幕を同期しました (%1$s)</string>
     <string name="player_skipped_intro">イントロをスキップしました</string>
     <string name="player_skipped_recap">リキャップをスキップしました</string>

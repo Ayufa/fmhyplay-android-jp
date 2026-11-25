@@ -29,6 +29,10 @@
     <string name="home_catalog_offline">カタログに接続できません。WARPを確認してください。</string>
     <string name="home_more_arrow">"もっと見る  ›"</string>
     <string name="home_sites">サイト</string>
+    <string name="home_loading_screen">読み込み画面</string>
+    <string name="home_loading_screen_help">アプリがサイトを開いて動画を探す間に表示されるものです。猫の場合: 処理中は回り、ストリームが見つかるとジャンプし、止まると見つめます。Tenorから一度だけ取得される3つのGIFで、有効にしたときだけ取得されます。端末のアニメーションがオフのときはオフのままです。</string>
+    <string name="home_loading_spinner">スピナー</string>
+    <string name="home_loading_cats">猫</string>
     <string name="home_new_anime">新着アニメ</string>
     <string name="home_newly_released">新作</string>
     <string name="home_popular_animation">人気のアニメ</string>
@@ -154,6 +158,9 @@
     <string name="home_auto_skip_help">イントロとリキャップは、時刻が分かっている場合（TheIntroDB、AniSkip）は自動でスキップされます。クレジットでは「次のエピソード」ボタンが表示されます。</string>
     <string name="home_auto_subs">字幕の自動表示</string>
     <string name="home_auto_subs_help">映画とエピソードは、最後に選んだ言語（%1$s）の字幕で開始します。ストリーム自体の字幕を優先し、なければOpenSubtitlesを使います。動画用に選んだ字幕ファイルは常に戻ります。</string>
+    <string name="subs_addon">字幕アドオン</string>
+    <string name="subs_addon_help">OpenSubtitlesにない言語（シンハラ語など）向けに、最初に問い合わせるStremio字幕アドオンです。そのアドレスを貼り付けてください（末尾のmanifest.jsonはそのままで構いません）。アドオンに字幕がない場合はOpenSubtitlesを使います。</string>
+    <string name="subs_addon_invalid">httpまたはhttpsのアドレスを入力するか、空欄のままにしてください。</string>
     <string name="home_simkl_help">プレイヤーで観た映画やエピソードを、無料の視聴記録サービスSimklに視聴済みとして記録します。対象は映画、シリーズ、アニメから開いたタイトルです。</string>
     <string name="home_simkl_disconnect_title">Simklの接続を解除しますか？</string>
     <string name="home_simkl_disconnect_msg">AnantPlayからSimklへの視聴内容の送信を停止します。Simklの履歴は残ります。</string>
